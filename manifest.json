@@ -1,0 +1,11 @@
+{
+	"id": "obsidian-wise-view",
+	"name": "Wise View",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Enriched Obsidian Bases views: Calendar, Kanban, Timeline, and Gantt — task-management agnostic.",
+	"author": "Parkis Utama",
+	"authorUrl": "https://github.com/parkisutama",
+	"fundingUrl": "",
+	"isDesktopOnly": false
+}

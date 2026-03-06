@@ -1,0 +1,2280 @@
+/* ==========================================================================
+   WISE VIEW — Plugin Stylesheet
+   ==========================================================================
+   TABLE OF CONTENTS
+   ==========================================================================
+   1. GLOBAL UTILITIES & SHARED COMPONENTS
+      1.1  Utility classes
+      1.2  Shared button base
+      1.3  Shared badge base
+      1.4  Shared progress bar
+      1.5  Empty state
+      1.6  Drag handle (shared)
+      1.7  Shared drag state utilities
+   2. KANBAN VIEW STYLES                            [ACTIVE — Phase 1]
+      2.1  Kanban container & board
+      2.2  Board scrollbar
+      2.3  Kanban columns
+      2.4  Column drag states
+      2.5  Kanban cards container
+      2.6  Kanban cards
+      2.7  Card border variants
+      2.8  Card touch & keyboard states
+      2.9  Virtual scroll placeholder
+      2.10 Kanban badges
+      2.11 Property rows (properties-section mode)
+      2.12 Kanban cover images
+      2.13 Kanban swimlanes
+      2.14 Swimlane labels
+      2.15 Swimlane counts & grab handles
+      2.16 Swimlane cells & placeholders
+      2.17 Kanban freeze-mode header
+      2.18 Kanban drag clones
+      2.19 Kanban extended & layout classes
+      2.20 Kanban dark theme
+      2.21 Kanban mobile responsive
+   3. CALENDAR VIEW STYLES                          [DISABLED — Phase 1]
+   4. TIMELINE VIEW STYLES                          [DISABLED — Phase 1]
+   5. GANTT VIEW STYLES                             [DISABLED — Phase 1]
+   6. SETTINGS & MODAL STYLES
+      6.1  Settings tabs
+      6.2  Calendar settings (name, folder, drag-drop)
+      6.3  Date color preview
+   7. VENDOR OVERRIDES — Frappe Gantt               [DISABLED — Phase 1]
+   8. LEGACY / UNUSED STYLES                        [DISABLED — Phase 1]
+   ========================================================================== */
+
+/* ==========================================================================
+   1. GLOBAL UTILITIES & SHARED COMPONENTS
+   ========================================================================== */
+
+/* 1.1 — Utility classes
+   -------------------------------------------------------------------------- */
+.planner-hidden {
+	display: none !important;
+}
+
+.planner-display-none {
+	display: none !important;
+}
+
+/* 1.2 — Shared button base
+   -------------------------------------------------------------------------- */
+.planner-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 12px;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.planner-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.planner-btn-primary {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.planner-btn-primary:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.planner-btn-danger {
+	color: var(--text-error);
+	border-color: var(--text-error);
+}
+
+.planner-btn-danger:hover {
+	background: var(--text-error);
+	color: white;
+}
+
+.planner-btn-spacer {
+	flex: 1;
+}
+
+/* 1.3 — Shared badge base
+   -------------------------------------------------------------------------- */
+.planner-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+/* 1.4 — Shared progress bar
+   -------------------------------------------------------------------------- */
+.planner-progress-bar {
+	display: inline-block;
+	width: 60px;
+	height: 6px;
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+	overflow: hidden;
+	margin-right: 6px;
+	vertical-align: middle;
+}
+
+.planner-progress-fill {
+	height: 100%;
+	width: var(--progress-width, 0%);
+	background: var(--interactive-accent);
+	border-radius: 3px;
+}
+
+.planner-progress-text {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+/* 1.5 — Empty state
+   -------------------------------------------------------------------------- */
+.planner-empty {
+	text-align: center;
+	padding: 40px !important;
+	color: var(--text-muted);
+}
+
+/* 1.6 — Drag handle (shared by settings & views)
+   -------------------------------------------------------------------------- */
+.planner-drag-handle {
+	cursor: grab;
+	opacity: 0.5;
+	margin-left: 0;
+	margin-right: 4px;
+}
+
+.planner-drag-handle:hover {
+	opacity: 1;
+}
+
+.planner-dragging .planner-drag-handle {
+	cursor: grabbing;
+}
+
+/* 1.7 — Shared drag state utilities
+   -------------------------------------------------------------------------- */
+.planner-dragging {
+	opacity: 0.5;
+}
+
+.planner-drag-over {
+	opacity: 0.7;
+}
+
+/* ==========================================================================
+   2. KANBAN VIEW STYLES                            [ACTIVE — Phase 1]
+   ========================================================================== */
+
+/* 2.1 — Kanban container & board
+   -------------------------------------------------------------------------- */
+.bases-view.planner-bases-kanban {
+	padding: 0;
+	scrollbar-gutter: auto;
+}
+
+.planner-bases-kanban {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	overscroll-behavior: contain;
+}
+
+.planner-kanban-board {
+	flex: 1;
+	display: flex;
+	gap: 12px;
+	padding: 6px;
+	overflow: auto;
+	align-items: flex-start;
+	min-height: 0;
+	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
+}
+
+/* 2.2 — Board scrollbar
+   -------------------------------------------------------------------------- */
+.planner-kanban-board::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.planner-kanban-board::-webkit-scrollbar-track {
+	background: var(--background-modifier-border);
+	border-radius: 4px;
+}
+
+.planner-kanban-board::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border-hover);
+	border-radius: 4px;
+}
+
+.planner-kanban-board::-webkit-scrollbar-thumb:hover {
+	background: var(--text-muted);
+}
+
+/* 2.3 — Kanban columns
+   -------------------------------------------------------------------------- */
+.planner-kanban-column {
+	width: var(--column-width, 280px);
+	min-width: var(--column-width, 280px);
+	display: flex;
+	flex-direction: column;
+	background: var(--background-secondary);
+	border-radius: 8px;
+	flex-shrink: 0;
+}
+
+.planner-kanban-column-header {
+	padding: 12px;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.planner-kanban-column-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.planner-kanban-column-title {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.planner-kanban-column-count {
+	background: var(--background-modifier-border);
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.planner-kanban-column-collapsed {
+	flex: 0 0 auto !important;
+}
+
+.planner-kanban-column-expanded {
+	flex: 0 0 280px;
+}
+
+/* 2.4 — Column drag states
+   -------------------------------------------------------------------------- */
+.planner-kanban-column-grab {
+	cursor: grab;
+	opacity: 0.4;
+	transition: opacity 0.15s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.planner-kanban-column-grab:hover {
+	opacity: 1;
+}
+
+.planner-kanban-column-grab:active {
+	cursor: grabbing;
+}
+
+.planner-kanban-column-grab svg {
+	width: 16px;
+	height: 16px;
+}
+
+.planner-kanban-column--dragging {
+	opacity: 0.5;
+	box-shadow: none !important;
+}
+
+.planner-kanban-column--drop-left {
+	box-shadow: -4px 0 0 var(--interactive-accent) !important;
+}
+
+.planner-kanban-column--drop-right {
+	box-shadow: 4px 0 0 var(--interactive-accent) !important;
+}
+
+/* 2.5 — Kanban cards container
+   -------------------------------------------------------------------------- */
+.planner-kanban-cards {
+	flex: 1;
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.planner-kanban-cards::-webkit-scrollbar {
+	width: 6px;
+}
+
+.planner-kanban-cards::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.planner-kanban-cards::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+}
+
+.planner-kanban-cards::-webkit-scrollbar-thumb:hover {
+	background: var(--background-modifier-border-hover);
+}
+
+.planner-kanban-cards--dragover {
+	background: var(--interactive-accent-hover);
+	border-radius: 4px;
+}
+
+/* 2.6 — Kanban cards
+   -------------------------------------------------------------------------- */
+.planner-kanban-card {
+	background: var(--background-primary);
+	border-radius: 6px;
+	cursor: pointer;
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.1s ease;
+	overflow: hidden;
+	touch-action: manipulation;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+.planner-kanban-card:hover {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.planner-kanban-card--dragging {
+	opacity: 0.5;
+	transform: rotate(2deg);
+}
+
+@media (pointer: coarse) {
+	.planner-kanban-card--dragging {
+		pointer-events: none;
+	}
+}
+
+.planner-kanban-card-content {
+	padding: 12px;
+}
+
+.planner-kanban-card-title {
+	font-weight: 500;
+	margin-bottom: 4px;
+	word-wrap: break-word;
+}
+
+.planner-kanban-card-summary {
+	font-size: 12px;
+	color: var(--text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.planner-kanban-card-title-row--inline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	margin-bottom: 4px;
+}
+
+/* 2.7 — Card border variants
+   -------------------------------------------------------------------------- */
+.planner-kanban-card-base {
+	background: var(--background-primary);
+	border-radius: 6px;
+	cursor: pointer;
+	transition: box-shadow 0.15s ease;
+	overflow: hidden;
+}
+
+.planner-kanban-card-base--left-accent {
+	border-left: 4px solid
+		var(--card-accent-color, var(--background-modifier-border));
+	border-top: none;
+	border-right: none;
+	border-bottom: none;
+}
+
+.planner-kanban-card-base--full-border {
+	border: 2px solid
+		var(--card-accent-color, var(--background-modifier-border));
+}
+
+.planner-kanban-card-base--default-border {
+	border: 1px solid var(--background-modifier-border);
+}
+
+/* 2.8 — Card touch & keyboard states
+   -------------------------------------------------------------------------- */
+.planner-kanban-card--touch-active {
+	touch-action: none;
+}
+
+.planner-kanban-card--hold-ready {
+	transform: scale(1.02);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+	transition:
+		transform 0.1s ease,
+		box-shadow 0.1s ease;
+	touch-action: none;
+}
+
+.planner-kanban-card--focused {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 4px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* 2.9 — Virtual scroll placeholder
+   -------------------------------------------------------------------------- */
+.planner-kanban-card-placeholder {
+	background: var(--background-secondary);
+	border-radius: 6px;
+	margin-bottom: 8px;
+	min-height: var(--placeholder-height, 100px);
+}
+
+.planner-kanban-card-placeholder.planner-kanban-card-rendered {
+	background: transparent;
+	min-height: 0;
+}
+
+.planner-kanban-virtual-wrapper {
+	position: relative;
+}
+
+/* 2.10 — Kanban badges
+   -------------------------------------------------------------------------- */
+.planner-kanban-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 8px;
+}
+
+.planner-kanban-badges--inline {
+	display: inline-flex !important;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-left: 8px;
+	margin-top: 0 !important;
+	border-top: none !important;
+	padding-top: 0 !important;
+	vertical-align: middle;
+}
+
+.planner-kanban-badges--properties-section {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.planner-kanban-badges--bottom {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.planner-kanban-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 2px 6px;
+	border-radius: 10px;
+	font-size: 10px;
+	font-weight: 500;
+	line-height: 1.2;
+	max-height: 18px;
+}
+
+.planner-kanban-badge-date {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.planner-kanban-badge-generic {
+	background-color: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.planner-kanban-badge-label {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	font-weight: 400;
+	margin-right: 1px;
+}
+
+.planner-kanban-badge-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 12px;
+	height: 12px;
+	flex-shrink: 0;
+}
+
+.planner-kanban-badge-icon svg {
+	width: 10px !important;
+	height: 10px !important;
+	max-width: 10px;
+	max-height: 10px;
+}
+
+.planner-kanban-badge-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.planner-kanban-badge-button-text {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 2px 6px;
+	background: var(--background-modifier-border);
+	border-radius: 8px;
+	font-size: 10px;
+}
+
+/* 2.11 — Property rows (properties-section mode)
+   -------------------------------------------------------------------------- */
+.planner-kanban-prop-row {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 3px;
+	min-width: 0;
+}
+
+.planner-kanban-prop-row-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	font-size: 10px;
+	color: var(--text-muted);
+	flex-shrink: 0;
+	white-space: nowrap;
+	min-width: 0;
+}
+
+.planner-kanban-prop-row-label-icon {
+	display: inline-flex;
+	align-items: center;
+	width: 10px;
+	height: 10px;
+}
+
+.planner-kanban-prop-row-label-icon svg {
+	width: 10px !important;
+	height: 10px !important;
+}
+
+/* 2.12 — Kanban cover images
+   -------------------------------------------------------------------------- */
+.planner-kanban-card-cover {
+	background-size: cover;
+	background-position: center;
+}
+
+.planner-kanban-cover--banner {
+	width: 100%;
+	height: var(--cover-height, 120px);
+	overflow: hidden;
+}
+
+.planner-kanban-cover--banner img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	display: block;
+}
+
+.planner-kanban-cover--thumbnail {
+	flex-shrink: 0;
+	width: 80px;
+	height: 80px;
+	overflow: hidden;
+	border-radius: 6px;
+}
+
+.planner-kanban-cover--thumbnail img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	display: block;
+}
+
+.planner-kanban-cover--thumbnail-small {
+	width: 60px;
+	height: 60px;
+}
+
+.planner-kanban-cover--background {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.planner-kanban-cover--background img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	opacity: 0.2;
+}
+
+.planner-kanban-card--thumbnail-left {
+	display: flex;
+	flex-direction: row;
+	gap: 8px;
+	align-items: flex-start;
+}
+
+.planner-kanban-card--thumbnail-right {
+	display: flex;
+	flex-direction: row-reverse;
+	gap: 8px;
+	align-items: flex-start;
+}
+
+.planner-kanban-card--background-cover {
+	position: relative;
+}
+
+/* 2.13 — Kanban swimlanes
+   -------------------------------------------------------------------------- */
+.planner-kanban-swimlanes {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: fit-content;
+	overscroll-behavior: contain;
+}
+
+.planner-kanban-header-row {
+	display: flex;
+	gap: 12px;
+	background: var(--background-primary);
+	padding-bottom: 8px;
+	padding-left: calc(var(--swim-label-width, 138px) + 8px + 12px);
+}
+
+.planner-kanban-header-row--frozen {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+}
+
+.planner-kanban-swimlane-header-cell {
+	width: var(--column-width, 280px);
+	min-width: var(--column-width, 280px);
+	font-weight: 600;
+	padding: 8px 12px;
+	background: var(--background-secondary);
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.planner-kanban-swimlane-row {
+	display: flex;
+	gap: 12px;
+	align-items: stretch;
+	padding: 8px;
+	background: var(--background-secondary);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	touch-action: pan-x pan-y;
+}
+
+/* 2.14 — Swimlane labels
+   -------------------------------------------------------------------------- */
+
+/* Vertical orientation */
+.planner-kanban-swimlane-label--vertical {
+	width: 36px;
+	min-width: 36px;
+	font-weight: 600;
+	padding: 8px 4px;
+	background: var(--background-modifier-border);
+	border-radius: 6px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+}
+
+.planner-kanban-swimlane-label--vertical.planner-kanban-swimlane-label--frozen {
+	position: sticky;
+	left: 8px;
+	z-index: 5;
+}
+
+/* Horizontal orientation */
+.planner-kanban-swimlane-label--horizontal {
+	width: var(--swim-label-width, 138px);
+	min-width: var(--swim-label-width, 138px);
+	font-weight: 600;
+	padding: 8px;
+	background: var(--background-modifier-border);
+	border-radius: 6px;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 6px;
+	min-height: 60px;
+	font-size: 13px;
+}
+
+.planner-kanban-swimlane-label--horizontal.planner-kanban-swimlane-label--frozen {
+	position: sticky;
+	left: 8px;
+	z-index: 5;
+}
+
+/* Label header layouts */
+.planner-kanban-label-header--vertical {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+}
+
+.planner-kanban-label-header--horizontal {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1;
+	min-width: 0;
+}
+
+.planner-kanban-swimlane-title--vertical {
+	writing-mode: vertical-rl;
+	text-orientation: mixed;
+	overflow: visible;
+	line-height: 1.3;
+}
+
+.planner-kanban-swimlane-title--horizontal {
+	flex: 1;
+	overflow-wrap: break-word;
+	word-break: break-word;
+	min-width: 0;
+	line-height: 1.3;
+}
+
+/* 2.15 — Swimlane counts & grab handles
+   -------------------------------------------------------------------------- */
+.planner-kanban-swimlane-count--vertical {
+	background: var(--background-primary);
+	padding: 2px 6px;
+	border-radius: 10px;
+	font-size: 10px;
+	font-weight: 500;
+}
+
+.planner-kanban-swimlane-count--horizontal {
+	background: var(--background-primary);
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 500;
+	flex-shrink: 0;
+	align-self: center;
+}
+
+.planner-kanban-swimlane-grab {
+	cursor: grab;
+	opacity: 0.4;
+	transition: opacity 0.15s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.planner-kanban-swimlane-grab svg {
+	width: 14px;
+	height: 14px;
+}
+
+.planner-kanban-swimlane-grab:hover {
+	opacity: 1;
+}
+
+.planner-kanban-swimlane-grab:active {
+	cursor: grabbing;
+}
+
+.planner-kanban-swimlane--dragging {
+	opacity: 0.5;
+}
+
+.planner-kanban-swimlane--drop-above {
+	box-shadow: 0 -4px 0 var(--interactive-accent) !important;
+}
+
+.planner-kanban-swimlane--drop-below {
+	box-shadow: 0 4px 0 var(--interactive-accent) !important;
+}
+
+/* 2.16 — Swimlane cells & placeholders
+   -------------------------------------------------------------------------- */
+.planner-kanban-swimlane-cell {
+	width: var(--column-width, 280px);
+	min-width: var(--column-width, 280px);
+	min-height: 60px;
+	background: var(--background-primary);
+	border-radius: 6px;
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	touch-action: pan-x pan-y;
+}
+
+.planner-kanban-placeholder {
+	width: var(--column-width, 280px);
+	min-width: var(--column-width, 280px);
+	min-height: 60px;
+	background: var(--background-primary);
+	border-radius: 6px;
+	opacity: 0.5;
+	flex: 1;
+}
+
+/* 2.17 — Kanban freeze-mode header
+   -------------------------------------------------------------------------- */
+.planner-kanban-column-header-cell {
+	width: var(--column-width, 280px);
+	min-width: var(--column-width, 280px);
+	font-weight: 600;
+	padding: 8px 12px;
+	background: var(--background-secondary);
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* 2.18 — Kanban drag clones
+   -------------------------------------------------------------------------- */
+.planner-kanban-drag-clone {
+	position: fixed;
+	pointer-events: none;
+	z-index: 1000;
+	opacity: 0.8;
+	transform: rotate(2deg) scale(1.02);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	width: var(--clone-width, 280px);
+}
+
+.planner-kanban-drag-clone--hidden {
+	display: none;
+}
+
+.planner-kanban-swimlane-drag-clone {
+	position: fixed;
+	pointer-events: none;
+	z-index: 1000;
+	opacity: 0.9;
+	transform: scale(1.02);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	width: var(--clone-width, 150px);
+}
+
+/* 2.19 — Kanban extended & layout classes
+   -------------------------------------------------------------------------- */
+.planner-kanban-columns-container {
+	display: flex;
+	align-items: stretch;
+	gap: 12px;
+	min-width: fit-content;
+	min-height: fit-content;
+}
+
+.planner-kanban-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	min-width: fit-content;
+	min-height: fit-content;
+}
+
+.planner-kanban-add-form-container {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+}
+
+.planner-kanban-add-form-input-container {
+	position: relative;
+	flex: 1;
+}
+
+.planner-kanban-empty-message-container {
+	padding: 20px;
+}
+
+.planner-kanban-empty-message-content {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	text-align: center;
+}
+
+/* 2.20 — Kanban dark theme
+   -------------------------------------------------------------------------- */
+.theme-dark .planner-kanban-card {
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .planner-kanban-card:hover {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 2.21 — Kanban mobile responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+	.planner-kanban-board {
+		padding: 4px;
+		gap: 8px;
+	}
+
+	.planner-kanban-column {
+		min-width: 260px;
+	}
+
+	.planner-kanban-column-header {
+		padding: 10px;
+	}
+
+	.planner-kanban-cards {
+		padding: 6px;
+		gap: 6px;
+	}
+
+	.planner-kanban-card-content {
+		padding: 10px;
+	}
+}
+
+/* ==========================================================================
+   3. CALENDAR VIEW STYLES                          [DISABLED — Phase 1]
+   ==========================================================================
+
+.planner-calendar-view,
+.planner-bases-calendar {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 8px;
+}
+
+.planner-calendar-container {
+	flex: 1;
+	min-height: 0;
+}
+
+.planner-calendar-view .fc,
+.planner-bases-calendar .fc {
+	--fc-border-color: var(--background-modifier-border);
+	--fc-button-bg-color: var(--background-secondary);
+	--fc-button-border-color: var(--background-modifier-border);
+	--fc-button-text-color: var(--text-normal);
+	--fc-button-hover-bg-color: var(--background-modifier-hover);
+	--fc-button-hover-border-color: var(--background-modifier-border);
+	--fc-button-active-bg-color: var(--interactive-accent);
+	--fc-button-active-border-color: var(--interactive-accent);
+	--fc-today-bg-color: var(--background-primary-alt);
+	--fc-page-bg-color: var(--background-primary);
+	--fc-neutral-bg-color: var(--background-secondary);
+	--fc-list-event-hover-bg-color: var(--background-modifier-hover);
+	--fc-event-border-color: transparent;
+	--fc-small-font-size: 0.85em;
+	font-family: var(--font-text);
+	height: 100%;
+}
+
+.planner-bases-calendar .fc .fc-toolbar {
+	margin-top: 0;
+	margin-bottom: 0.5em;
+	gap: 0.5em;
+	flex-wrap: wrap;
+}
+
+.planner-bases-calendar .fc .fc-toolbar-chunk {
+	display: flex;
+	align-items: center;
+	gap: 0.25em;
+}
+
+.planner-bases-calendar .fc .fc-button {
+	padding: 0.2em 0.6em;
+	font-size: 0.9em;
+	font-weight: 500;
+}
+
+.planner-bases-calendar .fc .fc-yearButton-button,
+.planner-bases-calendar .fc .fc-monthButton-button,
+.planner-bases-calendar .fc .fc-weekButton-button,
+.planner-bases-calendar .fc .fc-threeDayButton-button,
+.planner-bases-calendar .fc .fc-dayButton-button,
+.planner-bases-calendar .fc .fc-listButton-button {
+	min-width: 1.6em;
+	padding: 0.15em 0.4em;
+	font-size: 0.72em;
+}
+
+.planner-bases-calendar .fc .fc-yearButton-button.fc-button-active,
+.planner-bases-calendar .fc .fc-monthButton-button.fc-button-active,
+.planner-bases-calendar .fc .fc-weekButton-button.fc-button-active,
+.planner-bases-calendar .fc .fc-threeDayButton-button.fc-button-active,
+.planner-bases-calendar .fc .fc-dayButton-button.fc-button-active,
+.planner-bases-calendar .fc .fc-listButton-button.fc-button-active {
+	background-color: var(--interactive-accent) !important;
+	border-color: var(--interactive-accent) !important;
+	color: var(--text-on-accent) !important;
+}
+
+.planner-bases-calendar .fc .fc-todayButton-button {
+	min-width: 2em;
+	padding: 0.2em 0.5em;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.planner-bases-calendar .fc .fc-prev-button,
+.planner-bases-calendar .fc .fc-next-button {
+	padding: 0.2em 0.4em !important;
+	min-width: unset !important;
+}
+
+.planner-bases-calendar .fc .fc-refreshButton-button {
+	padding: 0.2em 0.6em !important;
+	min-width: unset !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px !important;
+}
+
+.planner-bases-calendar .fc .fc-refreshButton-button svg {
+	width: 14px;
+	height: 14px;
+}
+
+.planner-bases-calendar .fc .fc-todayButton-button svg {
+	width: 16px;
+	height: 16px;
+}
+
+.planner-bases-calendar .fc .fc-yearToggleButton-button {
+	padding: 0.2em 0.45em !important;
+	min-width: unset !important;
+	opacity: 0.8;
+	margin-right: 0.25em;
+	border-radius: 4px !important;
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: center;
+}
+
+.planner-bases-calendar .fc .fc-yearToggleButton-button:hover:not(.fc-button-disabled) {
+	opacity: 1;
+}
+
+.planner-bases-calendar .fc .fc-yearToggleButton-button svg {
+	width: 16px;
+	height: 16px;
+}
+
+.planner-bases-calendar .fc .fc-yearToggleButton-button.fc-button-disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.planner-bases-calendar .fc .fc-yearButton-button {
+	border-top-left-radius: 4px !important;
+	border-bottom-left-radius: 4px !important;
+}
+
+.planner-bases-calendar .fc .fc-listButton-button {
+	border-top-right-radius: 4px;
+	border-bottom-right-radius: 4px;
+}
+
+@media (max-width: 768px) {
+	.planner-bases-calendar .fc .fc-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: 0.5em;
+	}
+
+	.planner-bases-calendar .fc .fc-toolbar-chunk {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25em;
+		margin-bottom: 0;
+	}
+
+	.planner-bases-calendar .fc .fc-toolbar-chunk:first-child,
+	.planner-bases-calendar .fc .fc-toolbar-chunk:last-child {
+		order: 1;
+	}
+
+	.planner-bases-calendar .fc .fc-toolbar-chunk:nth-child(2) {
+		order: 2;
+		width: 100%;
+		display: flex;
+		justify-content: center;
+	}
+
+	.planner-bases-calendar .fc .fc-toolbar-title {
+		font-size: calc(var(--planner-calendar-font-size, 10px) * 1.4);
+		text-align: center;
+	}
+}
+
+.planner-calendar-view .fc .fc-toolbar-title,
+.planner-bases-calendar .fc .fc-toolbar-title {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.4) !important;
+	font-weight: 600;
+}
+
+.planner-calendar-view .fc .fc-col-header-cell,
+.planner-bases-calendar .fc .fc-col-header-cell,
+.planner-calendar-view .fc .fc-col-header-cell-cushion,
+.planner-bases-calendar .fc .fc-col-header-cell-cushion {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.1) !important;
+}
+
+.planner-calendar-view .fc .fc-daygrid-day-number,
+.planner-bases-calendar .fc .fc-daygrid-day-number {
+	font-size: var(--planner-calendar-font-size, 10px) !important;
+}
+
+.planner-calendar-view .fc .fc-daygrid-day-top,
+.planner-bases-calendar .fc .fc-daygrid-day-top {
+	align-items: center;
+}
+
+.planner-journal-dot {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-self: center;
+	width: 5px;
+	height: 5px;
+	min-width: 5px;
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+	opacity: 0.85;
+	pointer-events: none;
+}
+
+.planner-calendar-view .fc .fc-multimonth-title,
+.planner-bases-calendar .fc .fc-multimonth-title {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.3) !important;
+	font-weight: 600;
+}
+
+.planner-bases-calendar .fc .fc-dayGridYear-view .fc-daygrid-day-frame {
+	min-height: var(--planner-year-continuous-row-height, 60px) !important;
+}
+
+.planner-bases-calendar .fc .fc-dayGridYear-view .fc-daygrid-day {
+	min-height: var(--planner-year-continuous-row-height, 60px) !important;
+}
+
+.planner-bases-calendar .fc .fc-dayGridYear-view .fc-daygrid-day-events {
+	min-height: calc(var(--planner-year-continuous-row-height, 60px) - 24px) !important;
+}
+
+.planner-bases-calendar .fc .fc-multiMonthYear-view .fc-daygrid-day-frame {
+	min-height: var(--planner-year-split-row-height, 60px);
+}
+
+.planner-calendar-view .fc .fc-daygrid-more-link,
+.planner-bases-calendar .fc .fc-daygrid-more-link {
+	font-size: var(--planner-calendar-font-size, 10px) !important;
+}
+
+.planner-calendar-view .fc .fc-list-day-text,
+.planner-bases-calendar .fc .fc-list-day-text,
+.planner-calendar-view .fc .fc-list-day-side-text,
+.planner-bases-calendar .fc .fc-list-day-side-text {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.1) !important;
+}
+
+.planner-calendar-view .fc .fc-list-event-title,
+.planner-bases-calendar .fc .fc-list-event-title,
+.planner-calendar-view .fc .fc-list-event-time,
+.planner-bases-calendar .fc .fc-list-event-time {
+	font-size: var(--planner-calendar-font-size, 10px) !important;
+}
+
+.planner-calendar-view .fc .fc-dayGridMonth-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
+.planner-bases-calendar .fc .fc-dayGridMonth-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
+.planner-calendar-view .fc .fc-multiMonthYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
+.planner-bases-calendar .fc .fc-multiMonthYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 50%;
+	min-width: 1.8em;
+	height: 1.8em;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+}
+
+.planner-calendar-view .fc .fc-dayGridYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
+.planner-bases-calendar .fc .fc-dayGridYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 999px;
+	padding: 2px 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.planner-calendar-view .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion,
+.planner-bases-calendar .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 999px;
+	padding: 2px 8px;
+}
+
+.planner-calendar-view .fc .fc-list-day.fc-day-today .fc-list-day-side-text,
+.planner-bases-calendar .fc .fc-list-day.fc-day-today .fc-list-day-side-text {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 999px;
+	padding: 2px 8px;
+}
+
+.planner-calendar-view .fc .fc-timegrid-slot-label,
+.planner-bases-calendar .fc .fc-timegrid-slot-label {
+	font-size: var(--planner-calendar-font-size, 10px) !important;
+}
+
+.planner-calendar-view .fc .fc-timegrid-axis-cushion,
+.planner-bases-calendar .fc .fc-timegrid-axis-cushion {
+	font-size: var(--planner-calendar-font-size, 10px) !important;
+}
+
+.planner-calendar-view .fc .fc-list-day-cushion,
+.planner-bases-calendar .fc .fc-list-day-cushion {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.2) !important;
+}
+
+.planner-calendar-view .fc .fc-event,
+.planner-bases-calendar .fc .fc-event {
+	cursor: pointer;
+	border-radius: 4px;
+	padding: 2px 4px;
+	font-size: var(--planner-calendar-font-size, 10px) !important;
+}
+
+.planner-calendar-view .fc .fc-event:hover,
+.planner-bases-calendar .fc .fc-event:hover {
+	opacity: 0.9;
+}
+
+.planner-calendar-view .fc .fc-daygrid-event,
+.planner-bases-calendar .fc .fc-daygrid-event,
+.planner-calendar-view .fc .fc-daygrid-block-event,
+.planner-bases-calendar .fc .fc-daygrid-block-event {
+	padding: 0 4px;
+	line-height: calc(var(--planner-calendar-font-size, 10px) * 1.4);
+	min-height: 0;
+	margin-top: 1px;
+	margin-bottom: 0;
+}
+
+.planner-calendar-view .fc .fc-daygrid-event .fc-event-main,
+.planner-bases-calendar .fc .fc-daygrid-event .fc-event-main,
+.planner-calendar-view .fc .fc-daygrid-block-event .fc-event-main,
+.planner-bases-calendar .fc .fc-daygrid-block-event .fc-event-main {
+	padding: 0;
+}
+
+.planner-calendar-view .fc .fc-daygrid-event .fc-event-main-frame,
+.planner-bases-calendar .fc .fc-daygrid-event .fc-event-main-frame,
+.planner-calendar-view .fc .fc-daygrid-block-event .fc-event-main-frame,
+.planner-bases-calendar .fc .fc-daygrid-block-event .fc-event-main-frame {
+	padding: 0;
+	min-height: 0;
+}
+
+.planner-calendar-view .fc .fc-daygrid-event .fc-event-title,
+.planner-bases-calendar .fc .fc-daygrid-event .fc-event-title,
+.planner-calendar-view .fc .fc-daygrid-block-event .fc-event-title,
+.planner-bases-calendar .fc .fc-daygrid-block-event .fc-event-title {
+	padding: 0;
+}
+
+.planner-calendar-view .fc .fc-daygrid-event .fc-event-time,
+.planner-bases-calendar .fc .fc-daygrid-event .fc-event-time,
+.planner-calendar-view .fc .fc-daygrid-block-event .fc-event-time,
+.planner-bases-calendar .fc .fc-daygrid-block-event .fc-event-time {
+	padding: 0;
+	margin: 0;
+}
+
+.planner-calendar-view .fc .fc-daygrid-more-link,
+.planner-bases-calendar .fc .fc-daygrid-more-link {
+	line-height: calc(var(--planner-calendar-font-size, 10px) * 1.4);
+	margin-top: 1px;
+}
+
+.planner-event-completed {
+	opacity: 0.6;
+	text-decoration: line-through;
+}
+
+   ========================================================================== */
+
+/* ==========================================================================
+   4. TIMELINE VIEW STYLES                          [DISABLED — Phase 1]
+   ==========================================================================
+
+.planner-bases-timeline {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+	background-color: var(--background-primary);
+	margin: 0;
+	padding: 0;
+}
+
+.planner-timeline-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+	flex-shrink: 0;
+}
+
+.planner-timeline-toolbar-item {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.planner-timeline-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.planner-timeline-select {
+	padding: 4px 8px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+}
+
+.planner-timeline-select:hover {
+	border-color: var(--background-modifier-border-hover);
+}
+
+.planner-timeline-select:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.planner-timeline-spacer {
+	flex: 1;
+}
+
+.planner-timeline-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-s);
+	background-color: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	transition:
+		background-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.planner-timeline-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.planner-timeline-btn:active {
+	background-color: var(--background-modifier-active-hover);
+}
+
+.planner-timeline-iframe-container {
+	flex: 1 1 0;
+	min-height: 0;
+	overflow: hidden;
+	position: relative;
+	background-color: var(--background-secondary);
+}
+
+.planner-timeline-iframe {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 100%;
+	height: 100%;
+	border: none;
+	display: block;
+	background-color: #1e1e1e;
+}
+
+.theme-dark .planner-timeline-select {
+	background-color: var(--background-secondary-alt);
+}
+
+@media (max-width: 768px) {
+	.planner-timeline-toolbar {
+		flex-wrap: wrap;
+		gap: 8px;
+		padding: 8px;
+	}
+
+	.planner-timeline-toolbar-item {
+		min-width: 100px;
+	}
+
+	.planner-timeline-spacer {
+		display: none;
+	}
+
+	.planner-timeline-btn {
+		margin-left: auto;
+	}
+}
+
+body.is-mobile .planner-bases-timeline {
+	flex: 1 1 0;
+	min-height: 0;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+body.is-mobile .planner-timeline-iframe-container {
+	flex: 1 1 0;
+	min-height: 0;
+}
+
+.planner-timeline-error {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 200px;
+	padding: 40px 20px;
+	text-align: center;
+	color: var(--text-muted);
+	background-color: var(--background-secondary);
+}
+
+.planner-timeline-error-title {
+	font-size: 1.2em;
+	font-weight: 600;
+	margin-bottom: 8px;
+	color: var(--text-normal);
+}
+
+.planner-timeline-error-message {
+	font-size: 0.9em;
+	max-width: 400px;
+	line-height: 1.5;
+}
+
+   ========================================================================== */
+
+/* ==========================================================================
+   5. GANTT VIEW STYLES                             [DISABLED — Phase 1]
+   ==========================================================================
+
+5.1 — Frappe Gantt variable bridge to Obsidian theme
+
+.bases-gantt-view {
+	--g-arrow-color: var(--text-muted);
+	--g-bar-color: var(--interactive-accent);
+	--g-bar-border: var(--interactive-accent);
+	--g-tick-color-thick: var(--background-modifier-border);
+	--g-tick-color: var(--background-modifier-border-hover);
+	--g-actions-background: var(--background-secondary);
+	--g-border-color: var(--background-modifier-border);
+	--g-text-muted: var(--text-muted);
+	--g-text-light: var(--text-on-accent);
+	--g-text-dark: var(--text-normal);
+	--g-progress-color: var(--interactive-accent-hover);
+	--g-handle-color: var(--text-normal);
+	--g-weekend-label-color: var(--background-secondary-alt);
+	--g-expected-progress: var(--background-modifier-border);
+	--g-header-background: var(--background-primary);
+	--g-row-color: var(--background-primary);
+	--g-row-border-color: var(--background-modifier-border);
+	--g-today-highlight: var(--interactive-accent);
+	--g-popup-actions: var(--background-secondary);
+	--g-weekend-highlight-color: var(--background-secondary);
+}
+
+5.2 — Container
+
+.bases-gantt-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+
+.bases-gantt-view .gantt-wrapper {
+	border-radius: var(--radius-m);
+	border: 1px solid var(--background-modifier-border);
+	overflow: auto;
+	flex: 1;
+	min-height: 0;
+}
+
+.bases-gantt-view .gantt-container {
+	font-family: var(--font-interface);
+	border-radius: var(--radius-m);
+}
+
+5.3 — Bar labels
+
+.bases-gantt-view .gantt .bar-label {
+	font-family: var(--font-interface);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+5.4 — Sticky header
+
+.bases-gantt-view .gantt-container .current-upper {
+	background: var(--background-primary);
+}
+
+.bases-gantt-view .gantt-container .side-header * {
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	font-family: var(--font-interface);
+}
+
+.bases-gantt-view .gantt-container .side-header *:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+5.5 — Today button
+
+.bases-gantt-view .gantt-container .today-button {
+	cursor: pointer;
+}
+
+5.6 — Bar transitions & hover
+
+.bases-gantt-view .gantt .bar {
+	transition: fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease;
+}
+
+.bases-gantt-view .gantt .bar-progress {
+	transition: fill 0.2s ease, width 0.15s ease;
+}
+
+.bases-gantt-view .gantt .bar-wrapper:hover .bar {
+	filter: brightness(1.1);
+}
+
+.bases-gantt-view .gantt .bar-wrapper {
+	cursor: pointer;
+}
+
+.bases-gantt-view .gantt .handle {
+	cursor: ew-resize;
+}
+
+5.7 — Today line & expected progress
+
+.bases-gantt-view .gantt .current-highlight {
+	opacity: 0.12;
+}
+
+.bases-gantt-view .gantt .current-date-highlight {
+	font-weight: 700;
+}
+
+.bases-gantt-view .gantt .bar-expected-progress {
+	opacity: 0.35;
+	stroke-dasharray: 4 2;
+}
+
+5.8 — Weekend column hover
+
+.bases-gantt-view .gantt .grid-column:hover {
+	fill: var(--background-modifier-hover);
+	opacity: 0.25;
+}
+
+5.9 — Color classes
+
+.bases-gantt-view .gantt .gantt-color-0 .bar { fill: var(--interactive-accent); stroke: var(--interactive-accent); }
+.bases-gantt-view .gantt .gantt-color-1 .bar { fill: var(--color-green); stroke: var(--color-green); }
+.bases-gantt-view .gantt .gantt-color-2 .bar { fill: var(--color-orange); stroke: var(--color-orange); }
+.bases-gantt-view .gantt .gantt-color-3 .bar { fill: var(--color-red); stroke: var(--color-red); }
+.bases-gantt-view .gantt .gantt-color-4 .bar { fill: var(--color-purple); stroke: var(--color-purple); }
+.bases-gantt-view .gantt .gantt-color-5 .bar { fill: var(--color-yellow); stroke: var(--color-yellow); }
+.bases-gantt-view .gantt .gantt-color-6 .bar { fill: var(--color-cyan); stroke: var(--color-cyan); }
+.bases-gantt-view .gantt .gantt-color-7 .bar { fill: var(--color-pink); stroke: var(--color-pink); }
+
+5.10 — Group header rows
+
+.bases-gantt-view .gantt .gantt-group-header .bar {
+	fill: var(--background-secondary);
+	stroke: var(--background-modifier-border);
+	stroke-width: 1;
+	opacity: 0.6;
+	rx: 4;
+	ry: 4;
+}
+
+.bases-gantt-view .gantt .gantt-group-header .bar-label {
+	fill: var(--text-muted);
+	font-weight: 700;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.bases-gantt-view .gantt .gantt-group-header .bar-progress { display: none; }
+.bases-gantt-view .gantt .gantt-group-header .handle { display: none; }
+
+5.11 — Milestone
+
+.bases-gantt-view .gantt .gantt-milestone .bar {
+	rx: 2;
+	ry: 2;
+	opacity: 0.9;
+}
+
+5.12 — Popup
+
+.bases-gantt-view .popup-wrapper {
+	font-family: var(--font-interface);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: var(--shadow-s);
+	max-width: 360px;
+	background: var(--background-primary);
+}
+
+.bases-gantt-view .popup-wrapper .title {
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+.bases-gantt-view .popup-wrapper .subtitle {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.gantt-popup-progress-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.gantt-popup-progress { flex: 1; height: 6px; background: var(--background-modifier-border); border-radius: 3px; overflow: hidden; max-width: 100px; }
+.gantt-popup-progress-bar { height: 100%; background: var(--interactive-accent); border-radius: 3px; transition: width 0.3s ease; }
+.gantt-popup-progress-label { font-size: 11px; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+.gantt-popup-deps { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.gantt-popup-hint { font-size: 10px; color: var(--text-faint); margin-top: 8px; }
+
+.gantt-popup-preview {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--text-normal);
+	max-height: 120px;
+	overflow: hidden;
+	position: relative;
+}
+
+.gantt-popup-preview::after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 28px;
+	background: linear-gradient(transparent, var(--background-primary));
+	pointer-events: none;
+}
+
+.gantt-popup-preview p { margin: 0 0 4px 0; }
+.gantt-popup-preview h1,
+.gantt-popup-preview h2,
+.gantt-popup-preview h3 { font-size: 12px; margin: 0 0 4px 0; }
+
+5.13 — Empty state
+
+.gantt-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 40px 20px;
+	text-align: center;
+	color: var(--text-muted);
+	min-height: 200px;
+}
+
+.gantt-empty-state p { margin: 4px 0; }
+.gantt-empty-state .gantt-empty-hint { font-size: var(--font-smallest); color: var(--text-faint); }
+
+   ========================================================================== */
+
+/* ==========================================================================
+   6. SETTINGS & MODAL STYLES
+   ========================================================================== */
+
+/* 6.1 — Settings tabs
+   -------------------------------------------------------------------------- */
+.planner-settings-tabs {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 16px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 8px;
+}
+
+.planner-settings-tab {
+	padding: 6px 12px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 4px;
+	font-size: var(--font-ui-small);
+	transition:
+		background-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.planner-settings-tab:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.planner-settings-tab.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.planner-settings-tab-content {
+	display: none;
+}
+
+.planner-settings-tab-content.is-active {
+	display: block;
+}
+
+/* 6.2 — Calendar settings (name, folder, drag-drop)
+   -------------------------------------------------------------------------- */
+.planner-calendar-name-input {
+	font-weight: 500;
+	min-width: 120px;
+}
+
+.planner-calendar-folder-input {
+	min-width: 150px;
+}
+
+.planner-calendar-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.planner-calendar-item {
+	cursor: grab;
+	transition:
+		background-color 0.15s ease,
+		opacity 0.15s ease;
+	border-radius: 4px;
+	padding-left: 0;
+}
+
+.planner-calendar-item .setting-item-control {
+	width: 100%;
+	gap: 8px;
+	padding-left: 0;
+}
+
+.planner-calendar-item .planner-calendar-folder-input {
+	margin-left: auto;
+}
+
+.planner-calendar-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.planner-calendar-item.planner-dragging {
+	opacity: 0.5;
+	cursor: grabbing;
+}
+
+.planner-calendar-item.planner-drag-over {
+	background-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 20%,
+		transparent
+	);
+}
+
+.planner-status-list,
+.planner-priority-list {
+	margin-bottom: 8px;
+}
+
+.planner-status-item .setting-item-control {
+	flex-wrap: nowrap;
+}
+
+/* 6.3 — Date color settings preview
+   -------------------------------------------------------------------------- */
+.planner-date-color-preview {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 1px 8px;
+	border-radius: 4px;
+	font-size: var(--font-ui-small);
+	font-variant-numeric: tabular-nums;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	vertical-align: middle;
+}
+
+/* ==========================================================================
+   7. VENDOR OVERRIDES — Frappe Gantt               [DISABLED — Phase 1]
+   ==========================================================================
+
+:root {
+	--g-arrow-color: #1f2937;
+	--g-bar-color: #fff;
+	--g-bar-border: #fff;
+	--g-tick-color-thick: #ededed;
+	--g-tick-color: #f3f3f3;
+	--g-actions-background: #f3f3f3;
+	--g-border-color: #ebeff2;
+	--g-text-muted: #7c7c7c;
+	--g-text-light: #fff;
+	--g-text-dark: #171717;
+	--g-progress-color: #dbdbdb;
+	--g-handle-color: #37352f;
+	--g-weekend-label-color: #dcdce4;
+	--g-expected-progress: #c4c4e9;
+	--g-header-background: #fff;
+	--g-row-color: #fdfdfd;
+	--g-row-border-color: #c7c7c7;
+	--g-today-highlight: #37352f;
+	--g-popup-actions: #ebeff2;
+	--g-weekend-highlight-color: #f7f7f7;
+}
+
+html[data-theme="dark"] {
+	--g-arrow-color: #e5e5e5;
+	--g-bar-color: #2a2a2a;
+	--g-bar-border: #3a3a3a;
+	--g-tick-color-thick: #1a1a1a;
+	--g-tick-color: #0a0a0a;
+	--g-actions-background: #1a1a1a;
+	--g-border-color: #2a2a2a;
+	--g-text-muted: #999999;
+	--g-text-light: #ffffff;
+	--g-text-dark: #f5f5f5;
+	--g-progress-color: #4a4a4a;
+	--g-handle-color: #d0d0d0;
+	--g-weekend-label-color: #3a3a3a;
+	--g-expected-progress: #5a5a5a;
+	--g-header-background: #0a0a0a;
+	--g-row-color: #141414;
+	--g-row-border-color: #2a2a2a;
+	--g-today-highlight: #999999;
+	--g-popup-actions: #1a1a1a;
+	--g-weekend-highlight-color: #0f0f0f;
+}
+
+.gantt-container {
+	line-height: 14.5px;
+	position: relative;
+	overflow: auto;
+	font-size: 12px;
+	height: var(--gv-grid-height);
+	width: 100%;
+	border-radius: 8px;
+	isolation: isolate;
+}
+
+.gantt-container .popup-wrapper {
+	position: absolute;
+	top: 0;
+	left: 0;
+	background: var(--g-header-background);
+	box-shadow: 0 10px 24px -3px #0003;
+	padding: 10px;
+	border-radius: 5px;
+	width: max-content;
+	z-index: 1000;
+}
+
+.gantt-container .popup-wrapper .title {
+	margin-bottom: 2px;
+	color: var(--g-text-dark);
+	font-size: 0.85rem;
+	font-weight: 650;
+	line-height: 15px;
+}
+
+.gantt-container .popup-wrapper .subtitle {
+	color: var(--g-text-dark);
+	font-size: 0.8rem;
+	margin-bottom: 5px;
+}
+
+.gantt-container .popup-wrapper .details {
+	color: var(--g-text-muted);
+	font-size: 0.7rem;
+}
+
+.gantt-container .popup-wrapper .actions {
+	margin-top: 10px;
+	margin-left: 3px;
+}
+
+.gantt-container .popup-wrapper .action-btn {
+	border: none;
+	padding: 5px 8px;
+	background-color: var(--g-popup-actions);
+	border-right: 1px solid var(--g-border-color);
+}
+
+.gantt-container .popup-wrapper .action-btn:hover {
+	filter: brightness(97%);
+}
+
+.gantt-container .popup-wrapper .action-btn:first-child {
+	border-top-left-radius: 4px;
+	border-bottom-left-radius: 4px;
+}
+
+.gantt-container .popup-wrapper .action-btn:last-child {
+	border-right: none;
+	border-top-right-radius: 4px;
+	border-bottom-right-radius: 4px;
+}
+
+.gantt-container .grid-header {
+	height: calc(var(--gv-lower-header-height) + var(--gv-upper-header-height) + 10px);
+	background-color: var(--g-header-background);
+	position: sticky;
+	top: 0;
+	left: 0;
+	border-bottom: 1px solid var(--g-row-border-color);
+	z-index: 1000;
+}
+
+.gantt-container .lower-text,
+.gantt-container .upper-text {
+	text-anchor: middle;
+}
+
+.gantt-container .upper-header { height: var(--gv-upper-header-height); }
+.gantt-container .lower-header { height: var(--gv-lower-header-height); }
+
+.gantt-container .lower-text {
+	font-size: 12px;
+	position: absolute;
+	width: calc(var(--gv-column-width) * 0.8);
+	height: calc(var(--gv-lower-header-height) * 0.8);
+	margin: 0 calc(var(--gv-column-width) * 0.1);
+	align-content: center;
+	text-align: center;
+	color: var(--g-text-muted);
+}
+
+.gantt-container .upper-text {
+	position: absolute;
+	width: fit-content;
+	font-weight: 500;
+	font-size: 14px;
+	color: var(--g-text-dark);
+	height: calc(var(--gv-lower-header-height) * 0.66);
+}
+
+.gantt-container .current-upper {
+	position: sticky;
+	left: 0 !important;
+	padding-left: 17px;
+	background: var(--g-header-background);
+}
+
+.gantt-container .side-header {
+	position: sticky;
+	top: 0;
+	right: 0;
+	float: right;
+	z-index: 1000;
+	line-height: 20px;
+	font-weight: 400;
+	width: max-content;
+	margin-left: auto;
+	padding-right: 10px;
+	padding-top: 10px;
+	background: var(--g-header-background);
+	display: flex;
+}
+
+.gantt-container .side-header * {
+	transition-property: background-color;
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	transition-duration: 0.15s;
+	background-color: var(--g-actions-background);
+	border-radius: 0.5rem;
+	border: none;
+	padding: 5px 8px;
+	color: var(--g-text-dark);
+	font-size: 14px;
+	letter-spacing: 0.02em;
+	font-weight: 420;
+	box-sizing: content-box;
+	margin-right: 5px;
+}
+
+.gantt-container .side-header *:last-child { margin-right: 0; }
+.gantt-container .side-header *:hover { filter: brightness(97.5%); }
+.gantt-container .side-header select { width: 60px; padding-top: 2px; padding-bottom: 2px; }
+.gantt-container .side-header select:focus { outline: none; }
+
+.gantt-container .date-range-highlight {
+	background-color: var(--g-progress-color);
+	border-radius: 12px;
+	height: calc(var(--gv-lower-header-height) - 6px);
+	top: calc(var(--gv-upper-header-height) + 5px);
+	position: absolute;
+}
+
+.gantt-container .current-highlight { position: absolute; background: var(--g-today-highlight); width: 1px; z-index: 999; }
+.gantt-container .current-ball-highlight { position: absolute; background: var(--g-today-highlight); z-index: 1001; border-radius: 50%; }
+.gantt-container .current-date-highlight { background: var(--g-today-highlight); color: var(--g-text-light); border-radius: 5px; }
+
+.gantt-container .holiday-label {
+	position: absolute;
+	top: 0;
+	left: 0;
+	opacity: 0;
+	z-index: 1000;
+	background: var(--g-weekend-label-color);
+	border-radius: 5px;
+	padding: 2px 5px;
+}
+
+.gantt-container .holiday-label.show { opacity: 100; }
+.gantt-container .extras { position: sticky; left: 0; }
+
+.gantt-container .extras .adjust {
+	position: absolute;
+	left: 8px;
+	top: calc(var(--gv-grid-height) - 60px);
+	background-color: var(--g-actions-background);
+	color: var(--g-text-light);
+	border: none;
+	padding: 8px;
+	border-radius: 3px;
+}
+
+.gantt-container .hide { display: none; }
+
+.gantt {
+	user-select: none;
+	-webkit-user-select: none;
+	position: absolute;
+}
+
+.gantt .grid-background { fill: none; }
+.gantt .grid-row { fill: var(--g-row-color); }
+.gantt .row-line { stroke: var(--g-border-color); }
+.gantt .tick { stroke: var(--g-tick-color); stroke-width: 0.4; }
+.gantt .tick.thick { stroke: var(--g-tick-color-thick); stroke-width: 0.7; }
+.gantt .arrow { fill: none; stroke: var(--g-arrow-color); stroke-width: 1.5; }
+
+.gantt .bar-wrapper .bar {
+	fill: var(--g-bar-color);
+	stroke: var(--g-bar-border);
+	stroke-width: 0;
+	transition: stroke-width 0.3s ease;
+}
+
+.gantt .bar-progress { fill: var(--g-progress-color); border-radius: 4px; }
+.gantt .bar-expected-progress { fill: var(--g-expected-progress); }
+.gantt .bar-invalid { fill: transparent; stroke: var(--g-bar-border); stroke-width: 1; stroke-dasharray: 5; }
+:is(.gantt .bar-invalid) ~ .bar-label { fill: var(--g-text-light); }
+
+.gantt .bar-label {
+	fill: var(--g-text-dark);
+	dominant-baseline: central;
+	font-family: Helvetica;
+	font-size: 13px;
+	font-weight: 400;
+}
+
+.gantt .bar-label.big { fill: var(--g-text-dark); text-anchor: start; }
+
+.gantt .handle { fill: var(--g-handle-color); opacity: 0; transition: opacity 0.3s ease; }
+.gantt .handle.active, .gantt .handle.visible { cursor: ew-resize; opacity: 1; }
+.gantt .handle.progress { fill: var(--g-text-muted); }
+
+.gantt .bar-wrapper { cursor: pointer; }
+.gantt .bar-wrapper .bar { outline: 1px solid var(--g-row-border-color); border-radius: 3px; }
+.gantt .bar-wrapper:hover .bar { transition: transform 0.3s ease; }
+.gantt .bar-wrapper:hover .date-range-highlight { display: block; }
+
+.gantt .grid-column { fill: transparent; pointer-events: all; }
+.gantt .grid-column:hover { fill: var(--g-weekend-highlight-color); transition: fill 0.1s ease; }
+
+   ========================================================================== */
+
+/* ==========================================================================
+   8. LEGACY / UNUSED STYLES                        [DISABLED — Phase 1]
+   ==========================================================================
+   These styles were inherited from the original Planner codebase and are
+   not used by any currently active view. They are preserved here for
+   reference and will be cleaned up or removed after all views pass testing.
+   ==========================================================================
+
+8.1 — Task List View (removed feature)
+
+.planner-task-list-view { padding: 16px; height: 100%; display: flex; flex-direction: column; }
+.planner-toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.planner-toggle { display: flex; align-items: center; gap: 6px; }
+.planner-toggle input[type="checkbox"] { margin: 0; }
+.planner-toggle label { cursor: pointer; font-size: 13px; }
+.planner-table-container { flex: 1; overflow: auto; }
+.planner-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.planner-table th { text-align: left; padding: 8px 12px; background: var(--background-secondary); border-bottom: 2px solid var(--background-modifier-border); cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 1; }
+.planner-table th:hover { background: var(--background-modifier-hover); }
+.planner-th-content { display: flex; align-items: center; gap: 4px; }
+.planner-sort-icon { display: flex; opacity: 0.7; }
+.planner-table td { padding: 10px 12px; border-bottom: 1px solid var(--background-modifier-border); vertical-align: middle; }
+.planner-row { cursor: pointer; }
+.planner-row:hover { background: var(--background-modifier-hover); }
+.planner-cell-title { font-weight: 500; }
+.planner-title-content { display: flex; align-items: center; gap: 6px; }
+.planner-icon { display: flex; opacity: 0.6; }
+.planner-icon.planner-blocked { color: var(--text-error); opacity: 1; }
+.planner-cell-date { font-family: var(--font-monospace); font-size: 12px; color: var(--text-muted); }
+.planner-overdue { color: var(--text-error) !important; font-weight: 500; }
+.planner-bases-task-list { padding: 8px; height: 100%; overflow: auto; }
+.planner-group-row { background: var(--background-secondary); }
+.planner-group-label { font-weight: 600; padding: 4px 0; }
+
+8.2 — Quick Capture Modal (removed feature)
+
+.planner-quick-capture { padding: 20px; }
+.planner-quick-capture h3 { margin-top: 0; margin-bottom: 16px; }
+.planner-quick-capture-input { margin-bottom: 16px; }
+.planner-quick-capture-field { width: 100%; padding: 12px; font-size: 16px; border: 2px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
+.planner-quick-capture-field:focus { outline: none; border-color: var(--interactive-accent); }
+.planner-quick-capture-preview { background: var(--background-secondary); border-radius: 8px; padding: 12px; margin-bottom: 16px; min-height: 60px; }
+.planner-preview-title { font-size: 14px; margin-bottom: 8px; }
+.planner-preview-details { display: flex; flex-wrap: wrap; gap: 6px; }
+.planner-preview-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; background: var(--background-modifier-border); }
+.planner-preview-date { background: var(--interactive-accent); color: var(--text-on-accent); }
+.planner-preview-context { background: #8b5cf6; color: white; }
+.planner-preview-tag { background: #6366f1; color: white; }
+.planner-preview-parent { background: #0ea5e9; color: white; }
+.planner-quick-capture-help { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+.planner-quick-capture-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+
+8.3 — Item Modal (removed feature)
+
+.planner-item-modal { padding: 20px; min-width: 500px; max-width: 600px; }
+.planner-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.planner-open-note-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 13px; }
+.planner-title-container { margin-bottom: 16px; }
+.planner-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
+.planner-title-input { width: 100%; padding: 10px 12px; font-size: 16px; border: 2px solid var(--background-modifier-border); border-radius: 8px; background: var(--background-primary); color: var(--text-normal); }
+.planner-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.planner-field { display: flex; flex-direction: column; gap: 4px; }
+.planner-field-input { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); color: var(--text-normal); }
+.planner-modal-buttons { display: flex; align-items: center; gap: 8px; padding-top: 12px; }
+
+8.4 — File Link Suggest
+
+.suggestion-title { font-weight: 500; }
+.suggestion-path { display: block; color: var(--text-muted); font-size: 11px; }
+
+   ========================================================================== */
+
+/* === BUNDLED CSS IMPORTS === */
+/* From: frappe-gantt.css */
+:root{--g-arrow-color: #1f2937;--g-bar-color: #fff;--g-bar-border: #fff;--g-tick-color-thick: #ededed;--g-tick-color: #f3f3f3;--g-actions-background: #f3f3f3;--g-border-color: #ebeff2;--g-text-muted: #7c7c7c;--g-text-light: #fff;--g-text-dark: #171717;--g-progress-color: #dbdbdb;--g-handle-color: #37352f;--g-weekend-label-color: #dcdce4;--g-expected-progress: #c4c4e9;--g-header-background: #fff;--g-row-color: #fdfdfd;--g-row-border-color: #c7c7c7;--g-today-highlight: #37352f;--g-popup-actions: #ebeff2;--g-weekend-highlight-color: #f7f7f7}html[data-theme=dark]{--g-arrow-color: #e5e5e5;--g-bar-color: #2a2a2a;--g-bar-border: #3a3a3a;--g-tick-color-thick: #1a1a1a;--g-tick-color: #0a0a0a;--g-actions-background: #1a1a1a;--g-border-color: #2a2a2a;--g-text-muted: #999999;--g-text-light: #ffffff;--g-text-dark: #f5f5f5;--g-progress-color: #4a4a4a;--g-handle-color: #d0d0d0;--g-weekend-label-color: #3a3a3a;--g-expected-progress: #5a5a5a;--g-header-background: #0a0a0a;--g-row-color: #141414;--g-row-border-color: #2a2a2a;--g-today-highlight: #999999;--g-popup-actions: #1a1a1a;--g-weekend-highlight-color: #0f0f0f}.gantt-container{line-height:14.5px;position:relative;overflow:auto;font-size:12px;height:var(--gv-grid-height);width:100%;border-radius:8px;isolation:isolate}.gantt-container .popup-wrapper{position:absolute;top:0;left:0;background:var(--g-header-background);box-shadow:0 10px 24px -3px #0003;padding:10px;border-radius:5px;width:max-content;z-index:1000}.gantt-container .popup-wrapper .title{margin-bottom:2px;color:var(--g-text-dark);font-size:.85rem;font-weight:650;line-height:15px}.gantt-container .popup-wrapper .subtitle{color:var(--g-text-dark);font-size:.8rem;margin-bottom:5px}.gantt-container .popup-wrapper .details{color:var(--g-text-muted);font-size:.7rem}.gantt-container .popup-wrapper .actions{margin-top:10px;margin-left:3px}.gantt-container .popup-wrapper .action-btn{border:none;padding:5px 8px;background-color:var(--g-popup-actions);border-right:1px solid var(--g-border-color)}.gantt-container .popup-wrapper .action-btn:hover{filter:brightness(97%)}.gantt-container .popup-wrapper .action-btn:first-child{border-top-left-radius:4px;border-bottom-left-radius:4px}.gantt-container .popup-wrapper .action-btn:last-child{border-right:none;border-top-right-radius:4px;border-bottom-right-radius:4px}.gantt-container .grid-header{height:calc(var(--gv-lower-header-height) + var(--gv-upper-header-height) + 10px);background-color:var(--g-header-background);position:sticky;top:0;left:0;border-bottom:1px solid var(--g-row-border-color);z-index:1000}.gantt-container .lower-text,.gantt-container .upper-text{text-anchor:middle}.gantt-container .upper-header{height:var(--gv-upper-header-height)}.gantt-container .lower-header{height:var(--gv-lower-header-height)}.gantt-container .lower-text{font-size:12px;position:absolute;width:calc(var(--gv-column-width) * .8);height:calc(var(--gv-lower-header-height) * .8);margin:0 calc(var(--gv-column-width) * .1);align-content:center;text-align:center;color:var(--g-text-muted)}.gantt-container .upper-text{position:absolute;width:fit-content;font-weight:500;font-size:14px;color:var(--g-text-dark);height:calc(var(--gv-lower-header-height) * .66)}.gantt-container .current-upper{position:sticky;left:0!important;padding-left:17px;background:var(--g-header-background)}.gantt-container .side-header{position:sticky;top:0;right:0;float:right;z-index:1000;line-height:20px;font-weight:400;width:max-content;margin-left:auto;padding-right:10px;padding-top:10px;background:var(--g-header-background);display:flex}.gantt-container .side-header *{transition-property:background-color;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s;background-color:var(--g-actions-background);border-radius:.5rem;border:none;padding:5px 8px;color:var(--g-text-dark);font-size:14px;letter-spacing:.02em;font-weight:420;box-sizing:content-box;margin-right:5px}.gantt-container .side-header *:last-child{margin-right:0}.gantt-container .side-header *:hover{filter:brightness(97.5%)}.gantt-container .side-header select{width:60px;padding-top:2px;padding-bottom:2px}.gantt-container .side-header select:focus{outline:none}.gantt-container .date-range-highlight{background-color:var(--g-progress-color);border-radius:12px;height:calc(var(--gv-lower-header-height) - 6px);top:calc(var(--gv-upper-header-height) + 5px);position:absolute}.gantt-container .current-highlight{position:absolute;background:var(--g-today-highlight);width:1px;z-index:999}.gantt-container .current-ball-highlight{position:absolute;background:var(--g-today-highlight);z-index:1001;border-radius:50%}.gantt-container .current-date-highlight{background:var(--g-today-highlight);color:var(--g-text-light);border-radius:5px}.gantt-container .holiday-label{position:absolute;top:0;left:0;opacity:0;z-index:1000;background:var(--g-weekend-label-color);border-radius:5px;padding:2px 5px}.gantt-container .holiday-label.show{opacity:100}.gantt-container .extras{position:sticky;left:0}.gantt-container .extras .adjust{position:absolute;left:8px;top:calc(var(--gv-grid-height) - 60px);background-color:var(--g-actions-background);color:var(--g-text-light);border:none;padding:8px;border-radius:3px}.gantt-container .hide{display:none}.gantt{user-select:none;-webkit-user-select:none;position:absolute}.gantt .grid-background{fill:none}.gantt .grid-row{fill:var(--g-row-color)}.gantt .row-line{stroke:var(--g-border-color)}.gantt .tick{stroke:var(--g-tick-color);stroke-width:.4}.gantt .tick.thick{stroke:var(--g-tick-color-thick);stroke-width:.7}.gantt .arrow{fill:none;stroke:var(--g-arrow-color);stroke-width:1.5}.gantt .bar-wrapper .bar{fill:var(--g-bar-color);stroke:var(--g-bar-border);stroke-width:0;transition:stroke-width .3s ease}.gantt .bar-progress{fill:var(--g-progress-color);border-radius:4px}.gantt .bar-expected-progress{fill:var(--g-expected-progress)}.gantt .bar-invalid{fill:transparent;stroke:var(--g-bar-border);stroke-width:1;stroke-dasharray:5}:is(.gantt .bar-invalid)~.bar-label{fill:var(--g-text-light)}.gantt .bar-label{fill:var(--g-text-dark);dominant-baseline:central;font-family:Helvetica;font-size:13px;font-weight:400}.gantt .bar-label.big{fill:var(--g-text-dark);text-anchor:start}.gantt .handle{fill:var(--g-handle-color);opacity:0;transition:opacity .3s ease}.gantt .handle.active,.gantt .handle.visible{cursor:ew-resize;opacity:1}.gantt .handle.progress{fill:var(--g-text-muted)}.gantt .bar-wrapper{cursor:pointer}.gantt .bar-wrapper .bar{outline:1px solid var(--g-row-border-color);border-radius:3px}.gantt .bar-wrapper:hover .bar{transition:transform .3s ease}.gantt .bar-wrapper:hover .date-range-highlight{display:block}.gantt .grid-column{fill:transparent;pointer-events:all}.gantt .grid-column:hover{fill:var(--g-weekend-highlight-color);transition:fill .1s ease}
