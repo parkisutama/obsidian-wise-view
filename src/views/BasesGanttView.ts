@@ -783,7 +783,7 @@ export class BasesGanttView extends BasesView {
      */
     private registerBarInteractions(): void {
         const bars = this.ganttEl.querySelectorAll('.bar-wrapper');
-        for (const bar of bars) {
+        for (const bar of Array.from(bars)) {
             const taskId = bar.getAttribute('data-id');
             if (!taskId) continue;
             const ganttTask = this.findTask(taskId);

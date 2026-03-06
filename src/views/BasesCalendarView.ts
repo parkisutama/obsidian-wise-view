@@ -21,6 +21,7 @@ interface EventResizeArg {
     end: Date | null;
     extendedProps: { entry: BasesEntry };
   };
+  revert(): void;
 }
 
 /**

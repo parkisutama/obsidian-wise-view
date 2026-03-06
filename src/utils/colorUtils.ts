@@ -23,7 +23,7 @@ export function stringToColor(value: string): string {
     for (let i = 0; i < value.length; i++) {
         hash = value.charCodeAt(i) + ((hash << 5) - hash);
     }
-    return SOLARIZED_ACCENT_COLORS[Math.abs(hash) % SOLARIZED_ACCENT_COLORS.length];
+    return SOLARIZED_ACCENT_COLORS[Math.abs(hash) % SOLARIZED_ACCENT_COLORS.length] ?? '#6b7280';
 }
 
 /**
