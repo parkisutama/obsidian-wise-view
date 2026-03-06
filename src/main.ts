@@ -3,27 +3,29 @@ import { PlannerSettings, DEFAULT_SETTINGS } from './types/settings';
 import { PlannerSettingTab } from './settings/SettingsTab';
 import { ItemService } from './services/ItemService';
 
-// === ACTIVE VIEW IMPORTS (Phase 1: Kanban only) ===
+// === ACTIVE VIEW IMPORTS ===
 import {
   BASES_KANBAN_VIEW_ID,
   createKanbanViewRegistration,
 } from './views/BasesKanbanView';
 
-/* === TEMPORARILY DISABLED VIEW IMPORTS ===
 import {
   BASES_CALENDAR_VIEW_ID,
   createCalendarViewRegistration,
 } from './views/BasesCalendarView';
+
+/* === TEMPORARILY DISABLED VIEW IMPORTS ===
 import {
   BASES_TIMELINE_VIEW_ID,
   createTimelineViewRegistration,
 } from './views/BasesTimelineView';
+=== END TEMPORARILY DISABLED VIEW IMPORTS */
+
 import {
   BASES_GANTT_VIEW_ID,
   BasesGanttView,
   createGanttViewRegistration,
 } from './views/BasesGanttView';
-=== END TEMPORARILY DISABLED VIEW IMPORTS */
 
 export default class PlannerPlugin extends Plugin {
   settings: PlannerSettings;
@@ -49,24 +51,27 @@ export default class PlannerPlugin extends Plugin {
    * Register custom view types with Obsidian Bases
    */
   private registerBasesViews(): void {
-    // === ACTIVE VIEW REGISTRATION (Phase 1: Kanban only) ===
+    // === ACTIVE VIEW REGISTRATIONS ===
     this.registerBasesView(
       BASES_KANBAN_VIEW_ID,
       createKanbanViewRegistration(this)
     );
 
-    /* === TEMPORARILY DISABLED VIEW REGISTRATIONS ===
     // Register Calendar view for Bases
     this.registerBasesView(
       BASES_CALENDAR_VIEW_ID,
       createCalendarViewRegistration(this)
     );
 
+    /* === TEMPORARILY DISABLED VIEW REGISTRATIONS ===
+
     // Register Timeline view for Bases
     this.registerBasesView(
       BASES_TIMELINE_VIEW_ID,
       createTimelineViewRegistration(this)
     );
+
+    === END TEMPORARILY DISABLED VIEW REGISTRATIONS */
 
     // Register Gantt view for Bases
     this.registerBasesView(
@@ -83,13 +88,11 @@ export default class PlannerPlugin extends Plugin {
 
     // Register Gantt command palette commands
     this.registerGanttCommands();
-    === END TEMPORARILY DISABLED VIEW REGISTRATIONS */
   }
 
   /**
    * Register command palette commands for Gantt view interaction.
    */
-  /* === TEMPORARILY DISABLED — Gantt commands require BasesGanttView ===
   private registerGanttCommands(): void {
     const activeGantt = (): BasesGanttView | null => {
       for (const inst of BasesGanttView.instances) {
@@ -164,7 +167,6 @@ export default class PlannerPlugin extends Plugin {
       },
     });
   }
-  === END TEMPORARILY DISABLED */
 
   onunload() {
     // Plugin cleanup handled automatically

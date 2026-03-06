@@ -28,7 +28,20 @@ export function showOpenFileMenu(app: App, path: string, event: MouseEvent): voi
     menu.addItem(item =>
         item.setTitle('Open below').setIcon('separator-horizontal')
             .onClick(() => {
-                const leaf = app.workspace.getLeaf('split', 'horizontal');
+                const activeLeaf = app.workspace.getLeaf(false);
+                const leaf = app.workspace.createLeafBySplit(activeLeaf, 'horizontal');
+                const file = app.vault.getAbstractFileByPath(path);
+                if (file instanceof TFile) {
+                    void leaf.openFile(file);
+                }
+            })
+    );
+
+    menu.addItem(item =>
+        item.setTitle('Open to the left').setIcon('separator-vertical')
+            .onClick(() => {
+                const activeLeaf = app.workspace.getLeaf(false);
+                const leaf = app.workspace.createLeafBySplit(activeLeaf, 'vertical', true);
                 const file = app.vault.getAbstractFileByPath(path);
                 if (file instanceof TFile) {
                     void leaf.openFile(file);

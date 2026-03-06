@@ -28,11 +28,11 @@ import {
     Value,
     Menu,
     Notice,
-    MarkdownRenderer,
 } from 'obsidian';
 import Gantt from 'frappe-gantt';
-import type { FrappeTask, GanttOptions, PopupContext } from 'frappe-gantt';
+import type { FrappeTask, GanttOptions } from 'frappe-gantt';
 import type PlannerPlugin from '../main';
+import { showOpenFileMenu } from '../utils/openFile';
 
 // ── View ID ─────────────────────────────────────────────────────────────────
 
@@ -142,11 +142,12 @@ function extractRawValue(val: Value | null | undefined): string | null {
 // ── Task ID ──────────────────────────────────────────────────────────────────
 
 /**
- * Make a stable task ID from a file path.
- * Frappe Gantt replaces spaces with underscores internally, so we do the same.
+ * Make a stable, CSS-safe task ID from a file path.
+ * Frappe Gantt uses task IDs in CSS class selectors (e.g. `.highlight-<id>`),
+ * so IDs must only contain characters valid in CSS identifiers.
  */
 function makeTaskId(filePath: string): string {
-    return filePath.replace(/ /g, '_');
+    return 'task-' + filePath.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 // ── Group headers ────────────────────────────────────────────────────────────
@@ -679,12 +680,9 @@ export class BasesGanttView extends BasesView {
             move_dependencies: true,
             show_expected_progress: showExpectedProgress && showProgress,
             hover_on_date: true,
-            popup_on: 'hover',
 
-            // Rich hover popup
-            popup: (ctx: PopupContext) => {
-                this.renderPopup(ctx, showProgress);
-            },
+            // Disable built-in popup — use Obsidian Page Preview (Ctrl+hover) instead
+            popup: false,
 
             on_click: (task) => {
                 // Suppress click that fires immediately after a drag/resize
@@ -736,9 +734,7 @@ export class BasesGanttView extends BasesView {
                 }
             },
 
-            on_date_click: (dateStr: string) => {
-                this.createTaskAtDate(dateStr);
-            },
+            // on_date_click disabled — clicking the grid should not create notes
         };
 
         // Capture global mouseup handlers Frappe Gantt registers on document
@@ -772,106 +768,43 @@ export class BasesGanttView extends BasesView {
         // in custom_class because Frappe Gantt throws on spaces in classList.add)
         for (const task of tasks) {
             if (task.isMilestone) {
-                const wrapper = this.ganttEl.querySelector(`.bar-wrapper[data-id="${task.id}"]`);
+                const wrapper = this.ganttEl.querySelector(`.bar-wrapper[data-id="${CSS.escape(task.id)}"]`);
                 if (wrapper) wrapper.classList.add('gantt-milestone');
             }
         }
+
+        // Register hover preview and click handlers on rendered bar wrappers
+        this.registerBarInteractions();
     }
 
-    // ── Rich hover popup ───────────────────────────────────────────────────────
+    /**
+     * Attach Page Preview (Ctrl+hover) and click handlers to Gantt bar elements.
+     * Obsidian's page-preview plugin checks for Ctrl/Cmd key internally.
+     */
+    private registerBarInteractions(): void {
+        const bars = this.ganttEl.querySelectorAll('.bar-wrapper');
+        for (const bar of bars) {
+            const taskId = bar.getAttribute('data-id');
+            if (!taskId) continue;
+            const ganttTask = this.findTask(taskId);
+            if (!ganttTask || ganttTask.id.startsWith(GROUP_HEADER_PREFIX)) continue;
 
-    /** Render content inside Frappe Gantt's hover popup. */
-    private renderPopup(ctx: PopupContext, showProgress: boolean): void {
-        const ganttTask = this.findTask(ctx.task.id);
-
-        // Group headers: just show the label
-        if (!ganttTask || ganttTask.id.startsWith(GROUP_HEADER_PREFIX)) {
-            ctx.set_title(`<strong>${this.escapeHtml(ctx.task.name)}</strong>`);
-            return;
-        }
-
-        // Title
-        ctx.set_title(this.escapeHtml(ctx.task.name));
-
-        // Subtitle: date range + duration
-        const start = ctx.task._start;
-        const end = ctx.task._end;
-        if (start && end) {
-            const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-            ctx.set_subtitle(
-                `${this.formatDisplayDate(start)} &rarr; ${this.formatDisplayDate(end)} &middot; ${days} day${days !== 1 ? 's' : ''}`
-            );
-        }
-
-        // Details: progress bar + dependencies + hint
-        const parts: string[] = [];
-
-        if (showProgress && ctx.task.progress != null) {
-            const pct = Math.round(ctx.task.progress);
-            parts.push(
-                `<div class="gantt-popup-progress-row">` +
-                `<div class="gantt-popup-progress"><div class="gantt-popup-progress-bar" style="width:${pct}%"></div></div>` +
-                `<span class="gantt-popup-progress-label">${pct}%</span>` +
-                `</div>`
-            );
-        }
-
-        if (ctx.task.dependencies) {
-            const rawDeps = typeof ctx.task.dependencies === 'string'
-                ? ctx.task.dependencies
-                : (ctx.task.dependencies ?? []).join(',');
-            const depNames = rawDeps.split(',')
-                .map((d: string) => d.trim()).filter(Boolean)
-                .map((depId: string) => {
-                    const depTask = this.findTask(depId);
-                    return depTask ? this.escapeHtml(depTask.name) : depId;
+            // Page Preview: only trigger on Ctrl/Cmd + hover (not plain hover).
+            // Frappe Gantt bars are SVG <g> elements; use ganttEl as targetEl
+            // since Obsidian expects an HTMLElement.
+            bar.addEventListener('mouseover', (evt: Event) => {
+                const mouseEvt = evt as MouseEvent;
+                if (!mouseEvt.ctrlKey && !mouseEvt.metaKey) return;
+                this.app.workspace.trigger('hover-link', {
+                    event: mouseEvt,
+                    source: 'wise-view-gantt',
+                    hoverParent: this.plugin,
+                    targetEl: this.ganttEl,
+                    linktext: ganttTask.filePath,
+                    sourcePath: '/',
                 });
-            if (depNames.length > 0) {
-                parts.push(`<div class="gantt-popup-deps">Depends on: ${depNames.join(', ')}</div>`);
-            }
+            });
         }
-
-        parts.push(`<div class="gantt-popup-hint">Click to open &middot; Right-click for options</div>`);
-        ctx.set_details(parts.join(''));
-
-        // Async: render a markdown preview of the note body
-        void this.renderPopupPreview(ganttTask);
-    }
-
-    /** Asynchronously render a truncated markdown preview in the popup. */
-    private async renderPopupPreview(ganttTask: GanttTask): Promise<void> {
-        const file = this.app.vault.getFileByPath(ganttTask.filePath);
-        if (!file) return;
-
-        const content = await this.app.vault.cachedRead(file);
-
-        // Strip frontmatter
-        const bodyMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)/);
-        const body = bodyMatch ? (bodyMatch[1] ?? '').trim() : content.trim();
-        if (!body) return;
-
-        const preview = body.length > 300 ? body.substring(0, 300) + '...' : body;
-
-        // Check popup is still visible
-        const popupEl = this.ganttEl.querySelector('.popup-wrapper');
-        if (!popupEl || popupEl.querySelector('.gantt-popup-preview')) return;
-
-        const previewDiv = document.createElement('div');
-        previewDiv.className = 'gantt-popup-preview';
-        popupEl.appendChild(previewDiv);
-
-        await MarkdownRenderer.render(this.app, preview, previewDiv, ganttTask.filePath, this);
-    }
-
-    /** Format a date for display in popups (shorter, human-friendly). */
-    private formatDisplayDate(date: Date): string {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-    }
-
-    /** Escape HTML to prevent XSS in popup content. */
-    private escapeHtml(str: string): string {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     // ── Right-click context menus ─────────────────────────────────────────────
@@ -899,57 +832,9 @@ export class BasesGanttView extends BasesView {
         });
     }
 
-    /** Context menu for a specific task bar. */
+    /** Context menu for a specific task bar — delegates to shared utility. */
     private showTaskContextMenu(evt: MouseEvent, task: GanttTask): void {
-        const menu = new Menu();
-
-        menu.addItem((item) => {
-            item.setTitle('Open note')
-                .setIcon('file-text')
-                .onClick(() => {
-                    void this.app.workspace.openLinkText(task.filePath, '', false);
-                });
-        });
-
-        menu.addItem((item) => {
-            item.setTitle('Open in new tab')
-                .setIcon('file-plus')
-                .onClick(() => {
-                    void this.app.workspace.openLinkText(task.filePath, '', true);
-                });
-        });
-
-        menu.addSeparator();
-
-        const showProgress = (this.config.get('showProgress') as boolean) ?? false;
-        if (showProgress) {
-            for (const pct of [0, 25, 50, 75, 100]) {
-                menu.addItem((item) => {
-                    item.setTitle(`Set progress: ${pct}%`)
-                        .setChecked(Math.round(task.progress ?? 0) === pct)
-                        .onClick(() => {
-                            const mapperConfig = this.getTaskMapperConfig();
-                            if (mapperConfig.progressProperty && !mapperConfig.progressProperty.startsWith('formula.')) {
-                                const propName = this.extractPropertyName(mapperConfig.progressProperty);
-                                void this.writeFrontmatter(task.filePath, {
-                                    [propName]: pct,
-                                });
-                                // Instant visual feedback
-                                this.gantt?.update_task(task.id, { progress: pct });
-                            }
-                        });
-                });
-            }
-            menu.addSeparator();
-        }
-
-        menu.addItem((item) => {
-            item.setTitle('Scroll to today')
-                .setIcon('calendar')
-                .onClick(() => this.gantt?.scroll_current());
-        });
-
-        menu.showAtMouseEvent(evt);
+        showOpenFileMenu(this.app, task.filePath, evt);
     }
 
     /** Context menu for empty chart space. */

@@ -33,14 +33,14 @@
       2.19 Kanban extended & layout classes
       2.20 Kanban dark theme
       2.21 Kanban mobile responsive
-   3. CALENDAR VIEW STYLES                          [DISABLED — Phase 1]
+   3. CALENDAR VIEW STYLES                          [ACTIVE]
    4. TIMELINE VIEW STYLES                          [DISABLED — Phase 1]
-   5. GANTT VIEW STYLES                             [DISABLED — Phase 1]
+   5. GANTT VIEW STYLES                             [ACTIVE]
    6. SETTINGS & MODAL STYLES
       6.1  Settings tabs
       6.2  Calendar settings (name, folder, drag-drop)
       6.3  Date color preview
-   7. VENDOR OVERRIDES — Frappe Gantt               [DISABLED — Phase 1]
+   7. VENDOR OVERRIDES — Frappe Gantt               [ACTIVE]
    8. LEGACY / UNUSED STYLES                        [DISABLED — Phase 1]
    ========================================================================== */
 
@@ -1000,8 +1000,8 @@
 }
 
 /* ==========================================================================
-   3. CALENDAR VIEW STYLES                          [DISABLED — Phase 1]
-   ==========================================================================
+   3. CALENDAR VIEW STYLES                          [ACTIVE]
+   ========================================================================== */
 
 .planner-calendar-view,
 .planner-bases-calendar {
@@ -1121,7 +1121,9 @@
 	justify-content: center;
 }
 
-.planner-bases-calendar .fc .fc-yearToggleButton-button:hover:not(.fc-button-disabled) {
+.planner-bases-calendar
+	.fc
+	.fc-yearToggleButton-button:hover:not(.fc-button-disabled) {
 	opacity: 1;
 }
 
@@ -1230,7 +1232,9 @@
 }
 
 .planner-bases-calendar .fc .fc-dayGridYear-view .fc-daygrid-day-events {
-	min-height: calc(var(--planner-year-continuous-row-height, 60px) - 24px) !important;
+	min-height: calc(
+		var(--planner-year-continuous-row-height, 60px) - 24px
+	) !important;
 }
 
 .planner-bases-calendar .fc .fc-multiMonthYear-view .fc-daygrid-day-frame {
@@ -1256,10 +1260,26 @@
 	font-size: var(--planner-calendar-font-size, 10px) !important;
 }
 
-.planner-calendar-view .fc .fc-dayGridMonth-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
-.planner-bases-calendar .fc .fc-dayGridMonth-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
-.planner-calendar-view .fc .fc-multiMonthYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
-.planner-bases-calendar .fc .fc-multiMonthYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+.planner-calendar-view
+	.fc
+	.fc-dayGridMonth-view
+	.fc-daygrid-day.fc-day-today
+	.fc-daygrid-day-number,
+.planner-bases-calendar
+	.fc
+	.fc-dayGridMonth-view
+	.fc-daygrid-day.fc-day-today
+	.fc-daygrid-day-number,
+.planner-calendar-view
+	.fc
+	.fc-multiMonthYear-view
+	.fc-daygrid-day.fc-day-today
+	.fc-daygrid-day-number,
+.planner-bases-calendar
+	.fc
+	.fc-multiMonthYear-view
+	.fc-daygrid-day.fc-day-today
+	.fc-daygrid-day-number {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border-radius: 50%;
@@ -1271,8 +1291,16 @@
 	padding: 0;
 }
 
-.planner-calendar-view .fc .fc-dayGridYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
-.planner-bases-calendar .fc .fc-dayGridYear-view .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+.planner-calendar-view
+	.fc
+	.fc-dayGridYear-view
+	.fc-daygrid-day.fc-day-today
+	.fc-daygrid-day-number,
+.planner-bases-calendar
+	.fc
+	.fc-dayGridYear-view
+	.fc-daygrid-day.fc-day-today
+	.fc-daygrid-day-number {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border-radius: 999px;
@@ -1282,8 +1310,14 @@
 	justify-content: center;
 }
 
-.planner-calendar-view .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion,
-.planner-bases-calendar .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+.planner-calendar-view
+	.fc
+	.fc-col-header-cell.fc-day-today
+	.fc-col-header-cell-cushion,
+.planner-bases-calendar
+	.fc
+	.fc-col-header-cell.fc-day-today
+	.fc-col-header-cell-cushion {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border-radius: 999px;
@@ -1377,8 +1411,6 @@
 	opacity: 0.6;
 	text-decoration: line-through;
 }
-
-   ========================================================================== */
 
 /* ==========================================================================
    4. TIMELINE VIEW STYLES                          [DISABLED — Phase 1]
@@ -1552,10 +1584,11 @@ body.is-mobile .planner-timeline-iframe-container {
    ========================================================================== */
 
 /* ==========================================================================
-   5. GANTT VIEW STYLES                             [DISABLED — Phase 1]
-   ==========================================================================
+   5. GANTT VIEW STYLES                             [ACTIVE]
+   ========================================================================== */
 
-5.1 — Frappe Gantt variable bridge to Obsidian theme
+/* 5.1 — Frappe Gantt variable bridge to Obsidian theme
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view {
 	--g-arrow-color: var(--text-muted);
@@ -1580,7 +1613,8 @@ body.is-mobile .planner-timeline-iframe-container {
 	--g-weekend-highlight-color: var(--background-secondary);
 }
 
-5.2 — Container
+/* 5.2 — Container
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view {
 	display: flex;
@@ -1592,7 +1626,7 @@ body.is-mobile .planner-timeline-iframe-container {
 .bases-gantt-view .gantt-wrapper {
 	border-radius: var(--radius-m);
 	border: 1px solid var(--background-modifier-border);
-	overflow: auto;
+	overflow: hidden;
 	flex: 1;
 	min-height: 0;
 }
@@ -1600,9 +1634,12 @@ body.is-mobile .planner-timeline-iframe-container {
 .bases-gantt-view .gantt-container {
 	font-family: var(--font-interface);
 	border-radius: var(--radius-m);
+	height: 100% !important;
+	overflow: auto !important;
 }
 
-5.3 — Bar labels
+/* 5.3 — Bar labels
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt .bar-label {
 	font-family: var(--font-interface);
@@ -1610,7 +1647,8 @@ body.is-mobile .planner-timeline-iframe-container {
 	font-weight: 500;
 }
 
-5.4 — Sticky header
+/* 5.4 — Sticky header
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt-container .current-upper {
 	background: var(--background-primary);
@@ -1626,20 +1664,27 @@ body.is-mobile .planner-timeline-iframe-container {
 	background-color: var(--background-modifier-hover);
 }
 
-5.5 — Today button
+/* 5.5 — Today button
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt-container .today-button {
 	cursor: pointer;
 }
 
-5.6 — Bar transitions & hover
+/* 5.6 — Bar transitions & hover
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt .bar {
-	transition: fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease;
+	transition:
+		fill 0.2s ease,
+		stroke 0.2s ease,
+		opacity 0.2s ease;
 }
 
 .bases-gantt-view .gantt .bar-progress {
-	transition: fill 0.2s ease, width 0.15s ease;
+	transition:
+		fill 0.2s ease,
+		width 0.15s ease;
 }
 
 .bases-gantt-view .gantt .bar-wrapper:hover .bar {
@@ -1654,7 +1699,8 @@ body.is-mobile .planner-timeline-iframe-container {
 	cursor: ew-resize;
 }
 
-5.7 — Today line & expected progress
+/* 5.7 — Today line & expected progress
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt .current-highlight {
 	opacity: 0.12;
@@ -1669,25 +1715,52 @@ body.is-mobile .planner-timeline-iframe-container {
 	stroke-dasharray: 4 2;
 }
 
-5.8 — Weekend column hover
+/* 5.8 — Weekend column hover
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt .grid-column:hover {
 	fill: var(--background-modifier-hover);
 	opacity: 0.25;
 }
 
-5.9 — Color classes
+/* 5.9 — Color classes
+   -------------------------------------------------------------------------- */
 
-.bases-gantt-view .gantt .gantt-color-0 .bar { fill: var(--interactive-accent); stroke: var(--interactive-accent); }
-.bases-gantt-view .gantt .gantt-color-1 .bar { fill: var(--color-green); stroke: var(--color-green); }
-.bases-gantt-view .gantt .gantt-color-2 .bar { fill: var(--color-orange); stroke: var(--color-orange); }
-.bases-gantt-view .gantt .gantt-color-3 .bar { fill: var(--color-red); stroke: var(--color-red); }
-.bases-gantt-view .gantt .gantt-color-4 .bar { fill: var(--color-purple); stroke: var(--color-purple); }
-.bases-gantt-view .gantt .gantt-color-5 .bar { fill: var(--color-yellow); stroke: var(--color-yellow); }
-.bases-gantt-view .gantt .gantt-color-6 .bar { fill: var(--color-cyan); stroke: var(--color-cyan); }
-.bases-gantt-view .gantt .gantt-color-7 .bar { fill: var(--color-pink); stroke: var(--color-pink); }
+.bases-gantt-view .gantt .gantt-color-0 .bar {
+	fill: var(--interactive-accent);
+	stroke: var(--interactive-accent);
+}
+.bases-gantt-view .gantt .gantt-color-1 .bar {
+	fill: var(--color-green);
+	stroke: var(--color-green);
+}
+.bases-gantt-view .gantt .gantt-color-2 .bar {
+	fill: var(--color-orange);
+	stroke: var(--color-orange);
+}
+.bases-gantt-view .gantt .gantt-color-3 .bar {
+	fill: var(--color-red);
+	stroke: var(--color-red);
+}
+.bases-gantt-view .gantt .gantt-color-4 .bar {
+	fill: var(--color-purple);
+	stroke: var(--color-purple);
+}
+.bases-gantt-view .gantt .gantt-color-5 .bar {
+	fill: var(--color-yellow);
+	stroke: var(--color-yellow);
+}
+.bases-gantt-view .gantt .gantt-color-6 .bar {
+	fill: var(--color-cyan);
+	stroke: var(--color-cyan);
+}
+.bases-gantt-view .gantt .gantt-color-7 .bar {
+	fill: var(--color-pink);
+	stroke: var(--color-pink);
+}
 
-5.10 — Group header rows
+/* 5.10 — Group header rows
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt .gantt-group-header .bar {
 	fill: var(--background-secondary);
@@ -1706,10 +1779,15 @@ body.is-mobile .planner-timeline-iframe-container {
 	letter-spacing: 0.05em;
 }
 
-.bases-gantt-view .gantt .gantt-group-header .bar-progress { display: none; }
-.bases-gantt-view .gantt .gantt-group-header .handle { display: none; }
+.bases-gantt-view .gantt .gantt-group-header .bar-progress {
+	display: none;
+}
+.bases-gantt-view .gantt .gantt-group-header .handle {
+	display: none;
+}
 
-5.11 — Milestone
+/* 5.11 — Milestone
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .gantt .gantt-milestone .bar {
 	rx: 2;
@@ -1717,7 +1795,8 @@ body.is-mobile .planner-timeline-iframe-container {
 	opacity: 0.9;
 }
 
-5.12 — Popup
+/* 5.12 — Popup
+   -------------------------------------------------------------------------- */
 
 .bases-gantt-view .popup-wrapper {
 	font-family: var(--font-interface);
@@ -1740,12 +1819,42 @@ body.is-mobile .planner-timeline-iframe-container {
 	margin-top: 2px;
 }
 
-.gantt-popup-progress-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-.gantt-popup-progress { flex: 1; height: 6px; background: var(--background-modifier-border); border-radius: 3px; overflow: hidden; max-width: 100px; }
-.gantt-popup-progress-bar { height: 100%; background: var(--interactive-accent); border-radius: 3px; transition: width 0.3s ease; }
-.gantt-popup-progress-label { font-size: 11px; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
-.gantt-popup-deps { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-.gantt-popup-hint { font-size: 10px; color: var(--text-faint); margin-top: 8px; }
+.gantt-popup-progress-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 6px;
+}
+.gantt-popup-progress {
+	flex: 1;
+	height: 6px;
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+	overflow: hidden;
+	max-width: 100px;
+}
+.gantt-popup-progress-bar {
+	height: 100%;
+	background: var(--interactive-accent);
+	border-radius: 3px;
+	transition: width 0.3s ease;
+}
+.gantt-popup-progress-label {
+	font-size: 11px;
+	color: var(--text-muted);
+	font-weight: 600;
+	white-space: nowrap;
+}
+.gantt-popup-deps {
+	font-size: 11px;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+.gantt-popup-hint {
+	font-size: 10px;
+	color: var(--text-faint);
+	margin-top: 8px;
+}
 
 .gantt-popup-preview {
 	margin-top: 8px;
@@ -1770,12 +1879,18 @@ body.is-mobile .planner-timeline-iframe-container {
 	pointer-events: none;
 }
 
-.gantt-popup-preview p { margin: 0 0 4px 0; }
+.gantt-popup-preview p {
+	margin: 0 0 4px 0;
+}
 .gantt-popup-preview h1,
 .gantt-popup-preview h2,
-.gantt-popup-preview h3 { font-size: 12px; margin: 0 0 4px 0; }
+.gantt-popup-preview h3 {
+	font-size: 12px;
+	margin: 0 0 4px 0;
+}
 
-5.13 — Empty state
+/* 5.13 — Empty state
+   -------------------------------------------------------------------------- */
 
 .gantt-empty-state {
 	display: flex;
@@ -1788,10 +1903,13 @@ body.is-mobile .planner-timeline-iframe-container {
 	min-height: 200px;
 }
 
-.gantt-empty-state p { margin: 4px 0; }
-.gantt-empty-state .gantt-empty-hint { font-size: var(--font-smallest); color: var(--text-faint); }
-
-   ========================================================================== */
+.gantt-empty-state p {
+	margin: 4px 0;
+}
+.gantt-empty-state .gantt-empty-hint {
+	font-size: var(--font-smallest);
+	color: var(--text-faint);
+}
 
 /* ==========================================================================
    6. SETTINGS & MODAL STYLES
@@ -1915,8 +2033,8 @@ body.is-mobile .planner-timeline-iframe-container {
 }
 
 /* ==========================================================================
-   7. VENDOR OVERRIDES — Frappe Gantt               [DISABLED — Phase 1]
-   ==========================================================================
+   7. VENDOR OVERRIDES — Frappe Gantt               [ACTIVE]
+   ========================================================================== */
 
 :root {
 	--g-arrow-color: #1f2937;
@@ -2034,7 +2152,9 @@ html[data-theme="dark"] {
 }
 
 .gantt-container .grid-header {
-	height: calc(var(--gv-lower-header-height) + var(--gv-upper-header-height) + 10px);
+	height: calc(
+		var(--gv-lower-header-height) + var(--gv-upper-header-height) + 10px
+	);
 	background-color: var(--g-header-background);
 	position: sticky;
 	top: 0;
@@ -2048,8 +2168,12 @@ html[data-theme="dark"] {
 	text-anchor: middle;
 }
 
-.gantt-container .upper-header { height: var(--gv-upper-header-height); }
-.gantt-container .lower-header { height: var(--gv-lower-header-height); }
+.gantt-container .upper-header {
+	height: var(--gv-upper-header-height);
+}
+.gantt-container .lower-header {
+	height: var(--gv-lower-header-height);
+}
 
 .gantt-container .lower-text {
 	font-size: 12px;
@@ -2110,10 +2234,20 @@ html[data-theme="dark"] {
 	margin-right: 5px;
 }
 
-.gantt-container .side-header *:last-child { margin-right: 0; }
-.gantt-container .side-header *:hover { filter: brightness(97.5%); }
-.gantt-container .side-header select { width: 60px; padding-top: 2px; padding-bottom: 2px; }
-.gantt-container .side-header select:focus { outline: none; }
+.gantt-container .side-header *:last-child {
+	margin-right: 0;
+}
+.gantt-container .side-header *:hover {
+	filter: brightness(97.5%);
+}
+.gantt-container .side-header select {
+	width: 60px;
+	padding-top: 2px;
+	padding-bottom: 2px;
+}
+.gantt-container .side-header select:focus {
+	outline: none;
+}
 
 .gantt-container .date-range-highlight {
 	background-color: var(--g-progress-color);
@@ -2123,9 +2257,23 @@ html[data-theme="dark"] {
 	position: absolute;
 }
 
-.gantt-container .current-highlight { position: absolute; background: var(--g-today-highlight); width: 1px; z-index: 999; }
-.gantt-container .current-ball-highlight { position: absolute; background: var(--g-today-highlight); z-index: 1001; border-radius: 50%; }
-.gantt-container .current-date-highlight { background: var(--g-today-highlight); color: var(--g-text-light); border-radius: 5px; }
+.gantt-container .current-highlight {
+	position: absolute;
+	background: var(--g-today-highlight);
+	width: 1px;
+	z-index: 999;
+}
+.gantt-container .current-ball-highlight {
+	position: absolute;
+	background: var(--g-today-highlight);
+	z-index: 1001;
+	border-radius: 50%;
+}
+.gantt-container .current-date-highlight {
+	background: var(--g-today-highlight);
+	color: var(--g-text-light);
+	border-radius: 5px;
+}
 
 .gantt-container .holiday-label {
 	position: absolute;
@@ -2138,8 +2286,13 @@ html[data-theme="dark"] {
 	padding: 2px 5px;
 }
 
-.gantt-container .holiday-label.show { opacity: 100; }
-.gantt-container .extras { position: sticky; left: 0; }
+.gantt-container .holiday-label.show {
+	opacity: 100;
+}
+.gantt-container .extras {
+	position: sticky;
+	left: 0;
+}
 
 .gantt-container .extras .adjust {
 	position: absolute;
@@ -2152,7 +2305,9 @@ html[data-theme="dark"] {
 	border-radius: 3px;
 }
 
-.gantt-container .hide { display: none; }
+.gantt-container .hide {
+	display: none;
+}
 
 .gantt {
 	user-select: none;
@@ -2160,12 +2315,28 @@ html[data-theme="dark"] {
 	position: absolute;
 }
 
-.gantt .grid-background { fill: none; }
-.gantt .grid-row { fill: var(--g-row-color); }
-.gantt .row-line { stroke: var(--g-border-color); }
-.gantt .tick { stroke: var(--g-tick-color); stroke-width: 0.4; }
-.gantt .tick.thick { stroke: var(--g-tick-color-thick); stroke-width: 0.7; }
-.gantt .arrow { fill: none; stroke: var(--g-arrow-color); stroke-width: 1.5; }
+.gantt .grid-background {
+	fill: none;
+}
+.gantt .grid-row {
+	fill: var(--g-row-color);
+}
+.gantt .row-line {
+	stroke: var(--g-border-color);
+}
+.gantt .tick {
+	stroke: var(--g-tick-color);
+	stroke-width: 0.4;
+}
+.gantt .tick.thick {
+	stroke: var(--g-tick-color-thick);
+	stroke-width: 0.7;
+}
+.gantt .arrow {
+	fill: none;
+	stroke: var(--g-arrow-color);
+	stroke-width: 1.5;
+}
 
 .gantt .bar-wrapper .bar {
 	fill: var(--g-bar-color);
@@ -2174,10 +2345,22 @@ html[data-theme="dark"] {
 	transition: stroke-width 0.3s ease;
 }
 
-.gantt .bar-progress { fill: var(--g-progress-color); border-radius: 4px; }
-.gantt .bar-expected-progress { fill: var(--g-expected-progress); }
-.gantt .bar-invalid { fill: transparent; stroke: var(--g-bar-border); stroke-width: 1; stroke-dasharray: 5; }
-:is(.gantt .bar-invalid) ~ .bar-label { fill: var(--g-text-light); }
+.gantt .bar-progress {
+	fill: var(--g-progress-color);
+	border-radius: 4px;
+}
+.gantt .bar-expected-progress {
+	fill: var(--g-expected-progress);
+}
+.gantt .bar-invalid {
+	fill: transparent;
+	stroke: var(--g-bar-border);
+	stroke-width: 1;
+	stroke-dasharray: 5;
+}
+:is(.gantt .bar-invalid) ~ .bar-label {
+	fill: var(--g-text-light);
+}
 
 .gantt .bar-label {
 	fill: var(--g-text-dark);
@@ -2187,21 +2370,47 @@ html[data-theme="dark"] {
 	font-weight: 400;
 }
 
-.gantt .bar-label.big { fill: var(--g-text-dark); text-anchor: start; }
+.gantt .bar-label.big {
+	fill: var(--g-text-dark);
+	text-anchor: start;
+}
 
-.gantt .handle { fill: var(--g-handle-color); opacity: 0; transition: opacity 0.3s ease; }
-.gantt .handle.active, .gantt .handle.visible { cursor: ew-resize; opacity: 1; }
-.gantt .handle.progress { fill: var(--g-text-muted); }
+.gantt .handle {
+	fill: var(--g-handle-color);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+.gantt .handle.active,
+.gantt .handle.visible {
+	cursor: ew-resize;
+	opacity: 1;
+}
+.gantt .handle.progress {
+	fill: var(--g-text-muted);
+}
 
-.gantt .bar-wrapper { cursor: pointer; }
-.gantt .bar-wrapper .bar { outline: 1px solid var(--g-row-border-color); border-radius: 3px; }
-.gantt .bar-wrapper:hover .bar { transition: transform 0.3s ease; }
-.gantt .bar-wrapper:hover .date-range-highlight { display: block; }
+.gantt .bar-wrapper {
+	cursor: pointer;
+}
+.gantt .bar-wrapper .bar {
+	outline: 1px solid var(--g-row-border-color);
+	border-radius: 3px;
+}
+.gantt .bar-wrapper:hover .bar {
+	transition: transform 0.3s ease;
+}
+.gantt .bar-wrapper:hover .date-range-highlight {
+	display: block;
+}
 
-.gantt .grid-column { fill: transparent; pointer-events: all; }
-.gantt .grid-column:hover { fill: var(--g-weekend-highlight-color); transition: fill 0.1s ease; }
-
-   ========================================================================== */
+.gantt .grid-column {
+	fill: transparent;
+	pointer-events: all;
+}
+.gantt .grid-column:hover {
+	fill: var(--g-weekend-highlight-color);
+	transition: fill 0.1s ease;
+}
 
 /* ==========================================================================
    8. LEGACY / UNUSED STYLES                        [DISABLED — Phase 1]
