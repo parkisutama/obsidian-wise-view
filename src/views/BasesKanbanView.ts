@@ -359,7 +359,7 @@ export class BasesKanbanView extends BasesView {
       const currentCard = cards[currentIndex];
       if (!currentCard) return;
       const currentColumn = currentCard.closest('[data-group]') as HTMLElement;
-      const cardsInColumn = Array.from(currentColumn?.querySelectorAll('.planner-kanban-card') || []) as HTMLElement[];
+      const cardsInColumn = Array.from(currentColumn?.querySelectorAll<HTMLElement>('.planner-kanban-card') || []);
       const positionInColumn = cardsInColumn.indexOf(currentCard);
 
       let targetIndex: number;
@@ -384,7 +384,7 @@ export class BasesKanbanView extends BasesView {
     columns.forEach(column => {
       const group = column.getAttribute('data-group');
       if (group) {
-        const cards = Array.from(column.querySelectorAll('.planner-kanban-card')) as HTMLElement[];
+        const cards = Array.from(column.querySelectorAll<HTMLElement>('.planner-kanban-card'));
         if (cards.length > 0) {
           result.set(group, cards);
         }
@@ -1910,8 +1910,8 @@ export class BasesKanbanView extends BasesView {
 
     // Try direct path lookup first (works for absolute vault paths)
     const file = this.plugin.app.vault.getAbstractFileByPath(normalizedPath);
-    if (file) {
-      return this.plugin.app.vault.getResourcePath(file as TFile);
+    if (file instanceof TFile) {
+      return this.plugin.app.vault.getResourcePath(file);
     }
 
     // Try with common image extensions if no extension present
@@ -1919,8 +1919,8 @@ export class BasesKanbanView extends BasesView {
     if (!hasExtension) {
       for (const ext of ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']) {
         const fileWithExt = this.plugin.app.vault.getAbstractFileByPath(normalizedPath + ext);
-        if (fileWithExt) {
-          return this.plugin.app.vault.getResourcePath(fileWithExt as TFile);
+        if (fileWithExt instanceof TFile) {
+          return this.plugin.app.vault.getResourcePath(fileWithExt);
         }
       }
     }

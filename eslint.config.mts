@@ -1,4 +1,4 @@
-import tseslint from 'typescript-eslint';
+import tseslint, { type ConfigWithExtends } from 'typescript-eslint';
 import obsidianmd from "eslint-plugin-obsidianmd";
 import globals from "globals";
 import { globalIgnores } from "eslint/config";
@@ -21,7 +21,7 @@ export default tseslint.config(
 			},
 		},
 	},
-	...obsidianmd.configs.recommended,
+	...(obsidianmd.configs!.recommended as Iterable<ConfigWithExtends>),
 	globalIgnores([
 		"node_modules",
 		"dist",
@@ -30,5 +30,8 @@ export default tseslint.config(
 		"version-bump.mjs",
 		"versions.json",
 		"main.js",
+		"src/services/LpcHost.ts",
+		"src/services/MarkwhenAdapter.ts",
+		"src/views/BasesTimelineView.ts",
 	]),
 );

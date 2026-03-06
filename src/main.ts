@@ -103,7 +103,7 @@ export default class PlannerPlugin extends Plugin {
 
     this.addCommand({
       id: 'gantt-scroll-today',
-      name: 'Gantt: Scroll to today',
+      name: 'Gantt: scroll to today',
       checkCallback: (checking) => {
         const view = activeGantt();
         if (!view) return false;
@@ -114,7 +114,7 @@ export default class PlannerPlugin extends Plugin {
 
     this.addCommand({
       id: 'gantt-create-task',
-      name: 'Gantt: Create new task at today',
+      name: 'Gantt: create new task at today',
       checkCallback: (checking) => {
         const view = activeGantt();
         if (!view) return false;
@@ -125,7 +125,7 @@ export default class PlannerPlugin extends Plugin {
 
     this.addCommand({
       id: 'gantt-view-day',
-      name: 'Gantt: Day view',
+      name: 'Gantt: day view',
       checkCallback: (checking) => {
         const view = activeGantt();
         if (!view) return false;
@@ -136,7 +136,7 @@ export default class PlannerPlugin extends Plugin {
 
     this.addCommand({
       id: 'gantt-view-week',
-      name: 'Gantt: Week view',
+      name: 'Gantt: week view',
       checkCallback: (checking) => {
         const view = activeGantt();
         if (!view) return false;
@@ -147,7 +147,7 @@ export default class PlannerPlugin extends Plugin {
 
     this.addCommand({
       id: 'gantt-view-month',
-      name: 'Gantt: Month view',
+      name: 'Gantt: month view',
       checkCallback: (checking) => {
         const view = activeGantt();
         if (!view) return false;
@@ -158,7 +158,7 @@ export default class PlannerPlugin extends Plugin {
 
     this.addCommand({
       id: 'gantt-view-year',
-      name: 'Gantt: Year view',
+      name: 'Gantt: year view',
       checkCallback: (checking) => {
         const view = activeGantt();
         if (!view) return false;

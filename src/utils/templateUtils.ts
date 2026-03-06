@@ -106,10 +106,10 @@ export async function readItemTemplate(
       if (standardFieldSet.has(key)) {
         // Standard Planner field - normalize array fields
         if (key === 'calendar' || key === 'tags' || key === 'context' ||
-            key === 'people' || key === 'blocked_by' || key === 'related' ||
-            key === 'repeat_byday' || key === 'repeat_bymonth' ||
-            key === 'repeat_bymonthday' || key === 'repeat_completed_dates' ||
-            key === 'children') {
+          key === 'people' || key === 'blocked_by' || key === 'related' ||
+          key === 'repeat_byday' || key === 'repeat_bymonth' ||
+          key === 'repeat_bymonthday' || key === 'repeat_completed_dates' ||
+          key === 'children') {
           const normalized = normalizeToArray(value);
           if (normalized && normalized.length > 0) {
             (frontmatter as Record<string, unknown>)[key] = normalized;
@@ -132,7 +132,7 @@ export async function readItemTemplate(
       body,
     };
   } catch (error) {
-    console.warn(`[Planner] Error reading item template: ${error}`);
+    console.warn(`[Planner] Error reading item template: ${String(error)}`);
     return null;
   }
 }

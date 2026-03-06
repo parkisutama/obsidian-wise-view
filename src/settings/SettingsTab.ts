@@ -136,7 +136,7 @@ export class PlannerSettingTab extends PluginSettingTab {
       .setName('Start date field')
       .setDesc('Frontmatter property to use as bar start date')
       .addText(text => text
-        .setPlaceholder('e.g. start-date')
+        .setPlaceholder('Start-date')
         .setValue(this.plugin.settings.ganttDefaults.dateStartField)
         .onChange(async (value) => {
           this.plugin.settings.ganttDefaults.dateStartField = value;
@@ -147,7 +147,7 @@ export class PlannerSettingTab extends PluginSettingTab {
       .setName('End date field')
       .setDesc('Frontmatter property to use as bar end date')
       .addText(text => text
-        .setPlaceholder('e.g. end-date')
+        .setPlaceholder('End-date')
         .setValue(this.plugin.settings.ganttDefaults.dateEndField)
         .onChange(async (value) => {
           this.plugin.settings.ganttDefaults.dateEndField = value;
@@ -156,9 +156,10 @@ export class PlannerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Dependencies field')
-      .setDesc('Property containing dependency wiki-links (e.g. [[Task A]])')
+      // eslint-disable-next-line obsidianmd/ui/sentence-case -- wiki-link notation
+      .setDesc('Property containing dependency wiki-links, such as [[Task A]]')
       .addText(text => text
-        .setPlaceholder('e.g. depends-on')
+        .setPlaceholder('Depends-on')
         .setValue(this.plugin.settings.ganttDefaults.dependenciesField)
         .onChange(async (value) => {
           this.plugin.settings.ganttDefaults.dependenciesField = value;
@@ -167,9 +168,9 @@ export class PlannerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Color by field')
-      .setDesc('Property whose values drive bar colors (e.g. status, priority)')
+      .setDesc('Property whose values drive bar colors, such as status or priority')
       .addText(text => text
-        .setPlaceholder('e.g. status')
+        .setPlaceholder('Status')
         .setValue(this.plugin.settings.ganttDefaults.colorBy)
         .onChange(async (value) => {
           this.plugin.settings.ganttDefaults.colorBy = value;
@@ -180,7 +181,7 @@ export class PlannerSettingTab extends PluginSettingTab {
       .setName('Progress field')
       .setDesc('Numeric property for completion percentage (0–100)')
       .addText(text => text
-        .setPlaceholder('e.g. progress')
+        .setPlaceholder('Progress')
         .setValue(this.plugin.settings.ganttDefaults.progressField)
         .onChange(async (value) => {
           this.plugin.settings.ganttDefaults.progressField = value;
@@ -240,6 +241,7 @@ export class PlannerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Show internal popup')
+      // eslint-disable-next-line obsidianmd/ui/sentence-case -- "Frappe Gantt" is a proper name
       .setDesc('Show the built-in Frappe Gantt popup with task detail on hover or click')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.ganttDefaults.showInternalPopup)

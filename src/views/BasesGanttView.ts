@@ -468,7 +468,7 @@ export class BasesGanttView extends BasesView {
         }
         const today = formatDateForFrontmatter(new Date());
         const propName = this.extractPropertyName(config.startProperty);
-        void this.createFileForView('New task', (frontmatter) => {
+        void this.createFileForView('New task', (frontmatter: Record<string, unknown>) => {
             frontmatter[propName] = today;
             if (config.endProperty && !config.endProperty.startsWith('formula.')) {
                 const endPropName = this.extractPropertyName(config.endProperty);
@@ -878,7 +878,7 @@ export class BasesGanttView extends BasesView {
         const formattedDate = parsed ? formatDateForFrontmatter(parsed) : dateStr;
 
         const propName = this.extractPropertyName(config.startProperty);
-        void this.createFileForView('New task', (frontmatter) => {
+        void this.createFileForView('New task', (frontmatter: Record<string, unknown>) => {
             frontmatter[propName] = formattedDate;
             if (config.endProperty && !config.endProperty.startsWith('formula.')) {
                 const endPropName = this.extractPropertyName(config.endProperty);
@@ -919,7 +919,7 @@ export class BasesGanttView extends BasesView {
         const file = this.app.vault.getFileByPath(filePath);
         if (!file) return;
 
-        await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+        await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
             for (const [key, value] of Object.entries(updates)) {
                 frontmatter[key] = value;
             }
