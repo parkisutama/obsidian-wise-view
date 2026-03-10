@@ -1,388 +1,92 @@
 /**
  * BasesGanttView — Frappe Gantt integration for Obsidian Bases.
  *
- * Clean port of lhassa8/obsidian-bases-gantt, adapted for the Wise View
- * multi-view plugin architecture.
+ * Unified view that optionally shows a WBS (Work Breakdown Structure) sidebar
+ * panel when enabled via the config sidebar toggle. The sidebar displays task
+ * names in hierarchy order, synchronises vertical scroll with the chart,
+ * highlights bars on hover, and opens notes on click.
  *
  * Architecture:
  *  - Reads frontmatter properties for start/end date, progress, dependencies, and colorBy.
  *  - Renders using Frappe Gantt (https://github.com/frappe/gantt).
- *  - Colors resolved via CSS classes (gantt-color-0 through gantt-color-7).
+ *  - Colors resolved via Pretty Properties > valueStyles > CSS class fallback.
  *  - On bar click: opens file in current tab.
  *  - On date drag: writes updated dates back to frontmatter (single source of truth).
- *  - On date column click: creates a new task at that date.
  *  - View configuration exposed through Bases' native config sidebar options.
+ *  - Optional WBS sidebar: toggled via "Show WBS sidebar" in Display options.
+ *    When enabled, a "Parent task (WBS)" property selector appears. Tasks are
+ *    sorted in DFS order based on parent-child relationships.
  */
 
 import {
     BasesView,
     BasesViewRegistration,
-    BasesEntry,
     BasesPropertyId,
     BasesAllOptions,
     BasesViewConfig,
     QueryController,
     DateValue,
     NumberValue,
-    NullValue,
-    Value,
     Menu,
     Notice,
 } from 'obsidian';
 import Gantt from 'frappe-gantt';
-import type { FrappeTask, GanttOptions } from 'frappe-gantt';
+import type { GanttOptions } from 'frappe-gantt';
 import type PlannerPlugin from '../main';
 import { showOpenFileMenu } from '../utils/openFile';
+import {
+    GanttTask,
+    TaskMapperConfig,
+    GROUP_HEADER_PREFIX,
+    parseObsidianDate,
+    formatDateForFrontmatter,
+    mapEntriesToTasks,
+    sortByDependencies,
+    createGroupHeaderTask,
+    applyResolvedColors,
+    type ColorResolver,
+} from '../utils/ganttUtils';
 
 // ── View ID ─────────────────────────────────────────────────────────────────
 
 export const BASES_GANTT_VIEW_ID = 'wise-view-gantt';
 
-// ── Internal types ───────────────────────────────────────────────────────────
-
-/** Extended task type carrying the original file path for click-to-open. */
-interface GanttTask extends FrappeTask {
-    filePath: string;
-    isMilestone?: boolean;
-}
-
-/** Configuration derived from view options for mapping entries to tasks. */
-interface TaskMapperConfig {
-    startProperty: BasesPropertyId | null;
-    endProperty: BasesPropertyId | null;
-    labelProperty: BasesPropertyId | null;
-    dependenciesProperty: BasesPropertyId | null;
-    colorByProperty: BasesPropertyId | null;
-    progressProperty: BasesPropertyId | null;
-    showProgress: boolean;
-}
-
-/** Color class palette — maps to CSS classes gantt-color-0 through gantt-color-7. */
-const COLOR_CLASS_COUNT = 8;
-
-/** Phantom group header prefix — tasks with this id prefix are not real items. */
-const GROUP_HEADER_PREFIX = '__group__';
-
-// ── Date utilities ───────────────────────────────────────────────────────────
+// ── WBS hierarchy sort ──────────────────────────────────────────────────────
 
 /**
- * Parse a date value (string, DateValue, or number) into a JS Date.
- * Appends T00:00:00 to date-only strings to prevent UTC timezone shift.
+ * Re-orders tasks into WBS depth-first order and assigns each task a depth level.
+ * Tasks whose parentPath resolves to another task become children of that task.
  */
-function parseObsidianDate(value: unknown): Date | null {
-    if (value == null) return null;
-
-    if (value instanceof Date) {
-        return isNaN(value.getTime()) ? null : value;
-    }
-
-    // Unwrap Obsidian DateValue
-    if (value instanceof DateValue) {
-        const str = value.dateOnly().toString();
-        return parseObsidianDate(str);
-    }
-
-    if (typeof value === 'number') {
-        const d = new Date(value);
-        return isNaN(d.getTime()) ? null : d;
-    }
-
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        if (!trimmed) return null;
-
-        // Date-only: YYYY-MM-DD → append T00:00:00 to avoid timezone shift
-        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-            const d = new Date(trimmed + 'T00:00:00');
-            return isNaN(d.getTime()) ? null : d;
-        }
-
-        // Datetime with space separator: YYYY-MM-DD HH:MM → convert to T separator
-        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
-            const d = new Date(trimmed.replace(' ', 'T'));
-            return isNaN(d.getTime()) ? null : d;
-        }
-
-        // ISO datetime or anything else Date can parse
-        const d = new Date(trimmed);
-        return isNaN(d.getTime()) ? null : d;
-    }
-
-    return null;
-}
-
-/** Format a Date as YYYY-MM-DD (for Frappe Gantt). */
-function formatDateForGantt(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
-
-/** Format a Date as YYYY-MM-DD (for writing back to frontmatter). */
-function formatDateForFrontmatter(date: Date): string {
-    return formatDateForGantt(date);
-}
-
-// ── Value extraction ──────────────────────────────────────────────────────────
-
-/**
- * Extract a string representation from an Obsidian Value object.
- * Returns null for NullValue or null/undefined inputs.
- * DateValue gets special handling: dateOnly() strips time for clean date strings.
- */
-function extractRawValue(val: Value | null | undefined): string | null {
-    if (val == null || val instanceof NullValue) return null;
-    if (val instanceof DateValue) {
-        return val.dateOnly().toString();
-    }
-    return val.toString();
-}
-
-// ── Task ID ──────────────────────────────────────────────────────────────────
-
-/**
- * Make a stable, CSS-safe task ID from a file path.
- * Frappe Gantt uses task IDs in CSS class selectors (e.g. `.highlight-<id>`),
- * so IDs must only contain characters valid in CSS identifiers.
- */
-function makeTaskId(filePath: string): string {
-    return 'task-' + filePath.replace(/[^a-zA-Z0-9_-]/g, '_');
-}
-
-// ── Group headers ────────────────────────────────────────────────────────────
-
-/**
- * Create a phantom task that acts as a visual group header row.
- * It spans the full date range of the group's real tasks.
- */
-function createGroupHeaderTask(
-    groupLabel: string,
-    groupIndex: number,
-    groupTasks: GanttTask[],
-): GanttTask | null {
-    if (groupTasks.length === 0) return null;
-
-    let minStart = groupTasks[0]!.start;
-    let maxEnd = groupTasks[0]!.end;
-    for (const t of groupTasks) {
-        if (t.start < minStart) minStart = t.start;
-        if (t.end > maxEnd) maxEnd = t.end;
-    }
-
-    return {
-        id: `${GROUP_HEADER_PREFIX}${groupIndex}`,
-        name: groupLabel,
-        start: minStart,
-        end: maxEnd,
-        progress: 0,
-        dependencies: '',
-        custom_class: 'gantt-group-header',
-        filePath: '',
-    };
-}
-
-// ── Task mapping ─────────────────────────────────────────────────────────────
-
-/**
- * Map an array of BasesEntry objects to GanttTask objects for Frappe Gantt.
- */
-function mapEntriesToTasks(
-    entries: BasesEntry[],
-    config: TaskMapperConfig,
-): GanttTask[] {
-    if (!config.startProperty) return [];
-
-    // First pass: build maps for dependency resolution.
-    const nameToId = new Map<string, string>();
-    for (const entry of entries) {
-        const id = makeTaskId(entry.file.path);
-        nameToId.set(entry.file.basename, id);
-        const pathNoExt = entry.file.path.replace(/\.[^.]+$/, '');
-        nameToId.set(pathNoExt, id);
-    }
-
-    // Collect unique values for color mapping
-    const colorValues = new Map<string, number>();
-    if (config.colorByProperty) {
-        for (const entry of entries) {
-            const val = entry.getValue(config.colorByProperty);
-            const raw = extractRawValue(val);
-            if (raw != null && !colorValues.has(String(raw))) {
-                colorValues.set(String(raw), colorValues.size % COLOR_CLASS_COUNT);
-            }
-        }
-    }
-
-    const tasks: GanttTask[] = [];
-
-    for (const entry of entries) {
-        const startVal = entry.getValue(config.startProperty);
-        const rawStart = extractRawValue(startVal);
-        const startDate = parseObsidianDate(rawStart);
-        if (!startDate) continue;
-
-        let endDate: Date | null = null;
-        if (config.endProperty) {
-            const endVal = entry.getValue(config.endProperty);
-            endDate = parseObsidianDate(extractRawValue(endVal));
-        }
-        // Default: if no end date, task spans 1 day
-        if (!endDate) {
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
-        }
-        // Ensure end >= start
-        if (endDate < startDate) {
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
-        }
-
-        // Label
-        let name = entry.file.basename;
-        if (config.labelProperty) {
-            const labelVal = entry.getValue(config.labelProperty);
-            const raw = extractRawValue(labelVal);
-            if (raw != null && String(raw).trim()) {
-                name = String(raw);
-            }
-        }
-
-        // Progress
-        let progress = 0;
-        if (config.showProgress && config.progressProperty) {
-            const progVal = entry.getValue(config.progressProperty);
-            const raw = extractRawValue(progVal);
-            if (raw != null) {
-                const num = parseFloat(String(raw));
-                if (!isNaN(num)) {
-                    progress = Math.max(0, Math.min(100, num));
-                }
-            }
-        }
-
-        // Dependencies: parse wiki-links from the property value
-        let dependencies = '';
-        if (config.dependenciesProperty) {
-            const depVal = entry.getValue(config.dependenciesProperty);
-            const raw = extractRawValue(depVal);
-            if (raw != null) {
-                const depStr = String(raw);
-                const wikiLinkRegex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
-                const depIds: string[] = [];
-                let match;
-                while ((match = wikiLinkRegex.exec(depStr)) !== null) {
-                    const linkTarget = match[1]!.trim();
-                    const targetId = nameToId.get(linkTarget);
-                    if (targetId) {
-                        depIds.push(targetId);
-                    }
-                }
-                // Also handle comma-separated plain text names (no wiki-link syntax)
-                if (depIds.length === 0 && !depStr.includes('[[')) {
-                    const plainDeps = depStr.split(',').map(s => s.trim()).filter(Boolean);
-                    for (const dep of plainDeps) {
-                        const targetId = nameToId.get(dep);
-                        if (targetId) {
-                            depIds.push(targetId);
-                        }
-                    }
-                }
-                dependencies = depIds.join(', ');
-            }
-        }
-
-        // Color class
-        let custom_class = '';
-        if (config.colorByProperty) {
-            const colorVal = entry.getValue(config.colorByProperty);
-            const raw = extractRawValue(colorVal);
-            if (raw != null) {
-                const idx = colorValues.get(String(raw));
-                if (idx !== undefined) {
-                    custom_class = `gantt-color-${idx}`;
-                }
-            }
-        }
-
-        // Milestone: start === end
-        const isMilestone = startDate.getTime() === endDate.getTime();
-        if (isMilestone) {
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
-            if (!custom_class) {
-                custom_class = 'gantt-milestone';
-            }
-        }
-
-        tasks.push({
-            id: makeTaskId(entry.file.path),
-            name,
-            start: formatDateForGantt(startDate),
-            end: formatDateForGantt(endDate),
-            progress,
-            dependencies,
-            custom_class,
-            filePath: entry.file.path,
-            isMilestone,
-        });
-    }
-
-    return sortByDependencies(tasks);
-}
-
-/**
- * Topological sort: tasks with no dependencies first, then tasks whose
- * dependencies are already placed. Ties broken by start date.
- */
-function sortByDependencies(tasks: GanttTask[]): GanttTask[] {
-    if (tasks.length <= 1) return tasks;
-
-    const taskMap = new Map<string, GanttTask>();
-    for (const t of tasks) taskMap.set(t.id, t);
-
-    const depsOf = new Map<string, Set<string>>();
+function buildWbsOrder(tasks: GanttTask[]): GanttTask[] {
+    const pathToTask = new Map<string, GanttTask>();
     for (const t of tasks) {
-        const deps = new Set<string>();
-        if (t.dependencies) {
-            const depStr = typeof t.dependencies === 'string' ? t.dependencies : (t.dependencies ?? []).join(',');
-            for (const d of depStr.split(',')) {
-                const id = d.trim();
-                if (id && taskMap.has(id)) deps.add(id);
-            }
-        }
-        depsOf.set(t.id, deps);
+        if (t.filePath) pathToTask.set(t.filePath, t);
     }
 
-    const sorted: GanttTask[] = [];
-    const placed = new Set<string>();
-    const remaining = new Set(tasks.map(t => t.id));
+    const childrenOf = new Map<string, GanttTask[]>();
+    const isChild = new Set<string>();
 
-    while (remaining.size > 0) {
-        const ready: GanttTask[] = [];
-        for (const id of remaining) {
-            const deps = depsOf.get(id)!;
-            const allMet = [...deps].every(d => placed.has(d));
-            if (allMet) ready.push(taskMap.get(id)!);
-        }
-
-        if (ready.length === 0) {
-            // Circular dependency — append the rest by start date
-            const rest = [...remaining].map(id => taskMap.get(id)!);
-            rest.sort((a, b) => a.start.localeCompare(b.start));
-            sorted.push(...rest);
-            break;
-        }
-
-        ready.sort((a, b) => a.start.localeCompare(b.start));
-        for (const t of ready) {
-            sorted.push(t);
-            placed.add(t.id);
-            remaining.delete(t.id);
+    for (const t of tasks) {
+        if (t.parentPath && pathToTask.has(t.parentPath)) {
+            const list = childrenOf.get(t.parentPath) ?? [];
+            list.push(t);
+            childrenOf.set(t.parentPath, list);
+            isChild.add(t.id);
         }
     }
 
-    return sorted;
+    const roots = tasks.filter(t => !isChild.has(t.id));
+    const result: GanttTask[] = [];
+
+    const dfs = (task: GanttTask, depth: number) => {
+        task.depth = depth;
+        result.push(task);
+        const children = childrenOf.get(task.filePath) ?? [];
+        for (const child of children) dfs(child, depth + 1);
+    };
+
+    for (const root of roots) dfs(root, 0);
+    return result;
 }
 
 // ── View class ───────────────────────────────────────────────────────────────
@@ -396,6 +100,8 @@ export class BasesGanttView extends BasesView {
     private plugin: PlannerPlugin;
     private containerEl: HTMLElement;
     private ganttEl: HTMLElement;
+    /** Element where Frappe Gantt renders. Equals ganttEl when sidebar is off. */
+    private chartEl: HTMLElement;
     private gantt: Gantt | null = null;
     private configSnapshot = '';
     private currentTasks: GanttTask[] = [];
@@ -405,16 +111,27 @@ export class BasesGanttView extends BasesView {
     /** Global mouseup handlers Frappe Gantt registers on document (for cleanup). */
     private capturedGlobalHandlers: EventListener[] = [];
 
+    // ── WBS sidebar fields ───────────────────────────────────────────────────
+    private wbsEl: HTMLElement | null = null;
+    private wbsBodyEl: HTMLElement | null = null;
+    private resizeCleanup: (() => void) | null = null;
+    private wbsSidebarActive = false;
+
     constructor(controller: QueryController, containerEl: HTMLElement, plugin: PlannerPlugin) {
         super(controller);
         this.plugin = plugin;
         this.containerEl = containerEl;
+        // chartEl will be set in buildLayout; initialise to avoid TS strict errors
+        this.chartEl = null!;
     }
 
     onload(): void {
         BasesGanttView.instances.add(this);
         this.containerEl.addClass('bases-gantt-view');
+        // Default layout (no sidebar) — config isn't available yet in onload.
+        // buildLayout() is called from onDataUpdated() when sidebar toggle changes.
         this.ganttEl = this.containerEl.createDiv({ cls: 'gantt-wrapper' });
+        this.chartEl = this.ganttEl;
         this.registerContextMenu();
     }
 
@@ -431,6 +148,10 @@ export class BasesGanttView extends BasesView {
         this.capturedGlobalHandlers = [];
         this.currentTasks = [];
         this.taskMap.clear();
+        this.resizeCleanup?.();
+        this.resizeCleanup = null;
+        this.wbsBodyEl = null;
+        this.wbsEl = null;
     }
 
     onResize(): void {
@@ -461,7 +182,6 @@ export class BasesGanttView extends BasesView {
             new Notice('Configure a start date property first.');
             return;
         }
-        // Formula properties are computed by Bases — cannot write to frontmatter
         if (config.startProperty.startsWith('formula.')) {
             new Notice('Cannot create tasks with formula date properties.');
             return;
@@ -477,33 +197,103 @@ export class BasesGanttView extends BasesView {
         });
     }
 
+    // ── Layout ────────────────────────────────────────────────────────────────
+
+    /**
+     * Build the DOM layout based on sidebar config. Idempotent — tears down
+     * existing layout before rebuilding.
+     */
+    private buildLayout(): void {
+        const showSidebar = (this.config.get('showWbsSidebar') as boolean) ?? false;
+
+        // Tear down existing layout
+        if (this.gantt) {
+            this.gantt.clear();
+            this.gantt.$container?.remove();
+            this.gantt = null;
+        }
+        this.resizeCleanup?.();
+        this.resizeCleanup = null;
+        this.wbsEl = null;
+        this.wbsBodyEl = null;
+        this.containerEl.querySelector('.gantt-wrapper')?.remove();
+        this.containerEl.querySelector('.gantt-wbs-wrapper')?.remove();
+
+        if (showSidebar) {
+            this.containerEl.addClass('bases-gantt-wbs-view');
+            this.ganttEl = this.containerEl.createDiv({ cls: 'gantt-wbs-wrapper' });
+            this.wbsEl = this.ganttEl.createDiv({ cls: 'gantt-wbs-panel' });
+            const resizeHandle = this.ganttEl.createDiv({ cls: 'gantt-wbs-resize-handle' });
+            this.chartEl = this.ganttEl.createDiv({ cls: 'gantt-chart-area' });
+            this.setupWbsResize(resizeHandle);
+        } else {
+            this.containerEl.removeClass('bases-gantt-wbs-view');
+            this.ganttEl = this.containerEl.createDiv({ cls: 'gantt-wrapper' });
+            this.chartEl = this.ganttEl;
+        }
+
+        this.wbsSidebarActive = showSidebar;
+        this.configSnapshot = '';
+    }
+
+    // ── Color resolver ────────────────────────────────────────────────────────
+
+    /** Build a ColorResolver from the current plugin settings. */
+    private buildColorResolver(): ColorResolver | undefined {
+        const settings = this.plugin.settings;
+        return (fieldId: string, value: string): string | null => {
+            // 1. Pretty Properties plugin API
+            const propName = fieldId.split('.').pop() || fieldId;
+            const ppColor = getPrettyPropertiesColor(propName, value);
+            if (ppColor) return ppColor;
+
+            // 2. User-configured valueStyles (keyed by fieldId then value)
+            const color = settings.valueStyles[fieldId]?.[value]?.color;
+            if (color) return color;
+
+            // 3. No resolver hit — let CSS class fallback handle it
+            return null;
+        };
+    }
+
     // ── Data rendering ─────────────────────────────────────────────────────────
 
     onDataUpdated(): void {
         if (!this.data?.data || !this.ganttEl) return;
 
+        // Detect sidebar toggle change and rebuild layout if needed
+        const showSidebar = (this.config.get('showWbsSidebar') as boolean) ?? false;
+        if (showSidebar !== this.wbsSidebarActive) {
+            this.buildLayout();
+        }
+
         const config = this.getTaskMapperConfig();
         const newSnapshot = JSON.stringify(config) + '|' + this.getDisplayConfigSnapshot();
+        const colorResolver = this.buildColorResolver();
 
         // Build tasks (potentially from grouped data)
-        let tasks: GanttTask[];
+        let rawTasks: GanttTask[];
         const groups = this.data.groupedData;
         const hasGroups = groups.length > 1 || (groups.length === 1 && groups[0]?.hasKey());
         if (hasGroups) {
-            tasks = [];
+            rawTasks = [];
             for (let i = 0; i < groups.length; i++) {
-                const group = groups[i];
-                const group_ = group!;
-                const groupTasks = mapEntriesToTasks(group_.entries, config);
+                const group = groups[i]!;
+                const groupTasks = mapEntriesToTasks(group.entries, config, 'task', colorResolver);
                 if (groupTasks.length === 0) continue;
-                const label = group_.hasKey() ? String(group_.key) : 'Ungrouped';
+                const label = group.hasKey() ? String(group.key) : 'Ungrouped';
                 const header = createGroupHeaderTask(label, i, groupTasks);
-                if (header) tasks.push(header);
-                tasks.push(...groupTasks);
+                if (header) rawTasks.push(header);
+                rawTasks.push(...groupTasks);
             }
         } else {
-            tasks = mapEntriesToTasks(this.data.data, config);
+            rawTasks = mapEntriesToTasks(this.data.data, config, 'task', colorResolver);
         }
+
+        // Sort: WBS hierarchy order if sidebar + parentProp configured, else dependency topo sort
+        const tasks = (this.wbsSidebarActive && config.parentProperty)
+            ? buildWbsOrder(rawTasks)
+            : sortByDependencies(rawTasks);
 
         this.currentTasks = tasks;
         this.taskMap.clear();
@@ -521,6 +311,8 @@ export class BasesGanttView extends BasesView {
         if (this.gantt && this.configSnapshot === newSnapshot) {
             // Only data changed, not config — refresh in place
             this.gantt.refresh(tasks);
+            applyResolvedColors(this.chartEl, tasks);
+            if (this.wbsSidebarActive) this.rebuildWbsRows(tasks);
         } else {
             // Config changed or first render — recreate
             this.configSnapshot = newSnapshot;
@@ -535,6 +327,9 @@ export class BasesGanttView extends BasesView {
         let dependenciesProperty = this.config.getAsPropertyId('dependencies');
         let colorByProperty = this.config.getAsPropertyId('colorBy');
         let progressProperty = this.config.getAsPropertyId('progress');
+        const parentProperty = this.wbsSidebarActive
+            ? this.config.getAsPropertyId('parentProp')
+            : null;
 
         // Auto-detect properties from data when not manually configured
         if (!startProperty && this.data?.data?.length > 0) {
@@ -553,9 +348,10 @@ export class BasesGanttView extends BasesView {
             dependenciesProperty,
             colorByProperty,
             progressProperty,
+            parentProperty,
             showProgress:
                 (this.config.get('showProgress') as boolean) ??
-                (progressProperty != null), // auto-enable if progress property detected
+                (progressProperty != null),
         };
     }
 
@@ -605,7 +401,6 @@ export class BasesGanttView extends BasesView {
             return null;
         };
 
-        // Dates: match by name, fallback to positional (first = start, second = end)
         const startKeywords = ['start', 'begin', 'from', 'created'];
         const endKeywords = ['end', 'due', 'finish', 'deadline', 'until'];
 
@@ -615,15 +410,12 @@ export class BasesGanttView extends BasesView {
         if (!start && dateProps.length > 0) start = dateProps[0] ?? null;
         if (!end && dateProps.length > 1) end = dateProps.find(p => p !== start) ?? null;
 
-        // Dependencies: look for link-like string properties
         const depKeywords = ['depend', 'block', 'after', 'prerequisite', 'requires'];
         const dependencies = findByKeywords(stringProps, depKeywords);
 
-        // Progress: look for number properties with progress-like names
         const progressKeywords = ['progress', 'percent', 'completion', 'complete', 'done'];
         const progress = findByKeywords(numberProps, progressKeywords);
 
-        // Color by: look for status/category-like string properties
         const colorKeywords = ['status', 'priority', 'type', 'category', 'phase', 'stage'];
         const colorBy = findByKeywords(stringProps, colorKeywords);
 
@@ -636,6 +428,7 @@ export class BasesGanttView extends BasesView {
             barHeight: this.config.get('barHeight'),
             showProgress: this.config.get('showProgress'),
             showExpectedProgress: this.config.get('showExpectedProgress'),
+            showWbsSidebar: this.config.get('showWbsSidebar'),
         });
     }
 
@@ -647,7 +440,11 @@ export class BasesGanttView extends BasesView {
             this.gantt.clear();
             this.gantt = null;
         }
-        this.ganttEl.empty();
+        this.chartEl.empty();
+        if (this.wbsEl) {
+            this.wbsEl.empty();
+            this.wbsBodyEl = null;
+        }
 
         // Map stored config values to Frappe Gantt's expected format
         const VIEW_MODE_MAP: Record<string, string> = {
@@ -672,7 +469,7 @@ export class BasesGanttView extends BasesView {
             readonly_dates: false,
             readonly_progress: !showProgress,
             infinite_padding: false,
-            view_mode_select: false,
+            view_mode_select: true,
 
             // Enhanced options
             arrow_curve: 15,
@@ -685,9 +482,7 @@ export class BasesGanttView extends BasesView {
             popup: false,
 
             on_click: (task) => {
-                // Suppress click that fires immediately after a drag/resize
                 if (this.justDragged) return;
-                // Ignore group header phantom tasks
                 if (task.id.startsWith(GROUP_HEADER_PREFIX)) return;
                 const ganttTask = this.findTask(task.id);
                 if (ganttTask) {
@@ -733,12 +528,9 @@ export class BasesGanttView extends BasesView {
                     });
                 }
             },
-
-            // on_date_click disabled — clicking the grid should not create notes
         };
 
         // Capture global mouseup handlers Frappe Gantt registers on document
-        // so we can remove them on cleanup (Frappe never removes them itself).
         const captured: EventListener[] = [];
         const origAdd = document.addEventListener.bind(document);
         document.addEventListener = ((
@@ -753,10 +545,10 @@ export class BasesGanttView extends BasesView {
         }) as typeof document.addEventListener;
 
         try {
-            this.gantt = new Gantt(this.ganttEl, tasks, options);
+            this.gantt = new Gantt(this.chartEl, tasks, options);
         } catch (e) {
             console.error('Bases Gantt: failed to initialize chart', e);
-            this.ganttEl.empty();
+            this.chartEl.empty();
             this.renderEmptyState(this.getTaskMapperConfig());
             return;
         } finally {
@@ -764,42 +556,174 @@ export class BasesGanttView extends BasesView {
         }
         this.capturedGlobalHandlers = captured;
 
-        // Apply milestone class to bar wrappers (can't combine with color class
-        // in custom_class because Frappe Gantt throws on spaces in classList.add)
+        // Apply milestone class to bar wrappers
         for (const task of tasks) {
             if (task.isMilestone) {
-                const wrapper = this.ganttEl.querySelector(`.bar-wrapper[data-id="${CSS.escape(task.id)}"]`);
+                const wrapper = this.chartEl.querySelector(`.bar-wrapper[data-id="${CSS.escape(task.id)}"]`);
                 if (wrapper) wrapper.classList.add('gantt-milestone');
             }
         }
 
+        // Apply resolved colors from Pretty Properties / valueStyles
+        applyResolvedColors(this.chartEl, tasks);
+
         // Register hover preview and click handlers on rendered bar wrappers
         this.registerBarInteractions();
+
+        // Render WBS sidebar if enabled
+        if (this.wbsSidebarActive && this.wbsEl) {
+            this.renderWbsPanel(tasks, barHeight);
+        }
     }
+
+    // ── WBS panel ─────────────────────────────────────────────────────────────
+
+    private renderWbsPanel(tasks: GanttTask[], barHeight: number): void {
+        if (!this.wbsEl) return;
+        this.wbsEl.empty();
+        this.wbsBodyEl = null;
+
+        const gridHeaderEl = this.chartEl.querySelector<HTMLElement>('.grid-header');
+        const headerHeight = gridHeaderEl ? gridHeaderEl.offsetHeight || 70 : 70;
+        const rowHeight = barHeight + 16;
+
+        const headerEl = this.wbsEl.createDiv({ cls: 'gantt-wbs-header' });
+        headerEl.style.height = `${headerHeight}px`;
+        headerEl.createDiv({ cls: 'gantt-wbs-header-cell', text: 'Task' });
+
+        const bodyEl = this.wbsEl.createDiv({ cls: 'gantt-wbs-body' });
+        this.wbsBodyEl = bodyEl;
+
+        this.buildWbsRows(bodyEl, tasks, rowHeight);
+        this.setupScrollSync();
+    }
+
+    private buildWbsRows(bodyEl: HTMLElement, tasks: GanttTask[], rowHeight: number): void {
+        for (const task of tasks) {
+            const row = bodyEl.createDiv({ cls: 'gantt-wbs-row' });
+            row.style.height = `${rowHeight}px`;
+
+            if (task.id.startsWith(GROUP_HEADER_PREFIX)) {
+                row.addClass('is-group-header');
+                row.createSpan({ cls: 'gantt-wbs-name', text: task.name });
+            } else {
+                const depth = task.depth ?? 0;
+                const indent = depth * 16 + 8;
+
+                if (depth > 0) row.addClass('is-child-task');
+
+                const nameEl = row.createSpan({ cls: 'gantt-wbs-name' });
+                nameEl.style.paddingLeft = `${indent}px`;
+                nameEl.setText(task.name);
+
+                row.addEventListener('click', () => {
+                    void this.app.workspace.openLinkText(task.filePath, '', false);
+                });
+
+                row.addEventListener('mouseover', () => {
+                    const bar = this.chartEl.querySelector(
+                        `.bar-wrapper[data-id="${CSS.escape(task.id)}"]`
+                    );
+                    bar?.classList.add('wbs-highlighted');
+                });
+                row.addEventListener('mouseout', () => {
+                    const bar = this.chartEl.querySelector(
+                        `.bar-wrapper[data-id="${CSS.escape(task.id)}"]`
+                    );
+                    bar?.classList.remove('wbs-highlighted');
+                });
+
+                row.addEventListener('contextmenu', (evt: MouseEvent) => {
+                    evt.preventDefault();
+                    showOpenFileMenu(this.app, task.filePath, evt);
+                });
+            }
+        }
+    }
+
+    private rebuildWbsRows(tasks: GanttTask[]): void {
+        if (!this.wbsBodyEl) return;
+        const barHeight = (this.config.get('barHeight') as number) || 30;
+        const rowHeight = barHeight + 16;
+        this.wbsBodyEl.empty();
+        this.buildWbsRows(this.wbsBodyEl, tasks, rowHeight);
+    }
+
+    private setupScrollSync(): void {
+        if (!this.wbsBodyEl) return;
+        const ganttContainer = this.chartEl.querySelector<HTMLElement>('.gantt-container');
+        if (!ganttContainer) return;
+
+        const body = this.wbsBodyEl;
+        let busy = false;
+
+        ganttContainer.addEventListener('scroll', () => {
+            if (busy) return;
+            busy = true;
+            body.scrollTop = ganttContainer.scrollTop;
+            busy = false;
+        });
+
+        body.addEventListener('scroll', () => {
+            if (busy) return;
+            busy = true;
+            ganttContainer.scrollTop = body.scrollTop;
+            busy = false;
+        });
+    }
+
+    // ── Resize handle ─────────────────────────────────────────────────────────
+
+    private setupWbsResize(handle: HTMLElement): void {
+        const onMouseMove = (e: MouseEvent) => {
+            const rect = this.ganttEl.getBoundingClientRect();
+            const newWidth = Math.max(120, Math.min(480, e.clientX - rect.left));
+            if (this.wbsEl) this.wbsEl.style.width = `${newWidth}px`;
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.removeClass('gantt-wbs-resizing');
+        };
+
+        const onMouseDown = (e: MouseEvent) => {
+            e.preventDefault();
+            document.body.addClass('gantt-wbs-resizing');
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        };
+
+        handle.addEventListener('mousedown', onMouseDown);
+
+        this.resizeCleanup = () => {
+            handle.removeEventListener('mousedown', onMouseDown);
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+    }
+
+    // ── Bar interactions ──────────────────────────────────────────────────────
 
     /**
      * Attach Page Preview (Ctrl+hover) and click handlers to Gantt bar elements.
-     * Obsidian's page-preview plugin checks for Ctrl/Cmd key internally.
      */
     private registerBarInteractions(): void {
-        const bars = this.ganttEl.querySelectorAll('.bar-wrapper');
+        const bars = this.chartEl.querySelectorAll('.bar-wrapper');
         for (const bar of Array.from(bars)) {
             const taskId = bar.getAttribute('data-id');
             if (!taskId) continue;
             const ganttTask = this.findTask(taskId);
             if (!ganttTask || ganttTask.id.startsWith(GROUP_HEADER_PREFIX)) continue;
 
-            // Page Preview: only trigger on Ctrl/Cmd + hover (not plain hover).
-            // Frappe Gantt bars are SVG <g> elements; use ganttEl as targetEl
-            // since Obsidian expects an HTMLElement.
             bar.addEventListener('mouseover', (evt: Event) => {
                 const mouseEvt = evt as MouseEvent;
                 if (!mouseEvt.ctrlKey && !mouseEvt.metaKey) return;
                 this.app.workspace.trigger('hover-link', {
                     event: mouseEvt,
-                    source: 'wise-view-gantt',
+                    source: BASES_GANTT_VIEW_ID,
                     hoverParent: this.plugin,
-                    targetEl: this.ganttEl,
+                    targetEl: this.chartEl,
                     linktext: ganttTask.filePath,
                     sourcePath: '/',
                 });
@@ -809,9 +733,11 @@ export class BasesGanttView extends BasesView {
 
     // ── Right-click context menus ─────────────────────────────────────────────
 
-    /** Register right-click context menu on the Gantt chart (once, in onload). */
     private registerContextMenu(): void {
-        this.ganttEl.addEventListener('contextmenu', (evt: MouseEvent) => {
+        this.containerEl.addEventListener('contextmenu', (evt: MouseEvent) => {
+            // Skip if the right-click is on WBS panel (it has its own context menus)
+            if (this.wbsEl && this.wbsEl.contains(evt.target as Node)) return;
+
             evt.preventDefault();
 
             const target = evt.target as Element;
@@ -822,7 +748,7 @@ export class BasesGanttView extends BasesView {
                 if (taskId) {
                     const ganttTask = this.findTask(taskId);
                     if (ganttTask && !ganttTask.id.startsWith(GROUP_HEADER_PREFIX)) {
-                        this.showTaskContextMenu(evt, ganttTask);
+                        showOpenFileMenu(this.app, ganttTask.filePath, evt);
                         return;
                     }
                 }
@@ -832,12 +758,6 @@ export class BasesGanttView extends BasesView {
         });
     }
 
-    /** Context menu for a specific task bar — delegates to shared utility. */
-    private showTaskContextMenu(evt: MouseEvent, task: GanttTask): void {
-        showOpenFileMenu(this.app, task.filePath, evt);
-    }
-
-    /** Context menu for empty chart space. */
     private showEmptyContextMenu(evt: MouseEvent): void {
         const menu = new Menu();
 
@@ -860,20 +780,17 @@ export class BasesGanttView extends BasesView {
 
     // ── Click-to-create ────────────────────────────────────────────────────────
 
-    /** Create a new task at a specific date (from on_date_click). */
     private createTaskAtDate(dateStr: string): void {
         const config = this.getTaskMapperConfig();
         if (!config.startProperty) {
             new Notice('Configure a start date property first.');
             return;
         }
-        // Formula properties are computed by Bases — cannot write to frontmatter
         if (config.startProperty.startsWith('formula.')) {
             new Notice('Cannot create tasks with formula date properties.');
             return;
         }
 
-        // Parse and re-format to ensure consistent YYYY-MM-DD
         const parsed = parseObsidianDate(dateStr);
         const formattedDate = parsed ? formatDateForFrontmatter(parsed) : dateStr;
 
@@ -889,7 +806,6 @@ export class BasesGanttView extends BasesView {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    /** Find the earliest start date string among tasks, for initial scroll. */
     private getEarliestTaskDate(tasks: GanttTask[]): string | null {
         let earliest: string | null = null;
         for (const t of tasks) {
@@ -904,9 +820,6 @@ export class BasesGanttView extends BasesView {
         return this.taskMap.get(id);
     }
 
-    /**
-     * Extract the property name from a BasesPropertyId (e.g. "note.start-date" -> "start-date").
-     */
     private extractPropertyName(propertyId: BasesPropertyId): string {
         const dotIndex = propertyId.indexOf('.');
         return dotIndex >= 0 ? propertyId.slice(dotIndex + 1) : propertyId;
@@ -931,9 +844,12 @@ export class BasesGanttView extends BasesView {
             this.gantt.clear();
             this.gantt = null;
         }
-        this.ganttEl.empty();
+        this.chartEl.empty();
+        if (this.wbsEl) {
+            this.wbsEl.empty();
+            this.wbsBodyEl = null;
+        }
 
-        // Remove any existing empty state
         const existing = this.containerEl.querySelector('.gantt-empty-state');
         if (existing) existing.remove();
 
@@ -958,6 +874,54 @@ export class BasesGanttView extends BasesView {
     }
 }
 
+// ── Pretty Properties helper (module-level) ──────────────────────────────────
+
+/**
+ * Try to get a solid hex/rgb color from the Pretty Properties plugin API.
+ * Returns null if the plugin is not installed or no color is configured.
+ */
+function getPrettyPropertiesColor(propName: string, value: string): string | null {
+    interface PPColorSetting { h: number; s: number; l: number }
+    interface PrettyPropertiesApi {
+        getPropertyBackgroundColorSetting(
+            propName: string, propValue: string
+        ): string | PPColorSetting | undefined;
+    }
+    interface WindowWithPP extends Window { PrettyPropertiesApi?: PrettyPropertiesApi }
+
+    const ppApi = (window as WindowWithPP).PrettyPropertiesApi;
+    if (!ppApi) return null;
+
+    try {
+        const colorSetting = ppApi.getPropertyBackgroundColorSetting(propName, value);
+        if (!colorSetting || colorSetting === 'default' || colorSetting === 'none') return null;
+
+        const namedColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'];
+
+        if (typeof colorSetting === 'string' && namedColors.includes(colorSetting)) {
+            // Resolve Obsidian theme CSS variable to solid rgb
+            const rgbStr = getComputedStyle(document.body)
+                .getPropertyValue(`--color-${colorSetting}-rgb`)
+                .trim();
+            if (rgbStr) {
+                const parts = rgbStr.split(/[\s,]+/).map((n: string) => parseInt(n.trim(), 10));
+                if (parts.length >= 3 && parts.every((n: number) => !isNaN(n))) {
+                    const [r, g, b] = parts;
+                    return `rgb(${r}, ${g}, ${b})`;
+                }
+            }
+            return null;
+        }
+
+        if (typeof colorSetting === 'object' && colorSetting.h !== undefined) {
+            return `hsl(${colorSetting.h}, ${colorSetting.s}%, ${colorSetting.l}%)`;
+        }
+    } catch {
+        // Pretty Properties API not available
+    }
+    return null;
+}
+
 // ── View registration ────────────────────────────────────────────────────────
 
 export function createGanttViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
@@ -970,9 +934,6 @@ export function createGanttViewRegistration(plugin: PlannerPlugin): BasesViewReg
     };
 }
 
-/**
- * Return the view options for the Bases config sidebar.
- */
 export function getGanttViewOptions(config: BasesViewConfig): BasesAllOptions[] {
     return [
         {
@@ -1016,6 +977,13 @@ export function getGanttViewOptions(config: BasesViewConfig): BasesAllOptions[] 
                     placeholder: 'Select property...',
                     shouldHide: () => !(config.get('showProgress') as boolean),
                 },
+                {
+                    type: 'property',
+                    key: 'parentProp',
+                    displayName: 'Parent task (WBS)',
+                    placeholder: 'Select property...',
+                    shouldHide: () => !(config.get('showWbsSidebar') as boolean),
+                },
             ],
         },
         {
@@ -1035,6 +1003,12 @@ export function getGanttViewOptions(config: BasesViewConfig): BasesAllOptions[] 
                         Month: 'Month',
                         Year: 'Year',
                     },
+                },
+                {
+                    type: 'toggle',
+                    key: 'showWbsSidebar',
+                    displayName: 'Show WBS sidebar',
+                    default: false,
                 },
                 {
                     type: 'slider',

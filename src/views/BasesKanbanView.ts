@@ -13,6 +13,7 @@ import {
   TFile,
   TFolder,
   Notice,
+  normalizePath,
 } from 'obsidian';
 import type PlannerPlugin from '../main';
 import { PropertyTypeService } from '../services/PropertyTypeService';
@@ -2583,9 +2584,21 @@ export class BasesKanbanView extends BasesView {
       if (targetFolder !== null) {
         const currentFolder = file.parent?.path || '';
         if (targetFolder !== currentFolder) {
-          const movedPath = await this.plugin.itemService.moveItem(filePath, targetFolder);
-          if (movedPath) {
-            newFilePath = movedPath;
+          // Ensure target folder exists
+          const normalized = normalizePath(targetFolder);
+          if (!this.plugin.app.vault.getAbstractFileByPath(normalized)) {
+            await this.plugin.app.vault.createFolder(normalized);
+          }
+          // Build new path, handling filename conflicts
+          let newPath = normalizePath(`${normalized}/${file.name}`);
+          let counter = 1;
+          while (this.plugin.app.vault.getAbstractFileByPath(newPath) && newPath !== filePath && counter < 100) {
+            newPath = normalizePath(`${normalized}/${file.basename} ${counter}.${file.extension}`);
+            counter++;
+          }
+          if (newPath !== filePath) {
+            await this.plugin.app.fileManager.renameFile(file, newPath);
+            newFilePath = newPath;
           }
         }
       }

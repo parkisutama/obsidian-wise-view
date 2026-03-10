@@ -41,28 +41,6 @@ export interface KanbanDefaults {
   showPropertyLabels: boolean;
 }
 
-/** Default field mappings for the Timeline view */
-export interface TimelineDefaults {
-  dateStartField: string;
-  dateEndField: string;
-  sectionsBy: string;
-  plannerGroupBy: string;
-  colorBy: string;
-  /**
-   * Frontmatter property that stores predecessor (blocker) wikilinks.
-   * Defaults to 'blocked_by' when empty.
-   * Set to a custom property name to use a different field.
-   */
-  dependenciesField: string;
-  /**
-   * Format for the date label displayed on gantt bars.
-   * 'range'  — ISO 8601 range  "2026-02-09--2026-02-14"  (default)
-   * 'start'  — start date only "2026-02-09"
-   * 'end'    — end date only   "2026-02-14"
-   */
-  dateLabelFormat: string;
-}
-
 /** Default field mappings for the Gantt view */
 export interface GanttDefaults {
   /** Frontmatter property used as bar start date. */
@@ -96,7 +74,6 @@ export interface PlannerSettings {
   // Per-view field defaults (used as fallback when not set in the .base file)
   calendarDefaults: CalendarDefaults;
   kanbanDefaults: KanbanDefaults;
-  timelineDefaults: TimelineDefaults;
   ganttDefaults: GanttDefaults;
 
   /**
@@ -138,16 +115,6 @@ export const DEFAULT_SETTINGS: PlannerSettings = {
     hideEmptyColumns: false,
     freezeHeaders: 'none',
     showPropertyLabels: true,
-  },
-
-  timelineDefaults: {
-    dateStartField: '',
-    dateEndField: '',
-    sectionsBy: '',
-    plannerGroupBy: '',
-    colorBy: '',
-    dependenciesField: '',
-    dateLabelFormat: 'range',
   },
 
   ganttDefaults: {
