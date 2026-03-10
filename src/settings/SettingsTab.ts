@@ -192,7 +192,7 @@ export class PlannerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Default view mode')
-      .setDesc('Default zoom level for the timeline')
+      .setDesc('Default zoom level for the chart')
       .addDropdown(dropdown => dropdown
         .addOption('Day', 'Day')
         .addOption('Week', 'Week')

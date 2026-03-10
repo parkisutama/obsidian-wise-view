@@ -1,9 +1,7 @@
 import { Plugin } from 'obsidian';
 import { PlannerSettings, DEFAULT_SETTINGS } from './types/settings';
 import { PlannerSettingTab } from './settings/SettingsTab';
-import { ItemService } from './services/ItemService';
 
-// === ACTIVE VIEW IMPORTS ===
 import {
   BASES_KANBAN_VIEW_ID,
   createKanbanViewRegistration,
@@ -14,13 +12,6 @@ import {
   createCalendarViewRegistration,
 } from './views/BasesCalendarView';
 
-/* === TEMPORARILY DISABLED VIEW IMPORTS ===
-import {
-  BASES_TIMELINE_VIEW_ID,
-  createTimelineViewRegistration,
-} from './views/BasesTimelineView';
-=== END TEMPORARILY DISABLED VIEW IMPORTS */
-
 import {
   BASES_GANTT_VIEW_ID,
   BasesGanttView,
@@ -29,49 +20,30 @@ import {
 
 export default class PlannerPlugin extends Plugin {
   settings: PlannerSettings;
-  itemService: ItemService;
 
   async onload() {
-    // Load settings
     await this.loadSettings();
-
-    // Initialize services
-    this.itemService = new ItemService(this.app, () => this.settings);
 
     // Register Bases views
     this.registerBasesViews();
 
     // Add settings tab
     this.addSettingTab(new PlannerSettingTab(this.app, this));
-
-    // Add ribbon icons
   }
 
   /**
    * Register custom view types with Obsidian Bases
    */
   private registerBasesViews(): void {
-    // === ACTIVE VIEW REGISTRATIONS ===
     this.registerBasesView(
       BASES_KANBAN_VIEW_ID,
       createKanbanViewRegistration(this)
     );
 
-    // Register Calendar view for Bases
     this.registerBasesView(
       BASES_CALENDAR_VIEW_ID,
       createCalendarViewRegistration(this)
     );
-
-    /* === TEMPORARILY DISABLED VIEW REGISTRATIONS ===
-
-    // Register Timeline view for Bases
-    this.registerBasesView(
-      BASES_TIMELINE_VIEW_ID,
-      createTimelineViewRegistration(this)
-    );
-
-    === END TEMPORARILY DISABLED VIEW REGISTRATIONS */
 
     // Register Gantt view for Bases
     this.registerBasesView(
@@ -181,7 +153,6 @@ export default class PlannerPlugin extends Plugin {
       // Deep-merge nested objects so missing sub-keys still get defaults
       calendarDefaults: { ...DEFAULT_SETTINGS.calendarDefaults, ...(data.calendarDefaults ?? {}) },
       kanbanDefaults: { ...DEFAULT_SETTINGS.kanbanDefaults, ...(data.kanbanDefaults ?? {}) },
-      timelineDefaults: { ...DEFAULT_SETTINGS.timelineDefaults, ...(data.timelineDefaults ?? {}) },
       ganttDefaults: { ...DEFAULT_SETTINGS.ganttDefaults, ...(data.ganttDefaults ?? {}) },
       valueStyles: { ...DEFAULT_SETTINGS.valueStyles, ...(data.valueStyles ?? {}) },
     };
