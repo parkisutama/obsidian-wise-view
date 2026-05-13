@@ -115,11 +115,9 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import multiMonthPlugin from '@fullcalendar/multimonth';
-import { RRule } from 'rrule';
 import type PlannerPlugin from '../main';
 import { stringToColor } from '../utils/colorUtils';
 import { openFileInNewTab, showOpenFileMenu } from '../utils/openFile';
-import type { PlannerItem, DayOfWeek } from '../types/item';
 import type { WeekDay } from '../types/settings';
 import { PropertyTypeService } from '../services/PropertyTypeService';
 import { isOngoing } from '../utils/dateUtils';
@@ -141,7 +139,6 @@ export class BasesCalendarView extends BasesView {
   private currentView: CalendarViewType | null = null; // null means use config default
   private resizeObserver: ResizeObserver | null = null;
   private yearViewSplit: boolean = true; // true = multiMonthYear (split), false = dayGridYear (continuous)
-  private colorMapCache: Record<string, string> = {}; // Cache for color assignments
 
   // Now accepts any property ID for custom properties
   private getColorByField(): string {
@@ -264,8 +261,6 @@ export class BasesCalendarView extends BasesView {
     }
 
     // Build color map cache before initializing calendar
-    this.buildColorMapCache();
-
     if (this.calendarEl) {
       this.initCalendar(currentDate, currentViewType);
     }
@@ -614,419 +609,18 @@ export class BasesCalendarView extends BasesView {
     }
   }
 
-  /**
-   * Build color map cache for fields that need auto-assigned colors
-   */
-  private buildColorMapCache(): void {
-    // Color map no longer needed — stringToColor handles deterministic coloring per value.
-    this.colorMapCache = {};
-  }
-
-  /**
-   * Get frontmatter directly from Obsidian's metadata cache (bypasses Bases getValue)
-   */
-  private getFrontmatter(entry: BasesEntry): Record<string, unknown> | undefined {
-    const file = entry.file;
-    const cache = this.app.metadataCache.getFileCache(file);
-    return cache?.frontmatter;
-  }
-
   private getEventsFromData(): EventInput[] {
     const events: EventInput[] = [];
-
-    // Get a reasonable date range for recurrence expansion
-    // Default to 1 year before and after today
-    const now = new Date();
-    const rangeStart = new Date(now);
-    rangeStart.setFullYear(rangeStart.getFullYear() - 1);
-    const rangeEnd = new Date(now);
-    rangeEnd.setFullYear(rangeEnd.getFullYear() + 1);
-
-    const validFrequencies = ['daily', 'weekly', 'monthly', 'yearly'];
     const groupedData = this.data.groupedData as BasesGroupedData[];
+    const colorByProp = this.getColorByField();
 
     for (const group of groupedData) {
       for (const entry of group.entries) {
-        // Get frontmatter directly from Obsidian's metadata cache
-        const frontmatter = this.getFrontmatter(entry);
-        const repeatFrequency = frontmatter?.repeat_frequency;
-
-        // Validate that it's actually a valid frequency string
-        const isValidRecurrence = typeof repeatFrequency === 'string' &&
-          validFrequencies.includes(repeatFrequency);
-
-        if (isValidRecurrence) {
-          // Expand recurring item into multiple events
-          const recurringEvents = this.expandRecurringEntry(entry, rangeStart, rangeEnd);
-          events.push(...recurringEvents);
-        } else {
-          // Non-recurring item - single event
-          const event = this.entryToEvent(entry, this.getColorByField());
-          if (event) {
-            events.push(event);
-          }
+        const event = this.entryToEvent(entry, colorByProp);
+        if (event) {
+          events.push(event);
         }
       }
-    }
-
-    return events;
-  }
-
-  /**
-   * Check if a Bases value is actually a valid value (not a placeholder/undefined)
-   * Bases returns placeholder objects like {icon: 'lucide-file-question'} for missing fields
-   */
-  private isValidBasesValue(value: unknown): boolean {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'string' && (value === '' || value === 'null')) return false;
-    // Check for Bases placeholder objects
-    if (typeof value === 'object' && value !== null && 'icon' in value) return false;
-    return true;
-  }
-
-  /**
-   * Extract a PlannerItem-like object from a BasesEntry using Obsidian's metadata cache
-   */
-  private extractRecurrenceData(entry: BasesEntry): Partial<PlannerItem> {
-    // Get frontmatter directly from Obsidian's metadata cache
-    const fm = this.getFrontmatter(entry) || {};
-
-    // Extract dates - try frontmatter first, fall back to Bases getValue for configured fields
-    const dateStartField = this.getDateStartField();
-    const dateEndField = this.getDateEndField();
-
-    // Read dates using the configured field names
-    const startFieldName = dateStartField.replace(/^(note|file|formula)\./, '');
-    const endFieldName = dateEndField.replace(/^(note|file|formula)\./, '');
-
-    let dateStart = startFieldName ? fm[startFieldName] : undefined;
-    let dateEnd = endFieldName ? fm[endFieldName] : undefined;
-
-    // Fall back to Bases getValue as secondary source
-    if (!dateStart && dateStartField) {
-      const basesValue = entry.getValue(dateStartField as BasesPropertyId);
-      if (this.isValidBasesValue(basesValue)) {
-        dateStart = basesValue;
-      }
-    }
-    if (!dateEnd && dateEndField) {
-      const basesValue = entry.getValue(dateEndField as BasesPropertyId);
-      if (this.isValidBasesValue(basesValue)) {
-        dateEnd = basesValue;
-      }
-    }
-
-    // Extract recurrence fields directly from frontmatter
-    const repeatFrequency = fm.repeat_frequency as string | undefined;
-    const repeatInterval = fm.repeat_interval as number | undefined;
-    const repeatUntil = fm.repeat_until as string | undefined;
-    const repeatCount = fm.repeat_count as number | undefined;
-    const repeatByday = fm.repeat_byday as DayOfWeek[] | undefined;
-    const repeatBymonth = fm.repeat_bymonth as number[] | undefined;
-    const repeatBymonthday = fm.repeat_bymonthday as number[] | undefined;
-    const repeatBysetpos = fm.repeat_bysetpos as number | undefined;
-    const repeatCompletedDates = fm.repeat_completed_dates as string[] | undefined;
-
-    // Validate repeat_frequency
-    const validFrequencies = ['daily', 'weekly', 'monthly', 'yearly'];
-    const validatedFrequency = typeof repeatFrequency === 'string' && validFrequencies.includes(repeatFrequency)
-      ? repeatFrequency as PlannerItem['repeat_frequency']
-      : undefined;
-
-    // Validate bysetpos
-    const validatedBysetpos = typeof repeatBysetpos === 'number' && repeatBysetpos !== 0 &&
-      repeatBysetpos >= -366 && repeatBysetpos <= 366
-      ? repeatBysetpos
-      : undefined;
-
-    return {
-      path: entry.file.path,
-      date_start_scheduled: dateStart ? this.toISOString(dateStart) : undefined,
-      date_end_scheduled: dateEnd ? this.toISOString(dateEnd) : undefined,
-      repeat_frequency: validatedFrequency,
-      repeat_interval: typeof repeatInterval === 'number' ? repeatInterval : undefined,
-      repeat_until: repeatUntil ? this.toISOString(repeatUntil) : undefined,
-      repeat_count: typeof repeatCount === 'number' ? repeatCount : undefined,
-      repeat_byday: Array.isArray(repeatByday) && repeatByday.length > 0 ? repeatByday : undefined,
-      repeat_bymonth: Array.isArray(repeatBymonth) && repeatBymonth.length > 0 ? repeatBymonth : undefined,
-      repeat_bymonthday: Array.isArray(repeatBymonthday) && repeatBymonthday.length > 0 ? repeatBymonthday : undefined,
-      repeat_bysetpos: validatedBysetpos,
-      repeat_completed_dates: Array.isArray(repeatCompletedDates) ? repeatCompletedDates : undefined,
-    };
-  }
-
-  /**
-   * Build an RRULE string from item data
-   */
-  private buildRRuleString(item: Partial<PlannerItem>): string {
-    const parts: string[] = [];
-
-    // Frequency map
-    const freqMap: Record<string, string> = {
-      daily: 'DAILY',
-      weekly: 'WEEKLY',
-      monthly: 'MONTHLY',
-      yearly: 'YEARLY',
-    };
-
-    if (item.repeat_frequency) {
-      parts.push(`FREQ=${freqMap[item.repeat_frequency]}`);
-    }
-
-    if (item.repeat_interval && item.repeat_interval > 1) {
-      parts.push(`INTERVAL=${item.repeat_interval}`);
-    }
-
-    if (item.repeat_byday?.length) {
-      parts.push(`BYDAY=${item.repeat_byday.join(',')}`);
-    }
-
-    if (item.repeat_bymonth?.length) {
-      parts.push(`BYMONTH=${item.repeat_bymonth.join(',')}`);
-    }
-
-    if (item.repeat_bymonthday?.length) {
-      parts.push(`BYMONTHDAY=${item.repeat_bymonthday.join(',')}`);
-    }
-
-    if (item.repeat_bysetpos !== undefined && item.repeat_bysetpos !== 0) {
-      parts.push(`BYSETPOS=${item.repeat_bysetpos}`);
-    }
-
-    if (item.repeat_count) {
-      parts.push(`COUNT=${item.repeat_count}`);
-    }
-
-    if (item.repeat_until) {
-      const until = new Date(item.repeat_until);
-      if (!isNaN(until.getTime())) {
-        const year = until.getUTCFullYear();
-        const month = String(until.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(until.getUTCDate()).padStart(2, '0');
-        parts.push(`UNTIL=${year}${month}${day}`);
-      }
-    }
-
-    return parts.join(';');
-  }
-
-  /**
-   * Generate recurring occurrences using RRule directly (TaskNotes approach)
-   */
-  private generateOccurrences(item: Partial<PlannerItem>, rangeStart: Date, rangeEnd: Date): Date[] {
-    if (!item.repeat_frequency || !item.date_start_scheduled) {
-      return [];
-    }
-
-    try {
-      const dateStr = String(item.date_start_scheduled);
-
-      // Check if this is a date-only string (no 'T' means no time component)
-      // Date-only strings like "2026-01-05" are parsed as UTC midnight by JavaScript,
-      // but we want to treat them as local dates for all-day events
-      const isDateOnly = !dateStr.includes('T');
-
-      let startDate: Date;
-      let originalLocalHours: number;
-      let originalLocalMinutes: number;
-      let originalLocalSeconds: number;
-
-      if (isDateOnly) {
-        // For date-only strings, parse the date parts directly to avoid UTC interpretation
-        // "2026-01-05" should mean January 5th in local time, not UTC
-        const [year, month, day] = dateStr.split('-').map(Number);
-        if (year == null || month == null || day == null) return [];
-        startDate = new Date(year, month - 1, day, 0, 0, 0);
-        originalLocalHours = 0;
-        originalLocalMinutes = 0;
-        originalLocalSeconds = 0;
-      } else {
-        // For datetime strings, parse normally and extract local time
-        startDate = new Date(dateStr);
-        if (isNaN(startDate.getTime())) {
-          return [];
-        }
-        // Extract the original LOCAL time components - this is what the user intended
-        // (e.g., "midnight" should stay midnight regardless of DST)
-        originalLocalHours = startDate.getHours();
-        originalLocalMinutes = startDate.getMinutes();
-        originalLocalSeconds = startDate.getSeconds();
-      }
-
-      // Create UTC date for RRule - use local date components for date-based recurrence
-      // This ensures RRule generates occurrences on the correct calendar days
-      const dtstart = new Date(Date.UTC(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-        originalLocalHours,
-        originalLocalMinutes,
-        originalLocalSeconds,
-        0
-      ));
-
-      // Build RRULE string
-      const rruleString = this.buildRRuleString(item);
-
-      // Parse the RRULE string (TaskNotes approach)
-      const rruleOptions = RRule.parseString(rruleString);
-
-      // Set dtstart manually (critical - this is what TaskNotes does)
-      rruleOptions.dtstart = dtstart;
-
-      // Create the RRule
-      const rule = new RRule(rruleOptions);
-
-      // Convert range to UTC (TaskNotes approach)
-      const utcStart = new Date(Date.UTC(
-        rangeStart.getFullYear(),
-        rangeStart.getMonth(),
-        rangeStart.getDate(),
-        0, 0, 0, 0
-      ));
-      const utcEnd = new Date(Date.UTC(
-        rangeEnd.getFullYear(),
-        rangeEnd.getMonth(),
-        rangeEnd.getDate(),
-        23, 59, 59, 999
-      ));
-
-      // Generate occurrences - RRule returns UTC dates
-      const rawOccurrences = rule.between(utcStart, utcEnd, true);
-
-      // Convert each occurrence to preserve the original LOCAL time
-      // This fixes DST issues: "midnight" stays midnight regardless of timezone offset
-      return rawOccurrences.map(occ => {
-        // Get the UTC date components from the occurrence
-        const year = occ.getUTCFullYear();
-        const month = occ.getUTCMonth();
-        const day = occ.getUTCDate();
-
-        // Create a new date with the occurrence's date but the original local time
-        // Using the Date constructor with individual components treats them as local time
-        return new Date(year, month, day, originalLocalHours, originalLocalMinutes, originalLocalSeconds);
-      });
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * Check if a date is in the completed dates list
-   */
-  private isDateCompleted(completedDates: string[] | undefined, date: Date): boolean {
-    if (!completedDates?.length) return false;
-    const dateStr = date.toISOString().split('T')[0];
-    return completedDates.some(d => d.split('T')[0] === dateStr);
-  }
-
-  /**
-   * Expand a recurring entry into multiple calendar events
-   */
-  private expandRecurringEntry(entry: BasesEntry, rangeStart: Date, rangeEnd: Date): EventInput[] {
-    const colorByProp = this.getColorByField();
-    const titleField = this.getTitleField();
-    const allDayValue = entry.getValue('note.all_day' as BasesPropertyId);
-
-    // Get title
-    let title: string;
-    if (titleField === 'file.basename') {
-      title = entry.file.basename;
-    } else {
-      const titleValue = entry.getValue(titleField as BasesPropertyId);
-      title = titleValue ? String(titleValue) : entry.file.basename || 'Untitled';
-    }
-
-    // Get color
-    const color = this.getEntryColor(entry, colorByProp);
-
-    // Extract recurrence data
-    const itemData = this.extractRecurrenceData(entry);
-
-    // Generate occurrences using RRule directly
-    const occurrences = this.generateOccurrences(itemData, rangeStart, rangeEnd);
-
-    if (occurrences.length === 0) {
-      // Fall back to single event if no occurrences generated
-      const event = this.entryToEvent(entry, colorByProp);
-      return event ? [event] : [];
-    }
-
-    // Determine if this is an all-day event
-    const isAllDay = this.isAllDayValue(allDayValue) ||
-      (typeof itemData.date_start_scheduled === 'string' && !itemData.date_start_scheduled.includes('T'));
-
-    // Calculate event duration (in days for all-day events, milliseconds for timed events)
-    let durationMs = 0;
-    let durationDays = 0;
-    if (itemData.date_start_scheduled && itemData.date_end_scheduled) {
-      if (isAllDay) {
-        // For all-day events, calculate duration in days
-        const startStr = String(itemData.date_start_scheduled);
-        const endStr = String(itemData.date_end_scheduled);
-        const startParts = (startStr.split('T')[0] ?? '').split('-').map(Number);
-        const endParts = (endStr.split('T')[0] ?? '').split('-').map(Number);
-        const startLocal = new Date(startParts[0] ?? 0, (startParts[1] ?? 1) - 1, startParts[2] ?? 1);
-        const endLocal = new Date(endParts[0] ?? 0, (endParts[1] ?? 1) - 1, endParts[2] ?? 1);
-        durationDays = Math.round((endLocal.getTime() - startLocal.getTime()) / (24 * 60 * 60 * 1000));
-      } else {
-        const start = new Date(itemData.date_start_scheduled);
-        const end = new Date(itemData.date_end_scheduled);
-        durationMs = end.getTime() - start.getTime();
-      }
-    }
-
-    const events: EventInput[] = [];
-
-    // Convert each occurrence to an EventInput
-    for (let i = 0; i < occurrences.length; i++) {
-      const occurrenceStart = occurrences[i];
-      if (!occurrenceStart) continue;
-      const isCompleted = this.isDateCompleted(itemData.repeat_completed_dates, occurrenceStart);
-
-      let startStr: string;
-      let endStr: string | undefined;
-
-      if (isAllDay) {
-        // For all-day events, use date-only strings (YYYY-MM-DD) to avoid timezone issues
-        const year = occurrenceStart.getFullYear();
-        const month = String(occurrenceStart.getMonth() + 1).padStart(2, '0');
-        const day = String(occurrenceStart.getDate()).padStart(2, '0');
-        startStr = `${year}-${month}-${day}`;
-
-        if (durationDays > 0) {
-          const occurrenceEnd = new Date(occurrenceStart);
-          occurrenceEnd.setDate(occurrenceEnd.getDate() + durationDays);
-          const endYear = occurrenceEnd.getFullYear();
-          const endMonth = String(occurrenceEnd.getMonth() + 1).padStart(2, '0');
-          const endDay = String(occurrenceEnd.getDate()).padStart(2, '0');
-          endStr = `${endYear}-${endMonth}-${endDay}`;
-        }
-      } else {
-        // For timed events, use ISO strings
-        startStr = occurrenceStart.toISOString();
-        if (durationMs > 0) {
-          const occurrenceEnd = new Date(occurrenceStart.getTime() + durationMs);
-          endStr = occurrenceEnd.toISOString();
-        }
-      }
-
-      events.push({
-        id: `${entry.file.path}::${i}`,
-        title: String(title),
-        start: startStr,
-        end: endStr,
-        allDay: isAllDay,
-        backgroundColor: isCompleted ? '#9ca3af' : color,
-        borderColor: isCompleted ? '#9ca3af' : color,
-        textColor: this.getContrastColor(isCompleted ? '#9ca3af' : color),
-        extendedProps: {
-          entry,
-          occurrenceDate: startStr,
-          isRecurring: true,
-          isCompleted,
-        },
-      });
     }
 
     return events;
@@ -1438,7 +1032,7 @@ export class BasesCalendarView extends BasesView {
   private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
     this.app.workspace.trigger('hover-link', {
       event,
-      source: 'planner-calendar',
+      source: BASES_CALENDAR_VIEW_ID,
       hoverParent: this.plugin,
       targetEl,
       linktext: filePath,

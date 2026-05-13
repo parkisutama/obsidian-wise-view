@@ -1,17 +1,41 @@
 import { readFileSync, writeFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const targetVersion = process.env.npm_package_version;
+const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
-// read minAppVersion from manifest.json and bump version to target version
-const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
-const { minAppVersion } = manifest;
-manifest.version = targetVersion;
-writeFileSync("manifest.json", JSON.stringify(manifest, null, "\t"));
+const writeJson = (filePath, value) => {
+	writeFileSync(filePath, `${JSON.stringify(value, null, "\t")}\n`);
+};
 
-// update versions.json with target version and minAppVersion from manifest.json
-// but only if the target version is not already in versions.json
-const versions = JSON.parse(readFileSync('versions.json', 'utf8'));
-if (!Object.values(versions).includes(minAppVersion)) {
-    versions[targetVersion] = minAppVersion;
-    writeFileSync('versions.json', JSON.stringify(versions, null, '\t'));
+export function syncVersionFiles({
+	cwd = process.cwd(),
+	targetVersion = process.env.npm_package_version,
+} = {}) {
+	if (!targetVersion) {
+		throw new Error("Missing target version. Run through pnpm version or pass targetVersion.");
+	}
+
+	const manifestPath = path.join(cwd, "manifest.json");
+	const versionsPath = path.join(cwd, "versions.json");
+
+	const manifest = readJson(manifestPath);
+	const { minAppVersion } = manifest;
+	if (!minAppVersion) {
+		throw new Error("manifest.json must define minAppVersion.");
+	}
+
+	manifest.version = targetVersion;
+	writeJson(manifestPath, manifest);
+
+	const versions = readJson(versionsPath);
+	versions[targetVersion] = minAppVersion;
+	writeJson(versionsPath, versions);
+
+	return { manifest, versions };
+}
+
+const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
+if (isDirectRun) {
+	syncVersionFiles();
 }

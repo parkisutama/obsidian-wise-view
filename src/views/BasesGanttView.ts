@@ -19,6 +19,7 @@
  */
 
 import {
+    App,
     BasesView,
     BasesViewRegistration,
     BasesPropertyId,
@@ -29,21 +30,22 @@ import {
     NumberValue,
     Menu,
     Notice,
+    FuzzySuggestModal,
 } from 'obsidian';
 import Gantt from 'frappe-gantt';
 import type { GanttOptions } from 'frappe-gantt';
 import type PlannerPlugin from '../main';
-import { showOpenFileMenu } from '../utils/openFile';
+import { addOpenFileMenuItems } from '../utils/openFile';
 import {
     GanttTask,
     TaskMapperConfig,
     GROUP_HEADER_PREFIX,
-    parseObsidianDate,
     formatDateForFrontmatter,
     mapEntriesToTasks,
     sortByDependencies,
     createGroupHeaderTask,
     applyResolvedColors,
+    applyExpectedProgress,
     type ColorResolver,
 } from '../utils/ganttUtils';
 
@@ -56,6 +58,13 @@ export const BASES_GANTT_VIEW_ID = 'wise-view-gantt';
 /**
  * Re-orders tasks into WBS depth-first order and assigns each task a depth level.
  * Tasks whose parentPath resolves to another task become children of that task.
+ *
+ * Enhancements:
+ *  - Children within each parent are sorted by start date.
+ *  - Root tasks are sorted by start date.
+ *  - Parent tasks automatically aggregate their date span from children
+ *    (visual-only — frontmatter is not modified).
+ *  - Parent tasks are marked with `isParent = true`.
  */
 function buildWbsOrder(tasks: GanttTask[]): GanttTask[] {
     const pathToTask = new Map<string, GanttTask>();
@@ -75,14 +84,38 @@ function buildWbsOrder(tasks: GanttTask[]): GanttTask[] {
         }
     }
 
+    // Sort children within each parent by start date
+    for (const [, children] of childrenOf) {
+        children.sort((a, b) => a.start.localeCompare(b.start));
+    }
+
+    // Sort root tasks by start date
     const roots = tasks.filter(t => !isChild.has(t.id));
+    roots.sort((a, b) => a.start.localeCompare(b.start));
+
     const result: GanttTask[] = [];
 
     const dfs = (task: GanttTask, depth: number) => {
         task.depth = depth;
         result.push(task);
+
         const children = childrenOf.get(task.filePath) ?? [];
-        for (const child of children) dfs(child, depth + 1);
+        if (children.length > 0) {
+            task.isParent = true;
+
+            // Recurse children (they compute their own spans first for multi-level)
+            for (const child of children) dfs(child, depth + 1);
+
+            // Aggregate parent date span from children (visual only)
+            let minStart = task.start;
+            let maxEnd = task.end;
+            for (const child of children) {
+                if (child.start < minStart) minStart = child.start;
+                if (child.end > maxEnd) maxEnd = child.end;
+            }
+            task.start = minStart;
+            task.end = maxEnd;
+        }
     };
 
     for (const root of roots) dfs(root, 0);
@@ -236,6 +269,22 @@ export class BasesGanttView extends BasesView {
         this.configSnapshot = '';
     }
 
+    private normalizePropertyId(value: string | null | undefined): BasesPropertyId | null {
+        const trimmed = value?.trim();
+        if (!trimmed) return null;
+        if (/^(note|file|formula)\./.test(trimmed)) {
+            return trimmed as BasesPropertyId;
+        }
+        return `note.${trimmed}` as BasesPropertyId;
+    }
+
+    private getConfiguredPropertyId(
+        configKey: string,
+        fallbackValue?: string,
+    ): BasesPropertyId | null {
+        return this.config.getAsPropertyId(configKey) ?? this.normalizePropertyId(fallbackValue);
+    }
+
     // ── Color resolver ────────────────────────────────────────────────────────
 
     /** Build a ColorResolver from the current plugin settings. */
@@ -312,6 +361,7 @@ export class BasesGanttView extends BasesView {
             // Only data changed, not config — refresh in place
             this.gantt.refresh(tasks);
             applyResolvedColors(this.chartEl, tasks);
+            applyExpectedProgress(this.chartEl, tasks);
             if (this.wbsSidebarActive) this.rebuildWbsRows(tasks);
         } else {
             // Config changed or first render — recreate
@@ -321,12 +371,27 @@ export class BasesGanttView extends BasesView {
     }
 
     private getTaskMapperConfig(): TaskMapperConfig {
-        let startProperty = this.config.getAsPropertyId('startDate');
-        let endProperty = this.config.getAsPropertyId('endDate');
-        let labelProperty = this.config.getAsPropertyId('label');
-        let dependenciesProperty = this.config.getAsPropertyId('dependencies');
-        let colorByProperty = this.config.getAsPropertyId('colorBy');
-        let progressProperty = this.config.getAsPropertyId('progress');
+        let startProperty = this.getConfiguredPropertyId(
+            'startDate',
+            this.plugin.settings.ganttDefaults.dateStartField,
+        );
+        let endProperty = this.getConfiguredPropertyId(
+            'endDate',
+            this.plugin.settings.ganttDefaults.dateEndField,
+        );
+        const labelProperty = this.getConfiguredPropertyId('label');
+        let dependenciesProperty = this.getConfiguredPropertyId(
+            'dependencies',
+            this.plugin.settings.ganttDefaults.dependenciesField,
+        );
+        let colorByProperty = this.getConfiguredPropertyId(
+            'colorBy',
+            this.plugin.settings.ganttDefaults.colorBy,
+        );
+        let progressProperty = this.getConfiguredPropertyId(
+            'progress',
+            this.plugin.settings.ganttDefaults.progressField,
+        );
         const parentProperty = this.wbsSidebarActive
             ? this.config.getAsPropertyId('parentProp')
             : null;
@@ -341,6 +406,11 @@ export class BasesGanttView extends BasesView {
             colorByProperty = detected.colorBy ?? colorByProperty;
         }
 
+        const expectedProgressProperty = this.getConfiguredPropertyId('expectedProgress');
+        const showProgress = (this.config.get('showProgress') as boolean | undefined)
+            ?? this.plugin.settings.ganttDefaults.showProgress
+            ?? (progressProperty != null);
+
         return {
             startProperty,
             endProperty,
@@ -349,9 +419,8 @@ export class BasesGanttView extends BasesView {
             colorByProperty,
             progressProperty,
             parentProperty,
-            showProgress:
-                (this.config.get('showProgress') as boolean) ??
-                (progressProperty != null),
+            showProgress,
+            expectedProgressProperty,
         };
     }
 
@@ -424,11 +493,13 @@ export class BasesGanttView extends BasesView {
 
     private getDisplayConfigSnapshot(): string {
         return JSON.stringify({
-            viewMode: this.config.get('viewMode'),
-            barHeight: this.config.get('barHeight'),
-            showProgress: this.config.get('showProgress'),
+            viewMode: this.config.get('viewMode') ?? this.plugin.settings.ganttDefaults.viewMode,
+            barHeight: this.config.get('barHeight') ?? this.plugin.settings.ganttDefaults.barHeight,
+            showProgress: this.config.get('showProgress') ?? this.plugin.settings.ganttDefaults.showProgress,
             showExpectedProgress: this.config.get('showExpectedProgress'),
             showWbsSidebar: this.config.get('showWbsSidebar'),
+            showObsidianPreview: this.plugin.settings.ganttDefaults.showObsidianPreview,
+            showInternalPopup: this.plugin.settings.ganttDefaults.showInternalPopup,
         });
     }
 
@@ -451,11 +522,21 @@ export class BasesGanttView extends BasesView {
             'Quarter day': 'Quarter Day',
             'Half day': 'Half Day',
         };
-        const rawViewMode = (this.config.get('viewMode') as string) || 'Day';
+        const rawViewMode = (this.config.get('viewMode') as string)
+            || this.plugin.settings.ganttDefaults.viewMode
+            || 'Day';
         const viewMode = VIEW_MODE_MAP[rawViewMode] ?? rawViewMode;
-        const barHeight = (this.config.get('barHeight') as number) || 30;
-        const showProgress = (this.config.get('showProgress') as boolean) ?? false;
+        const barHeight = (this.config.get('barHeight') as number)
+            || this.plugin.settings.ganttDefaults.barHeight
+            || 30;
+        const showProgress = (this.config.get('showProgress') as boolean | undefined)
+            ?? this.plugin.settings.ganttDefaults.showProgress
+            ?? false;
         const showExpectedProgress = (this.config.get('showExpectedProgress') as boolean) ?? false;
+        const showPreviewOnClick = this.plugin.settings.ganttDefaults.showObsidianPreview;
+        const showInternalPopup = this.plugin.settings.ganttDefaults.showInternalPopup;
+        const mapperConfig = this.getTaskMapperConfig();
+        const hasExpectedProp = mapperConfig.expectedProgressProperty != null;
 
         // Calculate earliest task date to scroll to
         const earliestDate = this.getEarliestTaskDate(tasks);
@@ -475,13 +556,11 @@ export class BasesGanttView extends BasesView {
             arrow_curve: 15,
             auto_move_label: true,
             move_dependencies: true,
-            show_expected_progress: showExpectedProgress && showProgress,
+            show_expected_progress: (showExpectedProgress || hasExpectedProp) && showProgress,
             hover_on_date: true,
 
-            // Disable built-in popup — use Obsidian Page Preview (Ctrl+hover) instead
-            popup: false,
-
             on_click: (task) => {
+                if (showPreviewOnClick) return;
                 if (this.justDragged) return;
                 if (task.id.startsWith(GROUP_HEADER_PREFIX)) return;
                 const ganttTask = this.findTask(task.id);
@@ -497,6 +576,9 @@ export class BasesGanttView extends BasesView {
                 if (task.id.startsWith(GROUP_HEADER_PREFIX)) return;
                 const ganttTask = this.findTask(task.id);
                 if (!ganttTask) return;
+
+                // Skip parent tasks — their dates are aggregated from children
+                if (ganttTask.isParent) return;
 
                 const mapperConfig = this.getTaskMapperConfig();
                 const updates: Record<string, string> = {};
@@ -529,6 +611,9 @@ export class BasesGanttView extends BasesView {
                 }
             },
         };
+        if (!showInternalPopup) {
+            options.popup = false;
+        }
 
         // Capture global mouseup handlers Frappe Gantt registers on document
         const captured: EventListener[] = [];
@@ -556,16 +641,19 @@ export class BasesGanttView extends BasesView {
         }
         this.capturedGlobalHandlers = captured;
 
-        // Apply milestone class to bar wrappers
+        // Apply milestone and parent task classes to bar wrappers
         for (const task of tasks) {
-            if (task.isMilestone) {
-                const wrapper = this.chartEl.querySelector(`.bar-wrapper[data-id="${CSS.escape(task.id)}"]`);
-                if (wrapper) wrapper.classList.add('gantt-milestone');
-            }
+            const wrapper = this.chartEl.querySelector(`.bar-wrapper[data-id="${CSS.escape(task.id)}"]`);
+            if (!wrapper) continue;
+            if (task.isMilestone) wrapper.classList.add('gantt-milestone');
+            if (task.isParent) wrapper.classList.add('gantt-parent-task');
         }
 
         // Apply resolved colors from Pretty Properties / valueStyles
         applyResolvedColors(this.chartEl, tasks);
+
+        // Override expected progress bars with property values (if configured)
+        applyExpectedProgress(this.chartEl, tasks);
 
         // Register hover preview and click handlers on rendered bar wrappers
         this.registerBarInteractions();
@@ -620,6 +708,10 @@ export class BasesGanttView extends BasesView {
                     void this.app.workspace.openLinkText(task.filePath, '', false);
                 });
 
+                row.addEventListener('mouseenter', (evt: MouseEvent) => {
+                    this.triggerHoverPreview(evt, task.filePath, row);
+                });
+
                 row.addEventListener('mouseover', () => {
                     const bar = this.chartEl.querySelector(
                         `.bar-wrapper[data-id="${CSS.escape(task.id)}"]`
@@ -635,7 +727,7 @@ export class BasesGanttView extends BasesView {
 
                 row.addEventListener('contextmenu', (evt: MouseEvent) => {
                     evt.preventDefault();
-                    showOpenFileMenu(this.app, task.filePath, evt);
+                    this.showTaskContextMenu(task, evt);
                 });
             }
         }
@@ -716,19 +808,30 @@ export class BasesGanttView extends BasesView {
             const ganttTask = this.findTask(taskId);
             if (!ganttTask || ganttTask.id.startsWith(GROUP_HEADER_PREFIX)) continue;
 
-            bar.addEventListener('mouseover', (evt: Event) => {
-                const mouseEvt = evt as MouseEvent;
-                if (!mouseEvt.ctrlKey && !mouseEvt.metaKey) return;
-                this.app.workspace.trigger('hover-link', {
-                    event: mouseEvt,
-                    source: BASES_GANTT_VIEW_ID,
-                    hoverParent: this.plugin,
-                    targetEl: this.chartEl,
-                    linktext: ganttTask.filePath,
-                    sourcePath: '/',
-                });
+            bar.addEventListener('mouseenter', (evt: Event) => {
+                this.triggerHoverPreview(evt as MouseEvent, ganttTask.filePath, bar as HTMLElement);
             });
+
+            bar.addEventListener('click', (evt: Event) => {
+                if (!this.plugin.settings.ganttDefaults.showObsidianPreview) return;
+                const mouseEvt = evt as MouseEvent;
+                mouseEvt.preventDefault();
+                mouseEvt.stopPropagation();
+                mouseEvt.stopImmediatePropagation();
+                this.triggerHoverPreview(mouseEvt, ganttTask.filePath, bar as HTMLElement);
+            }, { capture: true });
         }
+    }
+
+    private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
+        this.app.workspace.trigger('hover-link', {
+            event,
+            source: BASES_GANTT_VIEW_ID,
+            hoverParent: this.plugin,
+            targetEl,
+            linktext: filePath,
+            sourcePath: '/',
+        });
     }
 
     // ── Right-click context menus ─────────────────────────────────────────────
@@ -748,7 +851,7 @@ export class BasesGanttView extends BasesView {
                 if (taskId) {
                     const ganttTask = this.findTask(taskId);
                     if (ganttTask && !ganttTask.id.startsWith(GROUP_HEADER_PREFIX)) {
-                        showOpenFileMenu(this.app, ganttTask.filePath, evt);
+                        this.showTaskContextMenu(ganttTask, evt);
                         return;
                     }
                 }
@@ -776,32 +879,6 @@ export class BasesGanttView extends BasesView {
         });
 
         menu.showAtMouseEvent(evt);
-    }
-
-    // ── Click-to-create ────────────────────────────────────────────────────────
-
-    private createTaskAtDate(dateStr: string): void {
-        const config = this.getTaskMapperConfig();
-        if (!config.startProperty) {
-            new Notice('Configure a start date property first.');
-            return;
-        }
-        if (config.startProperty.startsWith('formula.')) {
-            new Notice('Cannot create tasks with formula date properties.');
-            return;
-        }
-
-        const parsed = parseObsidianDate(dateStr);
-        const formattedDate = parsed ? formatDateForFrontmatter(parsed) : dateStr;
-
-        const propName = this.extractPropertyName(config.startProperty);
-        void this.createFileForView('New task', (frontmatter: Record<string, unknown>) => {
-            frontmatter[propName] = formattedDate;
-            if (config.endProperty && !config.endProperty.startsWith('formula.')) {
-                const endPropName = this.extractPropertyName(config.endProperty);
-                frontmatter[endPropName] = formattedDate;
-            }
-        });
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -838,6 +915,208 @@ export class BasesGanttView extends BasesView {
             }
         });
     }
+
+    // ── Unified task context menu ──────────────────────────────────────────
+
+    private showTaskContextMenu(task: GanttTask, evt: MouseEvent): void {
+        const menu = new Menu();
+
+        addOpenFileMenuItems(this.app, task.filePath, menu, { includeOpen: true });
+
+        const config = this.getTaskMapperConfig();
+
+        // Parent management (only when WBS sidebar + parentProperty configured)
+        if (this.wbsSidebarActive && config.parentProperty) {
+            menu.addSeparator();
+            menu.addItem(item => {
+                item.setTitle('Set parent...')
+                    .setIcon('arrow-up')
+                    .onClick(() => {
+                        const candidates = this.getParentCandidates(task);
+                        new TaskPickerModal(
+                            this.app,
+                            candidates,
+                            'Select parent task',
+                            (selected) => {
+                                void this.setTaskParent(task.filePath, selected.filePath);
+                            },
+                        ).open();
+                    });
+            });
+            if (task.parentPath) {
+                menu.addItem(item => {
+                    item.setTitle('Remove parent')
+                        .setIcon('x')
+                        .onClick(() => {
+                            void this.removeTaskParent(task.filePath);
+                        });
+                });
+            }
+        }
+
+        // Dependency management (only when dependenciesProperty configured)
+        if (config.dependenciesProperty) {
+            menu.addSeparator();
+            menu.addItem(item => {
+                item.setTitle('Add dependency...')
+                    .setIcon('link')
+                    .onClick(() => {
+                        const candidates = this.getDependencyCandidates(task);
+                        new TaskPickerModal(
+                            this.app,
+                            candidates,
+                            'Select dependency',
+                            (selected) => {
+                                void this.addDependency(task.filePath, selected.filePath);
+                            },
+                        ).open();
+                    });
+            });
+
+            const currentDeps = this.getCurrentDependencies(task);
+            for (const dep of currentDeps) {
+                menu.addItem(item => {
+                    item.setTitle(`Remove dep: ${dep.name}`)
+                        .setIcon('unlink')
+                        .onClick(() => {
+                            void this.removeDependency(task.filePath, dep.filePath);
+                        });
+                });
+            }
+        }
+
+        menu.showAtMouseEvent(evt);
+    }
+
+    // ── Parent helpers ───────────────────────────────────────────────────
+
+    private getParentCandidates(task: GanttTask): GanttTask[] {
+        // Exclude: self, current descendants (to prevent circular refs)
+        const descendants = new Set<string>();
+        const collectDescendants = (filePath: string) => {
+            for (const t of this.currentTasks) {
+                if (t.parentPath === filePath && !descendants.has(t.filePath)) {
+                    descendants.add(t.filePath);
+                    collectDescendants(t.filePath);
+                }
+            }
+        };
+        collectDescendants(task.filePath);
+
+        return this.currentTasks.filter(t =>
+            t.filePath !== task.filePath &&
+            !t.id.startsWith(GROUP_HEADER_PREFIX) &&
+            !descendants.has(t.filePath),
+        );
+    }
+
+    private async setTaskParent(taskPath: string, parentPath: string): Promise<void> {
+        const config = this.getTaskMapperConfig();
+        if (!config.parentProperty) return;
+        const propName = this.extractPropertyName(config.parentProperty);
+        const parentBasename = this.getFileBasename(parentPath);
+        await this.writeFrontmatter(taskPath, {
+            [propName]: `[[${parentBasename}]]`,
+        });
+    }
+
+    private async removeTaskParent(taskPath: string): Promise<void> {
+        const config = this.getTaskMapperConfig();
+        if (!config.parentProperty) return;
+        const propName = this.extractPropertyName(config.parentProperty);
+        const file = this.app.vault.getFileByPath(taskPath);
+        if (!file) return;
+        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+            delete fm[propName];
+        });
+    }
+
+    // ── Dependency helpers ───────────────────────────────────────────────
+
+    private getDependencyCandidates(task: GanttTask): GanttTask[] {
+        const currentDepIds = this.getCurrentDependencyIds(task);
+        return this.currentTasks.filter(t =>
+            t.filePath !== task.filePath &&
+            !t.id.startsWith(GROUP_HEADER_PREFIX) &&
+            !currentDepIds.has(t.id),
+        );
+    }
+
+    private getCurrentDependencies(task: GanttTask): GanttTask[] {
+        const depIds = this.getCurrentDependencyIds(task);
+        return [...depIds]
+            .map(id => this.taskMap.get(id))
+            .filter((t): t is GanttTask => t != null);
+    }
+
+    private getCurrentDependencyIds(task: GanttTask): Set<string> {
+        const ids = new Set<string>();
+        if (!task.dependencies) return ids;
+        const str = typeof task.dependencies === 'string'
+            ? task.dependencies
+            : (task.dependencies ?? []).join(',');
+        for (const part of str.split(',')) {
+            const id = part.trim();
+            if (id) ids.add(id);
+        }
+        return ids;
+    }
+
+    private async addDependency(taskPath: string, depPath: string): Promise<void> {
+        const config = this.getTaskMapperConfig();
+        if (!config.dependenciesProperty) return;
+        const propName = this.extractPropertyName(config.dependenciesProperty);
+        const depBasename = this.getFileBasename(depPath);
+        const file = this.app.vault.getFileByPath(taskPath);
+        if (!file) return;
+
+        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+            const deps = this.parseDependencyNames(fm[propName] as string | undefined);
+            if (!deps.includes(depBasename)) {
+                deps.push(depBasename);
+            }
+            fm[propName] = deps.map(d => `[[${d}]]`).join(', ');
+        });
+    }
+
+    private async removeDependency(taskPath: string, depPath: string): Promise<void> {
+        const config = this.getTaskMapperConfig();
+        if (!config.dependenciesProperty) return;
+        const propName = this.extractPropertyName(config.dependenciesProperty);
+        const depBasename = this.getFileBasename(depPath);
+        const file = this.app.vault.getFileByPath(taskPath);
+        if (!file) return;
+
+        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+            const deps = this.parseDependencyNames(fm[propName] as string | undefined);
+            const filtered = deps.filter(d => d !== depBasename);
+            if (filtered.length > 0) {
+                fm[propName] = filtered.map(d => `[[${d}]]`).join(', ');
+            } else {
+                delete fm[propName];
+            }
+        });
+    }
+
+    private parseDependencyNames(raw: string | undefined): string[] {
+        if (!raw) return [];
+        const wikiLinkRe = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+        const names: string[] = [];
+        let m;
+        while ((m = wikiLinkRe.exec(raw)) !== null) {
+            names.push(m[1]!.trim());
+        }
+        if (names.length === 0 && !raw.includes('[[')) {
+            return raw.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        return names;
+    }
+
+    private getFileBasename(filePath: string): string {
+        return filePath.replace(/\.[^.]+$/, '').split('/').pop() || filePath;
+    }
+
+    // ── Empty state ──────────────────────────────────────────────────────
 
     private renderEmptyState(config: TaskMapperConfig): void {
         if (this.gantt) {
@@ -922,6 +1201,37 @@ function getPrettyPropertiesColor(propName: string, value: string): string | nul
     return null;
 }
 
+// ── Task picker modal ────────────────────────────────────────────────────────
+
+class TaskPickerModal extends FuzzySuggestModal<GanttTask> {
+    private items: GanttTask[];
+    private onChoose: (task: GanttTask) => void;
+
+    constructor(
+        app: App,
+        items: GanttTask[],
+        placeholder: string,
+        onChoose: (task: GanttTask) => void,
+    ) {
+        super(app);
+        this.items = items;
+        this.onChoose = onChoose;
+        this.setPlaceholder(placeholder);
+    }
+
+    getItems(): GanttTask[] {
+        return this.items;
+    }
+
+    getItemText(task: GanttTask): string {
+        return task.name;
+    }
+
+    onChooseItem(task: GanttTask): void {
+        this.onChoose(task);
+    }
+}
+
 // ── View registration ────────────────────────────────────────────────────────
 
 export function createGanttViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
@@ -976,6 +1286,15 @@ export function getGanttViewOptions(config: BasesViewConfig): BasesAllOptions[] 
                     displayName: 'Progress',
                     placeholder: 'Select property...',
                     shouldHide: () => !(config.get('showProgress') as boolean),
+                },
+                {
+                    type: 'property',
+                    key: 'expectedProgress',
+                    displayName: 'Expected progress',
+                    placeholder: 'Time-based (default)',
+                    shouldHide: () =>
+                        !(config.get('showProgress') as boolean) ||
+                        !(config.get('showExpectedProgress') as boolean),
                 },
                 {
                     type: 'property',

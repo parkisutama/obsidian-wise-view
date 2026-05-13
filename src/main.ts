@@ -51,15 +51,31 @@ export default class PlannerPlugin extends Plugin {
       createGanttViewRegistration(this)
     );
 
-    // Register hover-link source so Obsidian Page Preview responds to Gantt bar
-    // hovers without requiring the user to hold a modifier key (defaultMod:false).
+    this.registerHoverPreviewSources();
+
+    // Register Gantt command palette commands
+    this.registerGanttCommands();
+  }
+
+  /**
+   * Register hover-link sources so Obsidian Page Preview can attribute
+   * hover events from all Wise View surfaces consistently.
+   */
+  private registerHoverPreviewSources(): void {
+    this.registerHoverLinkSource(BASES_KANBAN_VIEW_ID, {
+      display: 'Kanban',
+      defaultMod: false,
+    });
+
+    this.registerHoverLinkSource(BASES_CALENDAR_VIEW_ID, {
+      display: 'Calendar',
+      defaultMod: false,
+    });
+
     this.registerHoverLinkSource(BASES_GANTT_VIEW_ID, {
       display: 'Gantt',
       defaultMod: false,
     });
-
-    // Register Gantt command palette commands
-    this.registerGanttCommands();
   }
 
   /**
@@ -163,4 +179,3 @@ export default class PlannerPlugin extends Plugin {
   }
 
 }
-

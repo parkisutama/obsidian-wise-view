@@ -44,7 +44,6 @@ export class BasesKanbanView extends BasesView {
   private containerEl: HTMLElement;
   private boardEl: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private colorMapCache: Record<string, string> = {};
 
   // Drag state
   private draggedCardPath: string | null = null;
@@ -160,14 +159,6 @@ export class BasesKanbanView extends BasesView {
     const value = this.config.get('hideEmptyColumns') as string | boolean | undefined;
     if (typeof value === 'string') return value === 'true';
     return value ?? this.plugin.settings.kanbanDefaults.hideEmptyColumns;
-  }
-
-  private getEnableSearch(): boolean {
-    const value = this.config.get('enableSearch') as string | boolean | undefined;
-    if (typeof value === 'string') {
-      return value === 'true';
-    }
-    return value ?? false;
   }
 
   private getFreezeHeaders(): FreezeHeaders {
@@ -495,8 +486,6 @@ export class BasesKanbanView extends BasesView {
     }
 
     // Build color map for colorBy field
-    this.buildColorMapCache();
-
     // Check if swimlanes are enabled
     const swimlaneBy = this.getSwimlaneBy();
 
@@ -509,11 +498,6 @@ export class BasesKanbanView extends BasesView {
       // Render columns
       this.renderColumns(groups);
     }
-  }
-
-  private buildColorMapCache(): void {
-    // Color map no longer needed — stringToColor handles deterministic coloring per value.
-    this.colorMapCache = {};
   }
 
   private getEntryColor(entry: BasesEntry): string {
@@ -2700,7 +2684,7 @@ export class BasesKanbanView extends BasesView {
   private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
     this.plugin.app.workspace.trigger('hover-link', {
       event,
-      source: 'planner-kanban',
+      source: BASES_KANBAN_VIEW_ID,
       hoverParent: this.plugin,
       targetEl,
       linktext: filePath,

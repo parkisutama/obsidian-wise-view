@@ -1,0 +1,16 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"extends": ["ultracite/biome/core"],
+	"linter": {
+		"rules": {
+			"a11y": "warn",
+			"complexity": "warn",
+			"correctness": "warn",
+			"nursery": "warn",
+			"performance": "warn",
+			"security": "warn",
+			"style": "warn",
+			"suspicious": "warn"
+		}
+	}
+}

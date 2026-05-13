@@ -26,6 +26,10 @@ export interface GanttTask extends FrappeTask {
     depth?: number;
     /** Resolved color from Pretty Properties / valueStyles / hash fallback. */
     resolvedColor?: string | null;
+    /** Expected progress from property (overrides frappe time-based). */
+    expectedProgress?: number;
+    /** Whether this task has children in the WBS hierarchy. */
+    isParent?: boolean;
 }
 
 /** Configuration derived from view options for mapping entries to tasks. */
@@ -39,6 +43,8 @@ export interface TaskMapperConfig {
     /** Optional parent property for WBS hierarchy (Gantt WBS only). */
     parentProperty?: BasesPropertyId | null;
     showProgress: boolean;
+    /** Optional expected-progress property (overrides frappe time-based). */
+    expectedProgressProperty?: BasesPropertyId | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -244,6 +250,16 @@ export function mapEntriesToTasks(
             }
         }
 
+        // Expected progress (from separate property, overrides time-based)
+        let expectedProgress: number | undefined;
+        if (config.showProgress && config.expectedProgressProperty) {
+            const rawExp = extractRawValue(entry.getValue(config.expectedProgressProperty));
+            if (rawExp != null) {
+                const num = parseFloat(rawExp);
+                if (!isNaN(num)) expectedProgress = Math.max(0, Math.min(100, num));
+            }
+        }
+
         // Dependencies (wiki-links or plain names)
         let dependencies = '';
         if (config.dependenciesProperty) {
@@ -316,6 +332,7 @@ export function mapEntriesToTasks(
             isMilestone,
             parentPath,
             resolvedColor,
+            expectedProgress,
         });
     }
 
@@ -394,6 +411,24 @@ export function applyResolvedColors(containerEl: HTMLElement, tasks: GanttTask[]
             // eslint-disable-next-line obsidianmd/no-static-styles-assignment -- SVG inline style for dynamic color
             progressRect.style.filter = 'brightness(0.85)';
         }
+    }
+}
+
+/**
+ * Override frappe-gantt's time-based expected progress bars with property values.
+ * Only affects tasks that have an `expectedProgress` value set.
+ */
+export function applyExpectedProgress(containerEl: HTMLElement, tasks: GanttTask[]): void {
+    for (const task of tasks) {
+        if (task.expectedProgress == null) continue;
+        const wrapper = containerEl.querySelector(`.bar-wrapper[data-id="${CSS.escape(task.id)}"]`);
+        if (!wrapper) continue;
+        const bar = wrapper.querySelector('.bar');
+        const expectedBar = wrapper.querySelector('.bar-expected-progress');
+        if (!bar || !expectedBar) continue;
+        const barWidth = parseFloat(bar.getAttribute('width') || '0');
+        const newWidth = barWidth * (Math.max(0, Math.min(100, task.expectedProgress)) / 100);
+        expectedBar.setAttribute('width', String(newWidth));
     }
 }
 

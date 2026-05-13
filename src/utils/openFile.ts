@@ -8,15 +8,30 @@ export function openFileInNewTab(app: App, path: string): void {
     void app.workspace.openLinkText(path, '', 'tab');
 }
 
-/**
- * Show a right-click context menu with file open location options.
- * Centralised for all Planner views.
- */
-export function showOpenFileMenu(app: App, path: string, event: MouseEvent): void {
-    const menu = new Menu();
+function openFileInSplit(app: App, path: string, direction: 'vertical' | 'horizontal', before?: boolean): void {
+    const activeLeaf = app.workspace.getLeaf(false);
+    const leaf = app.workspace.createLeafBySplit(activeLeaf, direction, before);
+    const file = app.vault.getAbstractFileByPath(path);
+    if (file instanceof TFile) {
+        void leaf.openFile(file);
+    }
+}
+
+export function addOpenFileMenuItems(
+    app: App,
+    path: string,
+    menu: Menu,
+    options: { includeOpen?: boolean } = {},
+): void {
+    if (options.includeOpen) {
+        menu.addItem(item =>
+            item.setTitle('Open').setIcon('file')
+                .onClick(() => void app.workspace.openLinkText(path, '', false))
+        );
+    }
 
     menu.addItem(item =>
-        item.setTitle('Open in new tab').setIcon('arrow-right')
+        item.setTitle('Open in new tab').setIcon('file-plus')
             .onClick(() => void app.workspace.openLinkText(path, '', 'tab'))
     );
 
@@ -26,33 +41,32 @@ export function showOpenFileMenu(app: App, path: string, event: MouseEvent): voi
     );
 
     menu.addItem(item =>
+        item.setTitle('Open above').setIcon('separator-horizontal')
+            .onClick(() => openFileInSplit(app, path, 'horizontal', true))
+    );
+
+    menu.addItem(item =>
         item.setTitle('Open below').setIcon('separator-horizontal')
-            .onClick(() => {
-                const activeLeaf = app.workspace.getLeaf(false);
-                const leaf = app.workspace.createLeafBySplit(activeLeaf, 'horizontal');
-                const file = app.vault.getAbstractFileByPath(path);
-                if (file instanceof TFile) {
-                    void leaf.openFile(file);
-                }
-            })
+            .onClick(() => openFileInSplit(app, path, 'horizontal'))
     );
 
     menu.addItem(item =>
         item.setTitle('Open to the left').setIcon('separator-vertical')
-            .onClick(() => {
-                const activeLeaf = app.workspace.getLeaf(false);
-                const leaf = app.workspace.createLeafBySplit(activeLeaf, 'vertical', true);
-                const file = app.vault.getAbstractFileByPath(path);
-                if (file instanceof TFile) {
-                    void leaf.openFile(file);
-                }
-            })
+            .onClick(() => openFileInSplit(app, path, 'vertical', true))
     );
 
     menu.addItem(item =>
         item.setTitle('Open in new window').setIcon('picture-in-picture-2')
             .onClick(() => void app.workspace.openLinkText(path, '', 'window'))
     );
+}
 
+/**
+ * Show a right-click context menu with file open location options.
+ * Centralised for all Planner views.
+ */
+export function showOpenFileMenu(app: App, path: string, event: MouseEvent): void {
+    const menu = new Menu();
+    addOpenFileMenuItems(app, path, menu);
     menu.showAtMouseEvent(event);
 }

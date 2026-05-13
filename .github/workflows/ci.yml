@@ -11,14 +11,13 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  run_install: false
             - uses: actions/setup-node@v4
               with:
                   node-version: "24.x"
-                  cache: "npm"
-            - run: npm ci
-            - name: Typecheck
-              run: npm run typecheck
-            - name: Lint
-              run: npm run lint
-            - name: Build
-              run: npm run build
+                  cache: "pnpm"
+            - run: pnpm install --frozen-lockfile
+            - name: Check
+              run: pnpm run check:ci

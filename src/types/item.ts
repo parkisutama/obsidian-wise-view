@@ -33,17 +33,6 @@ export interface PlannerItem {
   date_end_actual?: string;       // When you actually finished the action
   all_day?: boolean;
 
-  // Recurrence (iCal RRULE compatible)
-  repeat_frequency?: RepeatFrequency;
-  repeat_interval?: number;
-  repeat_until?: string;
-  repeat_count?: number;
-  repeat_byday?: DayOfWeek[];
-  repeat_bymonth?: number[];
-  repeat_bymonthday?: number[];
-  repeat_bysetpos?: number;
-  repeat_completed_dates?: string[];
-
   // Hierarchy & Dependencies
   parent?: string;
   children?: string[];
@@ -61,23 +50,12 @@ export interface PlannerItem {
 export type ItemFrontmatter = Omit<PlannerItem, 'path'>;
 
 /**
- * Repeat frequency options
- */
-export type RepeatFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
-
-/**
- * Days of the week (iCal format)
- */
-export type DayOfWeek = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU';
-
-/**
  * Computed fields (calculated at runtime, not stored)
  */
 export interface ComputedItemFields {
   blocking: string[];           // Items that have this item in their blocked_by
   duration: number | null;      // date_end_scheduled - date_start_scheduled in milliseconds
   is_overdue: boolean;          // date_end_scheduled < now AND status NOT IN completed_statuses
-  next_occurrence: string | null; // Next date from RRULE after today
 }
 
 /**
@@ -110,16 +88,6 @@ export const FRONTMATTER_FIELD_ORDER: (keyof ItemFrontmatter)[] = [
   'date_end_scheduled',
   'date_end_actual',
   'all_day',
-  // Recurrence
-  'repeat_frequency',
-  'repeat_interval',
-  'repeat_until',
-  'repeat_count',
-  'repeat_byday',
-  'repeat_bymonth',
-  'repeat_bymonthday',
-  'repeat_bysetpos',
-  'repeat_completed_dates',
   // Hierarchy & Dependencies
   'parent',
   'children',
@@ -150,9 +118,3 @@ export function isParent(item: PlannerItem): boolean {
   return (item.children?.length ?? 0) > 0;
 }
 
-/**
- * Check if an item is recurring
- */
-export function isRecurring(item: PlannerItem): boolean {
-  return item.repeat_frequency !== undefined;
-}

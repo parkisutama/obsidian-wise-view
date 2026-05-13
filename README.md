@@ -53,8 +53,6 @@ whole project is then governed by GPL v3. The original MIT copyright notice is p
   glance.
 - **Kanban view** — Drag-and-drop board. Group by any frontmatter property (status, priority,
   category, etc.).
-- **Timeline view** — Chronological visualization powered by
-  [Markwhen](https://markwhen.com/), with zoom, pan, and color-coding.
 - **Gantt view** *(coming soon)* — Dependency-aware bar chart powered by
   [Frappe Gantt](https://frappe.io/gantt), with progress tracking.
 
@@ -77,8 +75,8 @@ write no extra data.
 1. Run the production build:
 
    ```bash
-   npm install
-   npm run build
+   pnpm install
+   pnpm run build
    ```
 
 2. Copy `main.js`, `manifest.json`, and `styles.css` to your vault:
@@ -122,13 +120,13 @@ progress: 40
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Watch mode (rebuilds on save)
-npm run dev
+pnpm run dev
 
 # Production build
-npm run build
+pnpm run build
 ```
 
 The build output is `main.js` at the project root.
@@ -156,7 +154,6 @@ See the [LICENSE](LICENSE) file for the full license text.
 | Dependency | License | Notes |
 | --- | --- | --- |
 | [FullCalendar](https://fullcalendar.io/) | MIT | Calendar view |
-| [Markwhen](https://markwhen.com/) | MIT | Timeline view |
 | [Frappe Gantt](https://github.com/frappe/gantt) | MIT | Gantt view (planned) |
 | [Obsidian API](https://obsidian.md/) | Custom | Obsidian plugin system |
 
@@ -172,4 +169,4 @@ See the [LICENSE](LICENSE) file for the full license text.
   [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt), which demonstrated a
   clean pattern for integrating Frappe Gantt into Obsidian Bases.
 - The [Obsidian](https://obsidian.md/) team for building the Bases API.
-- The [Markwhen](https://markwhen.com/) and [FullCalendar](https://fullcalendar.io/) projects.
+- [FullCalendar](https://fullcalendar.io/) projects.

@@ -3,7 +3,7 @@ name: Release Obsidian plugin
 on:
     push:
         tags:
-            - "*"
+            - "v*.*.*"
 
 permissions:
     contents: write
@@ -14,16 +14,24 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
+            - uses: pnpm/action-setup@v4
+              with:
+                  run_install: false
+
             - name: Use Node.js
               uses: actions/setup-node@v4
               with:
                   node-version: "24.x"
-                  cache: "npm"
+                  cache: "pnpm"
 
-            - name: Build plugin
-              run: |
-                  npm ci
-                  npm run build
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Check and build plugin
+              run: pnpm run check:ci
+
+            - name: Package plugin zip
+              run: zip wise-view.zip main.js manifest.json styles.css
 
             - name: Create release
               env:
@@ -34,4 +42,4 @@ jobs:
                   gh release create "$tag" \
                     --title="$tag" \
                     --generate-notes \
-                    main.js manifest.json styles.css
+                    main.js manifest.json styles.css wise-view.zip

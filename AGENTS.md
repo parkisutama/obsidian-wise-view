@@ -15,7 +15,7 @@ Wise View is a task-management-agnostic view enrichment plugin for Obsidian Base
 This project is a heavily modified derivative work. When generating or modifying code, you must respect the existing architectural patterns derived from these sources:
 
 1. **Base Architecture (Obsidian Planner):** - Origin: [SawyerRensel/Planner](https://github.com/anareaty/pretty-properties)
-   - Retained: Calendar (FullCalendar), Kanban, Timeline (Markwhen) view implementations.
+   - Retained: Calendar (FullCalendar), Kanban view implementations.
    - Removed: Task list view, item modals, quick capture, `chrono-node` (date parsing), `rrule` (recurrence), and blocking dependencies.
 2. **Gantt Integration:**
    - Origin: Adapted from [lhassa8/obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt).

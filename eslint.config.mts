@@ -1,37 +1,64 @@
-import tseslint, { type ConfigWithExtends } from 'typescript-eslint';
+import json from "@eslint/json";
+import tsParser from "@typescript-eslint/parser";
+import { defineConfig } from "eslint/config";
 import obsidianmd from "eslint-plugin-obsidianmd";
-import globals from "globals";
-import { globalIgnores } from "eslint/config";
+import { PlainTextParser } from "eslint-plugin-obsidianmd/dist/lib/plainTextParser.js";
 
-export default tseslint.config(
+const obsidianRules = Object.fromEntries(
+	Object.entries(obsidianmd.configs.recommended).filter(([ruleId]) =>
+		ruleId.startsWith("obsidianmd/")
+	),
+);
+
+export default defineConfig([
 	{
+		ignores: [
+			"node_modules/**",
+			"dist/**",
+			"main.js",
+			"styles.css",
+			"lint-output.json",
+			"versions.json",
+		],
+	},
+	{
+		files: ["src/**/*.ts"],
 		languageOptions: {
-			globals: {
-				...globals.browser,
-			},
+			parser: tsParser,
 			parserOptions: {
-				projectService: {
-					allowDefaultProject: [
-						'eslint.config.js',
-						'manifest.json'
-					]
-				},
+				projectService: true,
 				tsconfigRootDir: import.meta.dirname,
-				extraFileExtensions: ['.json']
 			},
 		},
+		plugins: {
+			obsidianmd,
+		},
+		rules: obsidianRules,
 	},
-	...(obsidianmd.configs!.recommended as Iterable<ConfigWithExtends>),
-	globalIgnores([
-		"node_modules",
-		"dist",
-		"esbuild.config.mjs",
-		"eslint.config.js",
-		"version-bump.mjs",
-		"versions.json",
-		"main.js",
-		"src/services/LpcHost.ts",
-		"src/services/MarkwhenAdapter.ts",
-		"src/views/BasesTimelineView.ts",
-	]),
-);
+	{
+		files: ["manifest.json"],
+		language: "json/json",
+		plugins: {
+			json,
+			obsidianmd,
+		},
+		rules: {
+			"obsidianmd/validate-manifest": "error",
+		},
+	},
+	{
+		files: ["LICENSE"],
+		languageOptions: {
+			parser: PlainTextParser,
+			parserOptions: {
+				extraFileExtensions: [""],
+			},
+		},
+		plugins: {
+			obsidianmd,
+		},
+		rules: {
+			"obsidianmd/validate-license": "error",
+		},
+	},
+]);
