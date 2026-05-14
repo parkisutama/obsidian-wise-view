@@ -12,13 +12,12 @@ if (!prod) {
 	dotenv.config();
 }
 
-// Plugin to load HTML files as strings (timeline HTML is bundled inline for mobile compatibility)
+// Plugin to load HTML files as strings for mobile-compatible bundled assets.
 const htmlPlugin = {
 	name: "html-loader",
 	setup(build) {
 		build.onLoad({ filter: /\.html$/ }, async (args) => {
-			// Bundle all HTML files inline, including timeline HTML
-			// This is required for mobile compatibility where runtime file loading doesn't work
+			// Bundle HTML files inline for mobile compatibility where runtime file loading doesn't work.
 			const html = await fs.promises.readFile(args.path, "utf8");
 			return {
 				contents: `export default ${JSON.stringify(html)};`,
@@ -29,6 +28,40 @@ const htmlPlugin = {
 };
 
 // Plugin to extract and merge CSS into styles.css
+function scopeFrappeGanttCss(css) {
+	const scoped = css
+		.replace(/:root/g, ".bases-gantt-view")
+		.replace(/html\[data-theme=dark\]/g, "body.theme-dark .bases-gantt-view")
+		.replace(/html\[data-theme="dark"\]/g, "body.theme-dark .bases-gantt-view");
+	const themeVars = {
+		"--g-arrow-color": "var(--text-muted)",
+		"--g-bar-color": "var(--interactive-accent)",
+		"--g-bar-border": "var(--background-modifier-border)",
+		"--g-tick-color-thick": "var(--background-modifier-border-hover)",
+		"--g-tick-color": "var(--background-modifier-border)",
+		"--g-actions-background": "var(--background-secondary)",
+		"--g-border-color": "var(--background-modifier-border)",
+		"--g-text-muted": "var(--text-muted)",
+		"--g-text-light": "var(--text-on-accent)",
+		"--g-text-dark": "var(--text-normal)",
+		"--g-progress-color": "var(--interactive-accent-hover)",
+		"--g-handle-color": "var(--text-normal)",
+		"--g-weekend-label-color": "var(--background-secondary-alt)",
+		"--g-expected-progress": "var(--background-modifier-hover)",
+		"--g-header-background": "var(--background-primary)",
+		"--g-row-color": "var(--background-primary)",
+		"--g-row-border-color": "var(--background-modifier-border)",
+		"--g-today-highlight": "var(--interactive-accent)",
+		"--g-popup-actions": "var(--background-secondary)",
+		"--g-weekend-highlight-color": "var(--background-secondary)",
+	};
+	return Object.entries(themeVars).reduce(
+		(result, [name, value]) =>
+			result.replace(new RegExp(`${name}:\\s*[^;}}]+`, "g"), `${name}: ${value}`),
+		scoped,
+	);
+}
+
 const cssPlugin = {
 	name: "css-merge",
 	setup(build) {
@@ -54,15 +87,19 @@ const cssPlugin = {
 			const markerIdx = existingStyles.indexOf(bundleMarker);
 			if (markerIdx >= 0) {
 				existingStyles = existingStyles.substring(0, markerIdx).trimEnd();
-			}
+				}
 
-			// Always inject frappe-gantt base CSS from node_modules
-			const frappeGanttCssPath = path.resolve("node_modules/frappe-gantt/dist/frappe-gantt.css");
-			if (fs.existsSync(frappeGanttCssPath)) {
-				const frappeCSS = await fs.promises.readFile(frappeGanttCssPath, "utf8");
-				const hasIt = cssContents.some(c => c.includes("From: frappe-gantt.css"));
-				if (!hasIt) {
-					cssContents.unshift(`/* From: frappe-gantt.css */\n${frappeCSS}`);
+				// Always inject frappe-gantt base CSS from node_modules
+				const frappeGanttCssPath = path.resolve(
+					"node_modules/frappe-gantt/dist/frappe-gantt.css",
+				);
+				if (fs.existsSync(frappeGanttCssPath)) {
+					const frappeCSS = scopeFrappeGanttCss(
+						await fs.promises.readFile(frappeGanttCssPath, "utf8"),
+					);
+					const hasIt = cssContents.some(c => c.includes("From: frappe-gantt.css"));
+					if (!hasIt) {
+						cssContents.unshift(`/* From: frappe-gantt.css */\n${frappeCSS}`);
 				}
 			}
 

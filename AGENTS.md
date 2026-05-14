@@ -3,7 +3,7 @@
 ## Project Context & Identity
 
 You are an expert TypeScript developer and Obsidian API specialist assisting in the development of **Wise View**, an Obsidian Community Plugin.
-Wise View is a task-management-agnostic view enrichment plugin for Obsidian Bases. It provides richer data visualizations (Calendar, Kanban, Timeline, Gantt) without enforcing any specific task management workflow.
+Wise View is a task-management-agnostic view enrichment plugin for Obsidian Bases. It provides richer data visualizations (Calendar, Kanban, Gantt) without enforcing any specific task management workflow.
 
 ### Core Philosophy
 
@@ -34,7 +34,6 @@ This project is a heavily modified derivative work. When generating or modifying
   - `obsidian` (Obsidian Plugin API)
   - `frappe-gantt` (Gantt chart visualization)
   - `fullcalendar` (Calendar visualization)
-  - `markwhen` (Timeline visualization)
 
 ## AI Agent Directives
 

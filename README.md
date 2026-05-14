@@ -2,7 +2,7 @@
 
 > **A focused, task-management-agnostic view enrichment plugin for Obsidian Bases.**
 
-Wise View adds Calendar, Kanban, Timeline, and Gantt views directly into Obsidian Bases — without
+Wise View adds Calendar, Kanban, and Gantt views directly into Obsidian Bases — without
 any opinion about *how* you manage your tasks or which plugin you use for that.  Your data model is
 yours. This plugin just gives you richer ways to look at it.
 
@@ -32,8 +32,7 @@ The original Planner is a full-featured planning and task management plugin. Wis
 | Task management workflow & statuses | ✗ Removed |
 | Calendar view | ✓ Kept |
 | Kanban view | ✓ Kept |
-| Timeline view (Markwhen) | ✓ Kept |
-| Gantt view (Frappe Gantt) | ✨ Added (planned) |
+| Gantt view (Frappe Gantt) | Added |
 
 ### Gantt code attribution
 
@@ -50,11 +49,11 @@ whole project is then governed by GPL v3. The original MIT copyright notice is p
 ## Features
 
 - **Calendar view** — Month, Week, Day, and List layouts. Open and navigate your dated notes at a
-  glance.
+  glance. See the [Calendar View documentation](docs/calendar-view.md).
 - **Kanban view** — Drag-and-drop board. Group by any frontmatter property (status, priority,
   category, etc.).
-- **Gantt view** *(coming soon)* — Dependency-aware bar chart powered by
-  [Frappe Gantt](https://frappe.io/gantt), with progress tracking.
+- **Gantt view** — Date-range chart powered by [Frappe Gantt](https://frappe.io/gantt).
+  Map existing start, end, progress, dependency, parent, and color properties from your notes.
 
 All views are **Obsidian Bases-native**: they read your notes' frontmatter properties directly and
 write no extra data.
@@ -64,7 +63,9 @@ write no extra data.
 ## Requirements
 
 - Obsidian **1.10.0** or later (requires Bases API)
-- Desktop or mobile (set `isDesktopOnly: false` — mobile support is best-effort)
+- Desktop is supported.
+- Mobile is enabled (`isDesktopOnly: false`) and should be treated as best-effort until Android
+  and iOS testing is complete.
 
 ---
 
@@ -82,7 +83,7 @@ write no extra data.
 2. Copy `main.js`, `manifest.json`, and `styles.css` to your vault:
 
    ```text
-   <Vault>/.obsidian/plugins/obsidian-wise-view/
+   <Vault>/.obsidian/plugins/wise-view/
    ```
 
 3. Enable the plugin in **Settings → Community plugins**.
@@ -96,7 +97,7 @@ feature set.
 
 ## Usage
 
-Open any folder as a Base (right-click → **New base from folder**), then switch the view type
+Open any folder as a Base (right-click → **New base from folder**), then select the view type
 dropdown to **Calendar**, **Kanban**, or **Gantt**.
 
 ### Recommended frontmatter shape
@@ -113,6 +114,44 @@ date_end: 2026-03-31
 progress: 40
 ---
 ```
+
+---
+
+## Platform support
+
+Wise View is designed for Obsidian desktop and does not use Electron-only runtime APIs in the
+plugin source. Mobile support is enabled for beta testing, but complex Calendar, Kanban, and Gantt
+interactions may need platform-specific testing on Android and iOS.
+
+---
+
+## Privacy and data handling
+
+Wise View reads and writes notes through Obsidian's vault APIs. It does not use network requests,
+telemetry, analytics, account sign-in, payments, ads, or files outside your vault.
+
+---
+
+## Known limitations
+
+- Wise View requires the Obsidian Bases API, so older Obsidian versions are not supported.
+- Gantt dependencies and WBS parent fields are read from existing frontmatter for visualization.
+  The context menu does not edit dependency or parent fields.
+- Calendar and Gantt date or progress changes write only to the mapped frontmatter properties when
+  you directly create, drag, or edit an item in the view.
+- Mobile support is best-effort until tested on Android and iOS.
+
+---
+
+## Troubleshooting
+
+- If the plugin does not load, confirm `main.js`, `manifest.json`, and `styles.css` are in
+  `<Vault>/.obsidian/plugins/wise-view/`.
+- If the view types do not appear, disable and re-enable Wise View in **Settings → Community
+  plugins**.
+- If a Base shows no entries, confirm your notes have values in the configured frontmatter
+  properties.
+- If you are testing a local build, run `pnpm run build` before copying release artifacts.
 
 ---
 
@@ -154,7 +193,7 @@ See the [LICENSE](LICENSE) file for the full license text.
 | Dependency | License | Notes |
 | --- | --- | --- |
 | [FullCalendar](https://fullcalendar.io/) | MIT | Calendar view |
-| [Frappe Gantt](https://github.com/frappe/gantt) | MIT | Gantt view (planned) |
+| [Frappe Gantt](https://github.com/frappe/gantt) | MIT | Gantt view |
 | [Obsidian API](https://obsidian.md/) | Custom | Obsidian plugin system |
 
 ---

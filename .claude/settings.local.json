@@ -4,7 +4,8 @@
       "Bash(npm install)",
       "Bash(npx tsc --noEmit)",
       "Bash(npm run lint)",
-      "Bash(node esbuild.config.mjs production)"
+      "Bash(node esbuild.config.mjs production)",
+      "Bash(wc -l /c/GitHub/obsidian-wise-view/src/views/*.ts)"
     ]
   }
 }

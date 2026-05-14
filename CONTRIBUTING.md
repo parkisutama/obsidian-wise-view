@@ -74,11 +74,11 @@ Review the resulting diff before tagging or pushing.
 
 ## Release
 
-Releases are created by pushing a release tag that matches `v*.*.*`.
+Releases are created by pushing a release tag that exactly matches `manifest.json.version`.
 
 ```bash
 git push origin main
-git push origin v1.2.3
+git push origin 1.2.3
 ```
 
 The GitHub release workflow installs with `pnpm install --frozen-lockfile`, runs `pnpm run check:ci`, uploads `main.js`, `manifest.json`, `styles.css`, and attaches `wise-view.zip`.
