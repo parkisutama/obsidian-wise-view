@@ -28,6 +28,10 @@ export interface GanttTask extends FrappeTask {
     resolvedColor?: string | null;
     /** Expected progress from property (overrides frappe time-based). */
     expectedProgress?: number;
+    /** Raw actual progress value from frontmatter, not clamped to a percentage. */
+    actualProgressValue?: number;
+    /** Raw expected progress value from frontmatter, not clamped to a percentage. */
+    expectedProgressValue?: number;
     /** Whether this task has children in the WBS hierarchy. */
     isParent?: boolean;
 }
@@ -241,23 +245,34 @@ export function mapEntriesToTasks(
         }
 
         // Progress
+        let actualProgressValue = 0;
         let progress = 0;
         if (config.showProgress && config.progressProperty) {
             const raw = extractRawValue(entry.getValue(config.progressProperty));
             if (raw != null) {
                 const num = parseFloat(raw);
-                if (!isNaN(num)) progress = Math.max(0, Math.min(100, num));
+                if (!isNaN(num)) actualProgressValue = Math.max(0, num);
             }
         }
 
         // Expected progress (from separate property, overrides time-based)
         let expectedProgress: number | undefined;
+        let expectedProgressValue: number | undefined;
         if (config.showProgress && config.expectedProgressProperty) {
             const rawExp = extractRawValue(entry.getValue(config.expectedProgressProperty));
             if (rawExp != null) {
                 const num = parseFloat(rawExp);
-                if (!isNaN(num)) expectedProgress = Math.max(0, Math.min(100, num));
+                if (!isNaN(num)) expectedProgressValue = Math.max(0, num);
             }
+        }
+        if (config.showProgress && config.progressProperty) {
+            const denominator = expectedProgressValue && expectedProgressValue > 0
+                ? expectedProgressValue
+                : 100;
+            progress = Math.max(0, Math.min(100, (actualProgressValue / denominator) * 100));
+        }
+        if (expectedProgressValue != null) {
+            expectedProgress = Math.max(0, Math.min(100, expectedProgressValue));
         }
 
         // Dependencies (wiki-links or plain names)
@@ -333,6 +348,8 @@ export function mapEntriesToTasks(
             parentPath,
             resolvedColor,
             expectedProgress,
+            actualProgressValue,
+            expectedProgressValue,
         });
     }
 
@@ -431,4 +448,3 @@ export function applyExpectedProgress(containerEl: HTMLElement, tasks: GanttTask
         expectedBar.setAttribute('width', String(newWidth));
     }
 }
-

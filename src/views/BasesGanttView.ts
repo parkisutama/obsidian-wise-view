@@ -30,7 +30,9 @@ import {
     NumberValue,
     Menu,
     Notice,
+    SuggestModal,
     TFile,
+    setIcon,
 } from 'obsidian';
 import Gantt from 'frappe-gantt';
 import type { GanttOptions } from 'frappe-gantt';
@@ -54,6 +56,41 @@ import type { NoteTemplateDefaults } from '../types/settings';
 // ── View ID ─────────────────────────────────────────────────────────────────
 
 export const BASES_GANTT_VIEW_ID = 'wise-view-gantt';
+
+interface DependencyCandidate {
+    task: GanttTask;
+    label: string;
+}
+
+class DependencySuggestModal extends SuggestModal<DependencyCandidate> {
+    constructor(
+        app: App,
+        private readonly candidates: DependencyCandidate[],
+        private readonly onChoose: (task: GanttTask) => void,
+        placeholder: string,
+    ) {
+        super(app);
+        this.setPlaceholder(placeholder);
+    }
+
+    getSuggestions(query: string): DependencyCandidate[] {
+        const normalized = query.trim().toLowerCase();
+        if (!normalized) return this.candidates;
+        return this.candidates.filter(candidate =>
+            candidate.label.toLowerCase().includes(normalized)
+            || candidate.task.filePath.toLowerCase().includes(normalized)
+        );
+    }
+
+    renderSuggestion(candidate: DependencyCandidate, el: HTMLElement): void {
+        el.createDiv({ cls: 'gantt-dependency-suggest-title', text: candidate.label });
+        el.createDiv({ cls: 'gantt-dependency-suggest-path', text: candidate.task.filePath });
+    }
+
+    onChooseSuggestion(candidate: DependencyCandidate): void {
+        this.onChoose(candidate.task);
+    }
+}
 
 // ── WBS hierarchy sort ──────────────────────────────────────────────────────
 
@@ -141,6 +178,11 @@ export class BasesGanttView extends BasesView {
     private configSnapshot = '';
     private currentTasks: GanttTask[] = [];
     private taskMap: Map<string, GanttTask> = new Map();
+    private popupEl: HTMLElement | null = null;
+    private popupCleanup: (() => void) | null = null;
+    private lastPreviewTarget: string | null = null;
+    private hoverPreviewAnchorEl: HTMLElement | null = null;
+    private preDragTaskDates: Map<string, { start: string; end: string }> = new Map();
     /** Flag to suppress on_click after a drag operation. */
     private justDragged = false;
     /** Global mouseup handlers Frappe Gantt registers on document (for cleanup). */
@@ -183,6 +225,9 @@ export class BasesGanttView extends BasesView {
         this.capturedGlobalHandlers = [];
         this.currentTasks = [];
         this.taskMap.clear();
+        this.closeTaskPopup();
+        this.hoverPreviewAnchorEl?.remove();
+        this.hoverPreviewAnchorEl = null;
         this.resizeCleanup?.();
         this.resizeCleanup = null;
         this.wbsBodyEl = null;
@@ -370,9 +415,11 @@ export class BasesGanttView extends BasesView {
 
         if (this.gantt && this.configSnapshot === newSnapshot) {
             // Only data changed, not config — refresh in place
-            this.gantt.refresh(tasks);
+            this.closeTaskPopup();
+            this.gantt.refresh(this.getRenderableTasks(tasks));
             applyResolvedColors(this.chartEl, tasks);
             applyExpectedProgress(this.chartEl, tasks);
+            this.registerBarInteractions();
             if (this.wbsSidebarActive) this.rebuildWbsRows(tasks);
         } else {
             // Config changed or first render — recreate
@@ -520,6 +567,7 @@ export class BasesGanttView extends BasesView {
             showProgress: this.config.get('showProgress') ?? this.plugin.settings.ganttDefaults.showProgress,
             showExpectedProgress: this.config.get('showExpectedProgress'),
             showWbsSidebar: this.config.get('showWbsSidebar'),
+            persistDependencyDateChanges: this.config.get('persistDependencyDateChanges'),
             showObsidianPreview: this.plugin.settings.ganttDefaults.showObsidianPreview,
             showInternalPopup: this.plugin.settings.ganttDefaults.showInternalPopup,
         });
@@ -533,6 +581,7 @@ export class BasesGanttView extends BasesView {
             this.gantt.clear();
             this.gantt = null;
         }
+        this.closeTaskPopup();
         this.chartEl.empty();
         if (this.wbsEl) {
             this.wbsEl.empty();
@@ -555,8 +604,8 @@ export class BasesGanttView extends BasesView {
             ?? this.plugin.settings.ganttDefaults.showProgress
             ?? false;
         const showExpectedProgress = (this.config.get('showExpectedProgress') as boolean) ?? false;
-        const showPreviewOnClick = this.plugin.settings.ganttDefaults.showObsidianPreview;
-        const showInternalPopup = this.plugin.settings.ganttDefaults.showInternalPopup;
+        const persistDependencyDateChanges =
+            (this.config.get('persistDependencyDateChanges') as boolean | undefined) ?? false;
         const mapperConfig = this.getTaskMapperConfig();
         const hasExpectedProp = mapperConfig.expectedProgressProperty != null;
 
@@ -577,12 +626,11 @@ export class BasesGanttView extends BasesView {
             // Enhanced options
             arrow_curve: 15,
             auto_move_label: true,
-            move_dependencies: true,
+            move_dependencies: persistDependencyDateChanges,
             show_expected_progress: (showExpectedProgress || hasExpectedProp) && showProgress,
             hover_on_date: true,
 
             on_click: (task) => {
-                if (showPreviewOnClick) return;
                 if (this.justDragged) return;
                 if (task.id.startsWith(GROUP_HEADER_PREFIX)) return;
                 const ganttTask = this.findTask(task.id);
@@ -617,25 +665,32 @@ export class BasesGanttView extends BasesView {
                 if (Object.keys(updates).length > 0) {
                     void this.writeFrontmatter(ganttTask.filePath, updates);
                 }
+                if (persistDependencyDateChanges) {
+                    void this.persistMovedDependencyDates(task.id);
+                }
             },
 
             on_progress_change: (task, progress) => {
+                this.justDragged = true;
+                setTimeout(() => { this.justDragged = false; }, 150);
+
                 if (!showProgress) return;
                 const ganttTask = this.findTask(task.id);
                 if (!ganttTask) return;
+                ganttTask.progress = Math.round(progress);
+                ganttTask.actualProgressValue = this.getActualProgressFromPercent(ganttTask, progress);
+                this.updateRenderedTaskLabel(ganttTask);
 
                 const mapperConfig = this.getTaskMapperConfig();
                 if (mapperConfig.progressProperty && !mapperConfig.progressProperty.startsWith('formula.')) {
                     const propName = this.extractPropertyName(mapperConfig.progressProperty);
                     void this.writeFrontmatter(ganttTask.filePath, {
-                        [propName]: Math.round(progress),
+                        [propName]: Math.round(ganttTask.actualProgressValue ?? 0),
                     });
                 }
             },
         };
-        if (!showInternalPopup) {
-            options.popup = false;
-        }
+        options.popup = false;
 
         // Capture global mouseup handlers Frappe Gantt registers on document
         const captured: EventListener[] = [];
@@ -652,7 +707,7 @@ export class BasesGanttView extends BasesView {
         }) as typeof document.addEventListener;
 
         try {
-            this.gantt = new Gantt(this.chartEl, tasks, options);
+            this.gantt = new Gantt(this.chartEl, this.getRenderableTasks(tasks), options);
         } catch (e) {
             console.error('Bases Gantt: failed to initialize chart', e);
             this.chartEl.empty();
@@ -731,7 +786,15 @@ export class BasesGanttView extends BasesView {
                 });
 
                 row.addEventListener('mouseenter', (evt: MouseEvent) => {
-                    this.triggerHoverPreview(evt, task.filePath, row);
+                    this.triggerModifiedHoverPreview(evt, task.filePath, row);
+                });
+                row.addEventListener('mousemove', (evt: MouseEvent) => {
+                    this.triggerModifiedHoverPreview(evt, task.filePath, row);
+                });
+                row.addEventListener('mouseleave', () => {
+                    if (this.lastPreviewTarget === task.filePath) {
+                        this.lastPreviewTarget = null;
+                    }
                 });
 
                 row.addEventListener('mouseover', () => {
@@ -820,7 +883,11 @@ export class BasesGanttView extends BasesView {
     // ── Bar interactions ──────────────────────────────────────────────────────
 
     /**
-     * Attach Page Preview (Ctrl+hover) and click handlers to Gantt bar elements.
+     * Attach explicit task detail triggers and optional click-to-preview handlers.
+     *
+     * Bases currently exposes all query properties but not the exact visible column
+     * set for this view, so the detail popup intentionally sticks to mapped Gantt
+     * fields instead of inventing a separate property list.
      */
     private registerBarInteractions(): void {
         const bars = this.chartEl.querySelectorAll('.bar-wrapper');
@@ -830,30 +897,276 @@ export class BasesGanttView extends BasesView {
             const ganttTask = this.findTask(taskId);
             if (!ganttTask || ganttTask.id.startsWith(GROUP_HEADER_PREFIX)) continue;
 
+            bar.addEventListener('mousedown', () => this.captureTaskDateSnapshot(), { capture: true });
             bar.addEventListener('mouseenter', (evt: Event) => {
-                this.triggerHoverPreview(evt as MouseEvent, ganttTask.filePath, bar as HTMLElement);
+                this.triggerModifiedHoverPreview(evt as MouseEvent, ganttTask.filePath, this.chartEl);
+            });
+            bar.addEventListener('mousemove', (evt: Event) => {
+                this.triggerModifiedHoverPreview(evt as MouseEvent, ganttTask.filePath, this.chartEl);
+            });
+            bar.addEventListener('mouseleave', () => {
+                if (this.lastPreviewTarget === ganttTask.filePath) {
+                    this.lastPreviewTarget = null;
+                }
+            });
+            bar.querySelectorAll('.handle, .bar-progress').forEach((interactiveEl) => {
+                interactiveEl.addEventListener('mousedown', () => this.suppressNextBarClick());
+                interactiveEl.addEventListener('touchstart', () => this.suppressNextBarClick());
             });
 
             bar.addEventListener('click', (evt: Event) => {
                 if (!this.plugin.settings.ganttDefaults.showObsidianPreview) return;
+                if (this.justDragged) return;
                 const mouseEvt = evt as MouseEvent;
                 mouseEvt.preventDefault();
                 mouseEvt.stopPropagation();
                 mouseEvt.stopImmediatePropagation();
-                this.triggerHoverPreview(mouseEvt, ganttTask.filePath, bar as HTMLElement);
+                this.triggerHoverPreview(this.createHtmlTargetedMouseEvent(mouseEvt), ganttTask.filePath, this.chartEl);
             }, { capture: true });
         }
+    }
+
+    private showTaskPopup(task: GanttTask, position: { clientX: number; clientY: number }): void {
+        this.closeTaskPopup();
+
+        const popup = this.containerEl.createDiv({ cls: 'gantt-task-detail-popup' });
+        this.popupEl = popup;
+        popup.createDiv({ cls: 'gantt-task-detail-title', text: task.name });
+        popup.createDiv({
+            cls: 'gantt-task-detail-subtitle',
+            text: `${task.start} to ${task.end}`,
+        });
+
+        const config = this.getTaskMapperConfig();
+        if (config.showProgress && config.progressProperty) {
+            const row = popup.createDiv({ cls: 'gantt-task-detail-row' });
+            row.createSpan({ cls: 'gantt-task-detail-label', text: 'Progress' });
+            row.createSpan({
+                cls: 'gantt-task-detail-value',
+                text: this.formatProgressLabel(task),
+            });
+        }
+
+        if (config.dependenciesProperty) {
+            const deps = this.getDependencyTasks(task);
+            const row = popup.createDiv({ cls: 'gantt-task-detail-row' });
+            row.createSpan({ cls: 'gantt-task-detail-label', text: 'Dependencies' });
+            row.createSpan({
+                cls: 'gantt-task-detail-value',
+                text: deps.length > 0 ? deps.map(dep => dep.name).join(', ') : 'None',
+            });
+        }
+
+        const actions = popup.createDiv({ cls: 'gantt-task-detail-actions' });
+        const openButton = actions.createEl('button', {
+            cls: 'clickable-icon gantt-task-detail-action',
+            attr: { type: 'button', 'aria-label': 'Open note' },
+        });
+        setIcon(openButton, 'file-text');
+        openButton.addEventListener('click', () => {
+            this.closeTaskPopup();
+            void this.app.workspace.openLinkText(task.filePath, '', false);
+        });
+
+        const closeButton = actions.createEl('button', {
+            cls: 'clickable-icon gantt-task-detail-action',
+            attr: { type: 'button', 'aria-label': 'Close' },
+        });
+        setIcon(closeButton, 'x');
+        closeButton.addEventListener('click', () => this.closeTaskPopup());
+
+        const containerRect = this.containerEl.getBoundingClientRect();
+        popup.style.left = `${position.clientX - containerRect.left + 10}px`;
+        popup.style.top = `${position.clientY - containerRect.top - 10}px`;
+
+        const onPointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (target instanceof Node && !popup.contains(target)) {
+                this.closeTaskPopup();
+            }
+        };
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') this.closeTaskPopup();
+        };
+        document.addEventListener('pointerdown', onPointerDown, true);
+        document.addEventListener('keydown', onKeyDown);
+        this.popupCleanup = () => {
+            document.removeEventListener('pointerdown', onPointerDown, true);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }
+
+    private closeTaskPopup(): void {
+        this.popupCleanup?.();
+        this.popupCleanup = null;
+        this.popupEl?.remove();
+        this.popupEl = null;
+    }
+
+    private suppressNextBarClick(): void {
+        this.justDragged = true;
+        setTimeout(() => { this.justDragged = false; }, 200);
+    }
+
+    private triggerModifiedHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
+        if (!event.ctrlKey && !event.metaKey) return;
+        const eventTarget = event.target;
+        if (eventTarget instanceof Element && eventTarget.closest('.gantt-popup-trigger')) return;
+        if (this.lastPreviewTarget === filePath) return;
+        this.lastPreviewTarget = filePath;
+        this.triggerHoverPreview(this.createHtmlTargetedMouseEvent(event), filePath, targetEl);
+    }
+
+    private formatProgressLabel(task: GanttTask): string {
+        const actual = Math.round(task.actualProgressValue ?? task.progress ?? 0);
+        const expected = Math.max(1, Math.round(task.expectedProgressValue ?? 100));
+        const percent = Math.round((actual / expected) * 100);
+        return `${actual}/${expected} (${percent}%)`;
+    }
+
+    private getActualProgressFromPercent(task: GanttTask, percent: number): number {
+        const expected = Math.max(1, task.expectedProgressValue ?? 100);
+        return Math.round((Math.max(0, percent) / 100) * expected);
+    }
+
+    private getRenderableTasks(tasks: GanttTask[]): GanttTask[] {
+        const config = this.getTaskMapperConfig();
+        return tasks.map(task => ({
+            ...task,
+            name: this.shouldShowProgressLabel(task, config)
+                ? this.getRenderedTaskName(task)
+                : task.name,
+        }));
+    }
+
+    private shouldShowProgressLabel(task: GanttTask, config: TaskMapperConfig): boolean {
+        return Boolean(
+            config.showProgress
+            && config.progressProperty
+            && !task.id.startsWith(GROUP_HEADER_PREFIX)
+        );
+    }
+
+    private getRenderedTaskName(task: GanttTask): string {
+        return `${task.name} ${this.formatProgressLabel(task)}`;
+    }
+
+    private updateRenderedTaskLabel(task: GanttTask): void {
+        const wrapper = this.chartEl.querySelector<SVGElement>(
+            `.bar-wrapper[data-id="${CSS.escape(task.id)}"]`
+        );
+        const label = wrapper?.querySelector<SVGTextElement>('.bar-label');
+        if (!label) return;
+        label.textContent = this.getRenderedTaskName(task);
+    }
+
+    private captureTaskDateSnapshot(): void {
+        this.preDragTaskDates.clear();
+        for (const task of this.currentTasks) {
+            if (task.id.startsWith(GROUP_HEADER_PREFIX)) continue;
+            this.preDragTaskDates.set(task.id, { start: task.start, end: task.end });
+        }
+    }
+
+    private async persistMovedDependencyDates(directTaskId: string): Promise<void> {
+        if (this.preDragTaskDates.size === 0 || !this.gantt) return;
+
+        const mapperConfig = this.getTaskMapperConfig();
+        if (
+            !mapperConfig.startProperty
+            || mapperConfig.startProperty.startsWith('formula.')
+            || mapperConfig.endProperty?.startsWith('formula.')
+        ) {
+            return;
+        }
+
+        const startPropName = this.extractPropertyName(mapperConfig.startProperty);
+        const endPropName = mapperConfig.endProperty
+            ? this.extractPropertyName(mapperConfig.endProperty)
+            : null;
+
+        for (const frappeTask of this.gantt.tasks) {
+            if (frappeTask.id === directTaskId || frappeTask.id.startsWith(GROUP_HEADER_PREFIX)) continue;
+            const ganttTask = this.findTask(frappeTask.id);
+            if (!ganttTask || ganttTask.isParent) continue;
+
+            const before = this.preDragTaskDates.get(frappeTask.id);
+            const after = this.getRenderedTaskDates(frappeTask);
+            if (!before || !after) continue;
+            if (before.start === after.start && before.end === after.end) continue;
+
+            ganttTask.start = after.start;
+            ganttTask.end = after.end;
+            const updates: Record<string, string> = {
+                [startPropName]: after.start,
+            };
+            if (endPropName) updates[endPropName] = after.end;
+            await this.writeFrontmatter(ganttTask.filePath, updates);
+        }
+    }
+
+    private getRenderedTaskDates(task: { start: string; end: string; _start?: Date; _end?: Date }):
+        | { start: string; end: string }
+        | null {
+        const start = task._start instanceof Date
+            ? formatDateForFrontmatter(task._start)
+            : task.start;
+        const end = task._end instanceof Date
+            ? formatDateForFrontmatter(task._end)
+            : task.end;
+        if (!start || !end) return null;
+        return { start, end };
     }
 
     private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
         this.app.workspace.trigger('hover-link', {
             event,
             source: BASES_GANTT_VIEW_ID,
-            hoverParent: this.plugin,
+            hoverParent: this.getHoverParent(),
             targetEl,
             linktext: filePath,
             sourcePath: '/',
         });
+    }
+
+    private createHtmlTargetedMouseEvent(event: MouseEvent): MouseEvent {
+        const anchor = this.getHoverPreviewAnchorEl(event);
+        const syntheticEvent = new MouseEvent(event.type, {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            detail: event.detail,
+            screenX: event.screenX,
+            screenY: event.screenY,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            ctrlKey: event.ctrlKey,
+            altKey: event.altKey,
+            shiftKey: event.shiftKey,
+            metaKey: event.metaKey,
+            button: event.button,
+            buttons: event.buttons,
+            relatedTarget: event.relatedTarget,
+        });
+        Object.defineProperty(syntheticEvent, 'target', { value: anchor });
+        Object.defineProperty(syntheticEvent, 'currentTarget', { value: anchor });
+        return syntheticEvent;
+    }
+
+    private getHoverPreviewAnchorEl(event: MouseEvent): HTMLElement {
+        if (!this.hoverPreviewAnchorEl) {
+            this.hoverPreviewAnchorEl = this.containerEl.createDiv({ cls: 'gantt-hover-preview-anchor' });
+        }
+        const containerRect = this.containerEl.getBoundingClientRect();
+        this.hoverPreviewAnchorEl.style.left = `${event.clientX - containerRect.left}px`;
+        this.hoverPreviewAnchorEl.style.top = `${event.clientY - containerRect.top}px`;
+        return this.hoverPreviewAnchorEl;
+    }
+
+    private getHoverParent(): { hoverPopover: unknown } {
+        const leaf = this.app.workspace.getLeaf(false);
+        if ('hoverPopover' in leaf) return leaf as unknown as { hoverPopover: unknown };
+        return { hoverPopover: null };
     }
 
     // ── Right-click context menus ─────────────────────────────────────────────
@@ -919,6 +1232,18 @@ export class BasesGanttView extends BasesView {
         return this.taskMap.get(id);
     }
 
+    private getDependencyTasks(task: GanttTask): GanttTask[] {
+        const dependencies = typeof task.dependencies === 'string'
+            ? task.dependencies.split(',')
+            : task.dependencies ?? [];
+        const tasks: GanttTask[] = [];
+        for (const dependencyId of dependencies.map(dep => dep.trim()).filter(Boolean)) {
+            const dependencyTask = this.findTask(dependencyId);
+            if (dependencyTask) tasks.push(dependencyTask);
+        }
+        return tasks;
+    }
+
     private extractPropertyName(propertyId: BasesPropertyId): string {
         const dotIndex = propertyId.indexOf('.');
         return dotIndex >= 0 ? propertyId.slice(dotIndex + 1) : propertyId;
@@ -945,7 +1270,201 @@ export class BasesGanttView extends BasesView {
 
         addOpenFileMenuItems(this.app, task.filePath, menu, { includeOpen: true });
 
+        if (this.plugin.settings.ganttDefaults.showInternalPopup) {
+            menu.addSeparator();
+            menu.addItem((item) => {
+                item.setTitle('Show details')
+                    .setIcon('info')
+                    .onClick(() => this.showTaskPopup(task, evt));
+            });
+        }
+
+        const mapperConfig = this.getTaskMapperConfig();
+        if (mapperConfig.dependenciesProperty && !mapperConfig.dependenciesProperty.startsWith('formula.')) {
+            menu.addSeparator();
+            menu.addItem((item) => {
+                item.setTitle('Add dependency')
+                    .setIcon('link')
+                    .onClick(() => this.openAddDependencyModal(task));
+            });
+
+            const dependencies = this.getDependencyTasks(task);
+            menu.addItem((item) => {
+                item.setTitle('Remove dependency')
+                    .setIcon('unlink')
+                    .setDisabled(dependencies.length === 0)
+                    .onClick(() => this.openRemoveDependencyModal(task));
+            });
+
+            menu.addItem((item) => {
+                item.setTitle('Clear dependencies')
+                    .setIcon('list-x')
+                    .setDisabled(dependencies.length === 0)
+                    .onClick(() => {
+                        void this.clearDependencies(task);
+                    });
+            });
+        }
+
         menu.showAtMouseEvent(evt);
+    }
+
+    private openAddDependencyModal(task: GanttTask): void {
+        const currentDependencies = new Set(this.getDependencyTasks(task).map(dep => dep.filePath));
+        const candidates = this.currentTasks
+            .filter(candidate => this.isDependencyCandidate(task, candidate))
+            .filter(candidate => !currentDependencies.has(candidate.filePath))
+            .map(candidate => ({ task: candidate, label: candidate.name }));
+
+        if (candidates.length === 0) {
+            new Notice('No available dependencies to add.');
+            return;
+        }
+
+        new DependencySuggestModal(
+            this.app,
+            candidates,
+            (dependency) => {
+                void this.addDependency(task, dependency);
+            },
+            'Add dependency...',
+        ).open();
+    }
+
+    private openRemoveDependencyModal(task: GanttTask): void {
+        const candidates = this.getDependencyTasks(task)
+            .map(candidate => ({ task: candidate, label: candidate.name }));
+
+        if (candidates.length === 0) {
+            new Notice('This task has no dependencies.');
+            return;
+        }
+
+        new DependencySuggestModal(
+            this.app,
+            candidates,
+            (dependency) => {
+                void this.removeDependency(task, dependency);
+            },
+            'Remove dependency...',
+        ).open();
+    }
+
+    private isDependencyCandidate(task: GanttTask, candidate: GanttTask): boolean {
+        return Boolean(
+            candidate.filePath
+            && candidate.filePath !== task.filePath
+            && !candidate.id.startsWith(GROUP_HEADER_PREFIX)
+        );
+    }
+
+    private async addDependency(task: GanttTask, dependency: GanttTask): Promise<void> {
+        if (task.filePath === dependency.filePath) {
+            new Notice('A task cannot depend on itself.');
+            return;
+        }
+        const changed = await this.updateDependencyFrontmatter(task, (current) => {
+            if (this.rawDependencyIncludesTask(current, dependency)) {
+                new Notice('Dependency already exists.');
+                return current;
+            }
+            const link = this.toWikiLink(dependency);
+            if (Array.isArray(current)) return [...current, link];
+            if (typeof current === 'string' && current.trim()) return `${current}, ${link}`;
+            return link;
+        });
+        if (changed) this.refreshGanttData();
+    }
+
+    private async removeDependency(task: GanttTask, dependency: GanttTask): Promise<void> {
+        const changed = await this.updateDependencyFrontmatter(task, (current) =>
+            this.removeDependencyFromRawValue(current, dependency)
+        );
+        if (changed) this.refreshGanttData();
+    }
+
+    private async clearDependencies(task: GanttTask): Promise<void> {
+        const changed = await this.updateDependencyFrontmatter(task, (current) =>
+            Array.isArray(current) ? [] : ''
+        );
+        if (changed) this.refreshGanttData();
+    }
+
+    private async updateDependencyFrontmatter(
+        task: GanttTask,
+        update: (current: unknown) => unknown,
+    ): Promise<boolean> {
+        const mapperConfig = this.getTaskMapperConfig();
+        const dependencyProperty = mapperConfig.dependenciesProperty;
+        if (!dependencyProperty) {
+            new Notice('Configure a dependency property first.');
+            return false;
+        }
+        if (dependencyProperty.startsWith('formula.')) {
+            new Notice('Cannot edit formula-backed dependency properties.');
+            return false;
+        }
+
+        const file = this.app.vault.getFileByPath(task.filePath);
+        if (!file) return false;
+
+        const propName = this.extractPropertyName(dependencyProperty);
+        let changed = false;
+        await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+            const current = frontmatter[propName];
+            const next = update(current);
+            if (JSON.stringify(current ?? '') === JSON.stringify(next ?? '')) return;
+            frontmatter[propName] = next;
+            changed = true;
+        });
+
+        return changed;
+    }
+
+    private refreshGanttData(): void {
+        setTimeout(() => this.onDataUpdated(), 0);
+    }
+
+    private toWikiLink(task: GanttTask): string {
+        return `[[${task.filePath.replace(/\.md$/i, '')}]]`;
+    }
+
+    private rawDependencyIncludesTask(current: unknown, task: GanttTask): boolean {
+        return this.getRawDependencyParts(current).some(part => this.dependencyPartMatchesTask(part, task));
+    }
+
+    private removeDependencyFromRawValue(current: unknown, task: GanttTask): unknown {
+        if (Array.isArray(current)) {
+            return current.filter(part => !this.dependencyPartMatchesTask(String(part), task));
+        }
+        if (typeof current !== 'string') return current;
+
+        const separator = current.includes('\n') ? '\n' : ', ';
+        const remaining = this.getRawDependencyParts(current)
+            .filter(part => !this.dependencyPartMatchesTask(part, task));
+        return remaining.join(separator);
+    }
+
+    private getRawDependencyParts(current: unknown): string[] {
+        if (Array.isArray(current)) {
+            return current.map(part => String(part).trim()).filter(Boolean);
+        }
+        if (typeof current !== 'string') return [];
+        return current
+            .split(/[\n,]/)
+            .map(part => part.trim())
+            .filter(Boolean);
+    }
+
+    private dependencyPartMatchesTask(part: string, task: GanttTask): boolean {
+        const wikiMatch = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/.exec(part);
+        const target = (wikiMatch?.[1] ?? part).trim();
+        const pathNoExt = task.filePath.replace(/\.md$/i, '');
+        return target === task.filePath
+            || target === pathNoExt
+            || target === task.name
+            || target === task.filePath.split('/').pop()
+            || target === pathNoExt.split('/').pop();
     }
 
     // ── Empty state ──────────────────────────────────────────────────────
@@ -1151,6 +1670,12 @@ export function getGanttViewOptions(config: BasesViewConfig): BasesAllOptions[] 
                     displayName: 'Show expected progress',
                     default: false,
                     shouldHide: () => !(config.get('showProgress') as boolean),
+                },
+                {
+                    type: 'toggle',
+                    key: 'persistDependencyDateChanges',
+                    displayName: 'Persist moved dependency dates',
+                    default: false,
                 },
             ],
         },
