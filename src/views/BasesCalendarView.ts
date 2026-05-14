@@ -9,6 +9,7 @@ import {
   setIcon,
   App,
   TFile,
+  Notice,
 } from 'obsidian';
 import { Calendar, EventInput, EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
 
@@ -117,10 +118,11 @@ import interactionPlugin from '@fullcalendar/interaction';
 import multiMonthPlugin from '@fullcalendar/multimonth';
 import type PlannerPlugin from '../main';
 import { stringToColor } from '../utils/colorUtils';
-import { openFileInNewTab, showOpenFileMenu } from '../utils/openFile';
-import type { WeekDay } from '../types/settings';
+import { openFileInNewTab, showOpenFileMenuWithItems } from '../utils/openFile';
+import type { NoteTemplateDefaults, WeekDay } from '../types/settings';
 import { PropertyTypeService } from '../services/PropertyTypeService';
 import { isOngoing } from '../utils/dateUtils';
+import { NoteTemplateService } from '../services/NoteTemplateService';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
 
@@ -191,6 +193,17 @@ export class BasesCalendarView extends BasesView {
   private getFontSize(): number {
     const value = this.config.get('fontSize') as number | undefined;
     return value ?? this.plugin.settings.calendarDefaults.fontSize;
+  }
+
+  private getTemplateDefaults(): NoteTemplateDefaults {
+    const templatePath = this.config.get('templatePath') as string | undefined;
+    const targetFolder = this.config.get('targetFolder') as string | undefined;
+    const titleFormat = this.config.get('titleFormat') as string | undefined;
+    return {
+      templatePath: templatePath?.trim() ?? '',
+      targetFolder: targetFolder?.trim() ?? '',
+      titleFormat: titleFormat?.trim() || 'Event {{date}} {{time}}',
+    };
   }
 
   constructor(
@@ -381,20 +394,22 @@ export class BasesCalendarView extends BasesView {
       },
       firstDay: weekStartsOn,
       selectable: true,
+      selectMirror: true,
       editable: true,
       eventStartEditable: true,
       eventDurationEditable: true,
+      eventResizableFromStart: true,
       navLinks: true, // Make day numbers clickable
       navLinkDayClick: (date) => { void this.openJournalOrDailyNote(date); }, // Click on day number opens journal/daily note
       events: events,
       eventClick: (info) => { void this.handleEventClick(info); },
       eventDidMount: (info) => {
-        const entry = info.event.extendedProps.entry as BasesEntry;
+        const entry = this.getEventEntry(info.event.extendedProps);
+        if (!entry) return;
         info.el.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          showOpenFileMenu(this.app, entry.file.path, e);
+          this.showEventContextMenu(entry, e);
         });
-        // Page Preview: Ctrl/Cmd + hover over event shows preview popup
+        // Page Preview source settings decide whether hover requires Ctrl/Cmd.
         info.el.addEventListener('mouseenter', (e) => {
           this.triggerHoverPreview(e, entry.file.path, info.el);
         });
@@ -413,7 +428,7 @@ export class BasesCalendarView extends BasesView {
             topEl.appendChild(dot);
           }
         }
-        // Page Preview: Ctrl/Cmd + hover over day number shows journal note preview
+        // Page Preview source settings decide whether hover requires Ctrl/Cmd.
         const dayNumberEl = arg.el.querySelector('.fc-daygrid-day-number');
         if (dayNumberEl) {
           dayNumberEl.addEventListener('mouseenter', (e) => {
@@ -435,7 +450,7 @@ export class BasesCalendarView extends BasesView {
             void this.openJournalOrDailyNote(arg.date);
           }
         });
-        // Page Preview: Ctrl/Cmd + hover over day header shows journal note preview
+        // Page Preview source settings decide whether hover requires Ctrl/Cmd.
         const cushionEl = el.querySelector('.fc-col-header-cell-cushion');
         if (cushionEl) {
           cushionEl.addEventListener('mouseenter', (e) => {
@@ -876,12 +891,17 @@ export class BasesCalendarView extends BasesView {
   }
 
   private async handleEventClick(info: EventClickArg): Promise<void> {
-    const entry = info.event.extendedProps.entry as BasesEntry;
+    const entry = this.getEventEntry(info.event.extendedProps);
+    if (!entry) return;
     openFileInNewTab(this.app, entry.file.path);
   }
 
   private async handleEventDrop(info: EventDropArg): Promise<void> {
-    const entry = info.event.extendedProps.entry as BasesEntry;
+    const entry = this.getEventEntry(info.event.extendedProps);
+    if (!entry) {
+      info.revert();
+      return;
+    }
     const newStart = info.event.start;
     const newEnd = info.event.end;
 
@@ -908,7 +928,11 @@ export class BasesCalendarView extends BasesView {
   }
 
   private async handleEventResize(info: EventResizeArg): Promise<void> {
-    const entry = info.event.extendedProps.entry;
+    const entry = this.getEventEntry(info.event.extendedProps);
+    if (!entry) {
+      info.revert();
+      return;
+    }
     const newStart = info.event.start;
     const newEnd = info.event.end;
 
@@ -935,8 +959,62 @@ export class BasesCalendarView extends BasesView {
   }
 
   private handleDateSelect(info: DateSelectArg): void {
-    // Create new item on the selected date
-    this.createNewItem(info.startStr, info.endStr, info.allDay);
+    void this.createNewItem(info);
+  }
+
+  private getEventEntry(extendedProps: unknown): BasesEntry | null {
+    const props = extendedProps as { entry?: unknown } | null;
+    const entry = props?.entry as Partial<BasesEntry> | undefined;
+    if (entry?.file instanceof TFile) {
+      return entry as BasesEntry;
+    }
+    return null;
+  }
+
+  private showEventContextMenu(entry: BasesEntry, event: MouseEvent): void {
+    showOpenFileMenuWithItems(
+      this.app,
+      entry.file.path,
+      event,
+      (menu) => {
+        menu.addItem(item => {
+          item
+            .setTitle('Create new event note')
+            .setIcon('plus')
+            .onClick(() => {
+              const start = this.getEventStartForNewItem(entry);
+              void this.createNewItemAt(start);
+            });
+        });
+
+        menu.addItem(item => {
+          item
+            .setTitle('Scroll to today')
+            .setIcon('calendar')
+            .onClick(() => this.scrollToToday());
+        });
+      },
+      (menu) => {
+        menu.addItem(item => {
+          item
+            .setTitle('Delete event note')
+            .setIcon('trash')
+            .setWarning(true)
+            .onClick(() => {
+              void this.deleteEventNote(entry);
+            });
+        });
+      },
+    );
+  }
+
+  private scrollToToday(): void {
+    this.calendar?.today();
+  }
+
+  private async deleteEventNote(entry: BasesEntry): Promise<void> {
+    await this.app.fileManager.trashFile(entry.file);
+    new Notice(`Deleted ${entry.file.basename}`);
   }
 
   /**
@@ -1026,8 +1104,8 @@ export class BasesCalendarView extends BasesView {
 
   /**
    * Trigger Obsidian's Page Preview for a file path.
-   * The preview popup appears when the user holds Ctrl/Cmd while hovering;
-   * Obsidian's internal page-preview plugin handles that key check.
+   * Obsidian's Page Preview plugin applies the modifier-key behavior configured
+   * for this registered hover source.
    */
   private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
     this.app.workspace.trigger('hover-link', {
@@ -1157,8 +1235,96 @@ export class BasesCalendarView extends BasesView {
       .replace(/ddd/g, weekdaysShort[date.getDay()] ?? '');
   }
 
-  private createNewItem(_startDate?: string, _endDate?: string, _allDay?: boolean): void {
-    // TODO: Delegated to Bases/Templater
+  private async createNewItem(selection: DateSelectArg): Promise<void> {
+    if (!this.isTimeGridView(selection.view.type)) {
+      this.calendar?.unselect();
+      return;
+    }
+
+    try {
+      await this.createNewItemFromDates(selection.start, selection.end, selection.allDay);
+    } finally {
+      this.calendar?.unselect();
+    }
+  }
+
+  private async createNewItemFromDates(start: Date, end: Date | null, allDay: boolean): Promise<void> {
+    const dateStartField = this.getDateStartField();
+    const dateEndField = this.getDateEndField();
+    if (!dateStartField) {
+      new Notice('Configure a date start field before creating calendar events.');
+      return;
+    }
+    if (dateStartField.startsWith('formula.') || dateEndField.startsWith('formula.')) {
+      new Notice('Cannot create calendar events with formula date properties.');
+      return;
+    }
+
+    const startFieldName = this.toFrontmatterFieldName(dateStartField);
+    const endFieldName = this.toFrontmatterFieldName(dateEndField);
+    if (!startFieldName) {
+      new Notice('Configure a writable date start field before creating calendar events.');
+      return;
+    }
+
+    const frontmatter: EditableFrontmatter = {
+      [startFieldName]: this.formatDateForFrontmatter(start, allDay),
+    };
+    if (endFieldName && end) {
+      frontmatter[endFieldName] = this.formatDateForFrontmatter(end, allDay);
+    }
+
+    const title = this.getSelectionFileName(start);
+    await new NoteTemplateService(this.app, this.getTemplateDefaults()).createNote(this, {
+      title,
+      start,
+      end,
+      allDay,
+      frontmatter,
+    });
+  }
+
+  private async createNewItemAt(start: Date): Promise<void> {
+    if (!this.calendar || !this.isTimeGridView(this.calendar.view.type)) return;
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    await this.createNewItemFromDates(start, end, false);
+  }
+
+  private isTimeGridView(viewType: string): boolean {
+    return viewType === 'timeGridDay' || viewType === 'timeGridThreeDay' || viewType === 'timeGridWeek';
+  }
+
+  private getEventStartForNewItem(entry: BasesEntry): Date {
+    const value = entry.getValue(this.getDateStartField() as BasesPropertyId);
+    const parsed = value ? new Date(this.toISOString(value)) : null;
+    if (parsed && !isNaN(parsed.getTime())) return parsed;
+    return this.calendar?.getDate() ?? new Date();
+  }
+
+  private toFrontmatterFieldName(propertyId: string): string {
+    if (!propertyId || propertyId.startsWith('file.') || propertyId.startsWith('formula.')) return '';
+    return propertyId.replace(/^note\./, '');
+  }
+
+  private formatDateForFrontmatter(date: Date, allDay: boolean): string {
+    if (allDay) {
+      return this.formatLocalDate(date);
+    }
+    return this.toLocalISOString(date);
+  }
+
+  private formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private getSelectionFileName(start: Date): string {
+    const date = this.formatLocalDate(start);
+    const hours = String(start.getHours()).padStart(2, '0');
+    const minutes = String(start.getMinutes()).padStart(2, '0');
+    return `Event ${date} ${hours}.${minutes}`;
   }
 }
 
@@ -1245,6 +1411,34 @@ export function createCalendarViewRegistration(plugin: PlannerPlugin): BasesView
         placeholder: 'Select property',
         filter: (propId: BasesPropertyId) =>
           PropertyTypeService.isDateProperty(propId, plugin.app),
+      },
+      {
+        type: 'group',
+        displayName: 'Note template',
+        items: [
+          {
+            type: 'file',
+            key: 'templatePath',
+            displayName: 'Template note',
+            default: '',
+            placeholder: 'Templates/Event.md',
+            filter: (file: TFile) => file.extension === 'md',
+          },
+          {
+            type: 'folder',
+            key: 'targetFolder',
+            displayName: 'Target folder',
+            default: '',
+            placeholder: 'Leave blank to follow Base',
+          },
+          {
+            type: 'text',
+            key: 'titleFormat',
+            displayName: 'Title format',
+            default: 'Event {{date}} {{time}}',
+            placeholder: 'Event {{date}} {{time}}',
+          },
+        ],
       },
       {
         type: 'slider',

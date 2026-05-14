@@ -65,6 +65,16 @@ export interface GanttDefaults {
   showInternalPopup: boolean;
 }
 
+/** Shared note template settings used by views that create notes. */
+export interface NoteTemplateDefaults {
+  /** Template note path. Blank means create with Bases defaults only. */
+  templatePath: string;
+  /** Target folder override. Blank means let Bases choose the destination. */
+  targetFolder: string;
+  /** Base filename format for generated notes. */
+  titleFormat: string;
+}
+
 /**
  * Planner Plugin Settings
  * Stored at: vault/.obsidian/plugins/planner/data.json

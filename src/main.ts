@@ -64,17 +64,17 @@ export default class PlannerPlugin extends Plugin {
   private registerHoverPreviewSources(): void {
     this.registerHoverLinkSource(BASES_KANBAN_VIEW_ID, {
       display: 'Kanban',
-      defaultMod: false,
+      defaultMod: true,
     });
 
     this.registerHoverLinkSource(BASES_CALENDAR_VIEW_ID, {
       display: 'Calendar',
-      defaultMod: false,
+      defaultMod: true,
     });
 
     this.registerHoverLinkSource(BASES_GANTT_VIEW_ID, {
       display: 'Gantt',
-      defaultMod: false,
+      defaultMod: true,
     });
   }
 
@@ -101,12 +101,12 @@ export default class PlannerPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'gantt-create-task',
-      name: 'Gantt: create new task at today',
+      id: 'gantt-create-note',
+      name: 'Gantt: create note at today',
       checkCallback: (checking) => {
         const view = activeGantt();
         if (!view) return false;
-        if (!checking) view.createTaskAtToday();
+        if (!checking) view.createNoteAtToday();
         return true;
       },
     });

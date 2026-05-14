@@ -14,7 +14,7 @@
  *  - On date drag: writes updated dates back to frontmatter (single source of truth).
  *  - View configuration exposed through Bases' native config sidebar options.
  *  - Optional WBS sidebar: toggled via "Show WBS sidebar" in Display options.
- *    When enabled, a "Parent task (WBS)" property selector appears. Tasks are
+     *    When enabled, a "Parent note (WBS)" property selector appears. Items are
  *    sorted in DFS order based on parent-child relationships.
  */
 
@@ -30,7 +30,7 @@ import {
     NumberValue,
     Menu,
     Notice,
-    FuzzySuggestModal,
+    TFile,
 } from 'obsidian';
 import Gantt from 'frappe-gantt';
 import type { GanttOptions } from 'frappe-gantt';
@@ -48,6 +48,8 @@ import {
     applyExpectedProgress,
     type ColorResolver,
 } from '../utils/ganttUtils';
+import { NoteTemplateService } from '../services/NoteTemplateService';
+import type { NoteTemplateDefaults } from '../types/settings';
 
 // ── View ID ─────────────────────────────────────────────────────────────────
 
@@ -62,9 +64,9 @@ export const BASES_GANTT_VIEW_ID = 'wise-view-gantt';
  * Enhancements:
  *  - Children within each parent are sorted by start date.
  *  - Root tasks are sorted by start date.
- *  - Parent tasks automatically aggregate their date span from children
+     *  - Parent rows automatically aggregate their date span from children
  *    (visual-only — frontmatter is not modified).
- *  - Parent tasks are marked with `isParent = true`.
+     *  - Parent rows are marked with `isParent = true`.
  */
 function buildWbsOrder(tasks: GanttTask[]): GanttTask[] {
     const pathToTask = new Map<string, GanttTask>();
@@ -208,25 +210,34 @@ export class BasesGanttView extends BasesView {
         }
     }
 
-    /** Public: create a new task at today's date (for command palette). */
-    createTaskAtToday(): void {
+    /** Public: create a new note at today's date (for command palette). */
+    createNoteAtToday(): void {
         const config = this.getTaskMapperConfig();
         if (!config.startProperty) {
             new Notice('Configure a start date property first.');
             return;
         }
         if (config.startProperty.startsWith('formula.')) {
-            new Notice('Cannot create tasks with formula date properties.');
+            new Notice('Cannot create notes with formula date properties.');
             return;
         }
-        const today = formatDateForFrontmatter(new Date());
+        const start = new Date();
+        const today = formatDateForFrontmatter(start);
         const propName = this.extractPropertyName(config.startProperty);
-        void this.createFileForView('New task', (frontmatter: Record<string, unknown>) => {
-            frontmatter[propName] = today;
-            if (config.endProperty && !config.endProperty.startsWith('formula.')) {
-                const endPropName = this.extractPropertyName(config.endProperty);
-                frontmatter[endPropName] = today;
-            }
+        const frontmatter: Record<string, unknown> = {
+            [propName]: today,
+        };
+        if (config.endProperty && !config.endProperty.startsWith('formula.')) {
+            const endPropName = this.extractPropertyName(config.endProperty);
+            frontmatter[endPropName] = today;
+        }
+
+        void new NoteTemplateService(this.app, this.getTemplateDefaults()).createNote(this, {
+            title: 'New note',
+            start,
+            end: start,
+            allDay: true,
+            frontmatter,
         });
     }
 
@@ -421,6 +432,17 @@ export class BasesGanttView extends BasesView {
             parentProperty,
             showProgress,
             expectedProgressProperty,
+        };
+    }
+
+    private getTemplateDefaults(): NoteTemplateDefaults {
+        const templatePath = this.config.get('templatePath') as string | undefined;
+        const targetFolder = this.config.get('targetFolder') as string | undefined;
+        const titleFormat = this.config.get('titleFormat') as string | undefined;
+        return {
+            templatePath: templatePath?.trim() ?? '',
+            targetFolder: targetFolder?.trim() ?? '',
+            titleFormat: titleFormat?.trim() || 'New note {{date}}',
         };
     }
 
@@ -677,7 +699,7 @@ export class BasesGanttView extends BasesView {
 
         const headerEl = this.wbsEl.createDiv({ cls: 'gantt-wbs-header' });
         headerEl.style.height = `${headerHeight}px`;
-        headerEl.createDiv({ cls: 'gantt-wbs-header-cell', text: 'Task' });
+        headerEl.createDiv({ cls: 'gantt-wbs-header-cell', text: 'Note' });
 
         const bodyEl = this.wbsEl.createDiv({ cls: 'gantt-wbs-body' });
         this.wbsBodyEl = bodyEl;
@@ -865,9 +887,9 @@ export class BasesGanttView extends BasesView {
         const menu = new Menu();
 
         menu.addItem((item) => {
-            item.setTitle('Create new task')
+            item.setTitle('Create new note')
                 .setIcon('plus')
-                .onClick(() => this.createTaskAtToday());
+                .onClick(() => this.createNoteAtToday());
         });
 
         menu.addSeparator();
@@ -923,197 +945,7 @@ export class BasesGanttView extends BasesView {
 
         addOpenFileMenuItems(this.app, task.filePath, menu, { includeOpen: true });
 
-        const config = this.getTaskMapperConfig();
-
-        // Parent management (only when WBS sidebar + parentProperty configured)
-        if (this.wbsSidebarActive && config.parentProperty) {
-            menu.addSeparator();
-            menu.addItem(item => {
-                item.setTitle('Set parent...')
-                    .setIcon('arrow-up')
-                    .onClick(() => {
-                        const candidates = this.getParentCandidates(task);
-                        new TaskPickerModal(
-                            this.app,
-                            candidates,
-                            'Select parent task',
-                            (selected) => {
-                                void this.setTaskParent(task.filePath, selected.filePath);
-                            },
-                        ).open();
-                    });
-            });
-            if (task.parentPath) {
-                menu.addItem(item => {
-                    item.setTitle('Remove parent')
-                        .setIcon('x')
-                        .onClick(() => {
-                            void this.removeTaskParent(task.filePath);
-                        });
-                });
-            }
-        }
-
-        // Dependency management (only when dependenciesProperty configured)
-        if (config.dependenciesProperty) {
-            menu.addSeparator();
-            menu.addItem(item => {
-                item.setTitle('Add dependency...')
-                    .setIcon('link')
-                    .onClick(() => {
-                        const candidates = this.getDependencyCandidates(task);
-                        new TaskPickerModal(
-                            this.app,
-                            candidates,
-                            'Select dependency',
-                            (selected) => {
-                                void this.addDependency(task.filePath, selected.filePath);
-                            },
-                        ).open();
-                    });
-            });
-
-            const currentDeps = this.getCurrentDependencies(task);
-            for (const dep of currentDeps) {
-                menu.addItem(item => {
-                    item.setTitle(`Remove dep: ${dep.name}`)
-                        .setIcon('unlink')
-                        .onClick(() => {
-                            void this.removeDependency(task.filePath, dep.filePath);
-                        });
-                });
-            }
-        }
-
         menu.showAtMouseEvent(evt);
-    }
-
-    // ── Parent helpers ───────────────────────────────────────────────────
-
-    private getParentCandidates(task: GanttTask): GanttTask[] {
-        // Exclude: self, current descendants (to prevent circular refs)
-        const descendants = new Set<string>();
-        const collectDescendants = (filePath: string) => {
-            for (const t of this.currentTasks) {
-                if (t.parentPath === filePath && !descendants.has(t.filePath)) {
-                    descendants.add(t.filePath);
-                    collectDescendants(t.filePath);
-                }
-            }
-        };
-        collectDescendants(task.filePath);
-
-        return this.currentTasks.filter(t =>
-            t.filePath !== task.filePath &&
-            !t.id.startsWith(GROUP_HEADER_PREFIX) &&
-            !descendants.has(t.filePath),
-        );
-    }
-
-    private async setTaskParent(taskPath: string, parentPath: string): Promise<void> {
-        const config = this.getTaskMapperConfig();
-        if (!config.parentProperty) return;
-        const propName = this.extractPropertyName(config.parentProperty);
-        const parentBasename = this.getFileBasename(parentPath);
-        await this.writeFrontmatter(taskPath, {
-            [propName]: `[[${parentBasename}]]`,
-        });
-    }
-
-    private async removeTaskParent(taskPath: string): Promise<void> {
-        const config = this.getTaskMapperConfig();
-        if (!config.parentProperty) return;
-        const propName = this.extractPropertyName(config.parentProperty);
-        const file = this.app.vault.getFileByPath(taskPath);
-        if (!file) return;
-        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-            delete fm[propName];
-        });
-    }
-
-    // ── Dependency helpers ───────────────────────────────────────────────
-
-    private getDependencyCandidates(task: GanttTask): GanttTask[] {
-        const currentDepIds = this.getCurrentDependencyIds(task);
-        return this.currentTasks.filter(t =>
-            t.filePath !== task.filePath &&
-            !t.id.startsWith(GROUP_HEADER_PREFIX) &&
-            !currentDepIds.has(t.id),
-        );
-    }
-
-    private getCurrentDependencies(task: GanttTask): GanttTask[] {
-        const depIds = this.getCurrentDependencyIds(task);
-        return [...depIds]
-            .map(id => this.taskMap.get(id))
-            .filter((t): t is GanttTask => t != null);
-    }
-
-    private getCurrentDependencyIds(task: GanttTask): Set<string> {
-        const ids = new Set<string>();
-        if (!task.dependencies) return ids;
-        const str = typeof task.dependencies === 'string'
-            ? task.dependencies
-            : (task.dependencies ?? []).join(',');
-        for (const part of str.split(',')) {
-            const id = part.trim();
-            if (id) ids.add(id);
-        }
-        return ids;
-    }
-
-    private async addDependency(taskPath: string, depPath: string): Promise<void> {
-        const config = this.getTaskMapperConfig();
-        if (!config.dependenciesProperty) return;
-        const propName = this.extractPropertyName(config.dependenciesProperty);
-        const depBasename = this.getFileBasename(depPath);
-        const file = this.app.vault.getFileByPath(taskPath);
-        if (!file) return;
-
-        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-            const deps = this.parseDependencyNames(fm[propName] as string | undefined);
-            if (!deps.includes(depBasename)) {
-                deps.push(depBasename);
-            }
-            fm[propName] = deps.map(d => `[[${d}]]`).join(', ');
-        });
-    }
-
-    private async removeDependency(taskPath: string, depPath: string): Promise<void> {
-        const config = this.getTaskMapperConfig();
-        if (!config.dependenciesProperty) return;
-        const propName = this.extractPropertyName(config.dependenciesProperty);
-        const depBasename = this.getFileBasename(depPath);
-        const file = this.app.vault.getFileByPath(taskPath);
-        if (!file) return;
-
-        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-            const deps = this.parseDependencyNames(fm[propName] as string | undefined);
-            const filtered = deps.filter(d => d !== depBasename);
-            if (filtered.length > 0) {
-                fm[propName] = filtered.map(d => `[[${d}]]`).join(', ');
-            } else {
-                delete fm[propName];
-            }
-        });
-    }
-
-    private parseDependencyNames(raw: string | undefined): string[] {
-        if (!raw) return [];
-        const wikiLinkRe = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
-        const names: string[] = [];
-        let m;
-        while ((m = wikiLinkRe.exec(raw)) !== null) {
-            names.push(m[1]!.trim());
-        }
-        if (names.length === 0 && !raw.includes('[[')) {
-            return raw.split(',').map(s => s.trim()).filter(Boolean);
-        }
-        return names;
-    }
-
-    private getFileBasename(filePath: string): string {
-        return filePath.replace(/\.[^.]+$/, '').split('/').pop() || filePath;
     }
 
     // ── Empty state ──────────────────────────────────────────────────────
@@ -1143,7 +975,7 @@ export class BasesGanttView extends BasesView {
             });
         } else {
             el.createEl('p', {
-                text: 'No tasks with valid dates found.',
+                text: 'No notes with valid dates found.',
             });
             el.createEl('p', {
                 cls: 'gantt-empty-hint',
@@ -1199,37 +1031,6 @@ function getPrettyPropertiesColor(propName: string, value: string): string | nul
         // Pretty Properties API not available
     }
     return null;
-}
-
-// ── Task picker modal ────────────────────────────────────────────────────────
-
-class TaskPickerModal extends FuzzySuggestModal<GanttTask> {
-    private items: GanttTask[];
-    private onChoose: (task: GanttTask) => void;
-
-    constructor(
-        app: App,
-        items: GanttTask[],
-        placeholder: string,
-        onChoose: (task: GanttTask) => void,
-    ) {
-        super(app);
-        this.items = items;
-        this.onChoose = onChoose;
-        this.setPlaceholder(placeholder);
-    }
-
-    getItems(): GanttTask[] {
-        return this.items;
-    }
-
-    getItemText(task: GanttTask): string {
-        return task.name;
-    }
-
-    onChooseItem(task: GanttTask): void {
-        this.onChoose(task);
-    }
 }
 
 // ── View registration ────────────────────────────────────────────────────────
@@ -1299,7 +1100,7 @@ export function getGanttViewOptions(config: BasesViewConfig): BasesAllOptions[] 
                 {
                     type: 'property',
                     key: 'parentProp',
-                    displayName: 'Parent task (WBS)',
+                    displayName: 'Parent note (WBS)',
                     placeholder: 'Select property...',
                     shouldHide: () => !(config.get('showWbsSidebar') as boolean),
                 },
@@ -1350,6 +1151,34 @@ export function getGanttViewOptions(config: BasesViewConfig): BasesAllOptions[] 
                     displayName: 'Show expected progress',
                     default: false,
                     shouldHide: () => !(config.get('showProgress') as boolean),
+                },
+            ],
+        },
+        {
+            type: 'group',
+            displayName: 'Note template',
+            items: [
+                {
+                    type: 'file',
+                    key: 'templatePath',
+                    displayName: 'Template note',
+                    default: '',
+                    placeholder: 'Templates/Note.md',
+                    filter: (file: TFile) => file.extension === 'md',
+                },
+                {
+                    type: 'folder',
+                    key: 'targetFolder',
+                    displayName: 'Target folder',
+                    default: '',
+                    placeholder: 'Leave blank to follow Base',
+                },
+                {
+                    type: 'text',
+                    key: 'titleFormat',
+                    displayName: 'Title format',
+                    default: 'New note {{date}}',
+                    placeholder: 'New note {{date}}',
                 },
             ],
         },

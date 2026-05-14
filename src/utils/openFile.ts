@@ -37,7 +37,7 @@ export function addOpenFileMenuItems(
 
     menu.addItem(item =>
         item.setTitle('Open to the right').setIcon('separator-vertical')
-            .onClick(() => void app.workspace.openLinkText(path, '', 'split'))
+            .onClick(() => openFileInSplit(app, path, 'vertical'))
     );
 
     menu.addItem(item =>
@@ -66,7 +66,46 @@ export function addOpenFileMenuItems(
  * Centralised for all Planner views.
  */
 export function showOpenFileMenu(app: App, path: string, event: MouseEvent): void {
-    const menu = new Menu();
-    addOpenFileMenuItems(app, path, menu);
-    menu.showAtMouseEvent(event);
+    showOpenFileMenuWithItems(app, path, event);
+}
+
+export function showOpenFileMenuWithItems(
+    app: App,
+    path: string,
+    event: MouseEvent,
+    addLeadingItems?: (menu: Menu) => void,
+    addTrailingItems?: (menu: Menu) => void,
+): void {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    const doc = event.view?.document ?? document;
+    const win = event.view ?? window;
+    const position = {
+        x: event.clientX,
+        y: event.clientY,
+    };
+
+    win.setTimeout(() => {
+        closeContextMenus(doc);
+
+        const menu = new Menu();
+        addLeadingItems?.(menu);
+        if (addLeadingItems) {
+            menu.addSeparator();
+        }
+        addOpenFileMenuItems(app, path, menu);
+        if (addTrailingItems) {
+            menu.addSeparator();
+            addTrailingItems(menu);
+        }
+        menu.showAtPosition(position, doc);
+    }, 0);
+}
+
+function closeContextMenus(doc: Document): void {
+    doc.querySelectorAll('.menu').forEach((menuEl) => {
+        menuEl.remove();
+    });
 }

@@ -124,8 +124,6 @@ export class PlannerSettingTab extends PluginSettingTab {
         }));
   }
 
-
-
   private renderGanttTab(containerEl: HTMLElement): void {
     new Setting(containerEl).setName('Gantt view defaults').setHeading();
     new Setting(containerEl).setDesc(
