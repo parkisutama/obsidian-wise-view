@@ -27,6 +27,16 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
+            - name: Verify tag matches manifest version
+              run: |
+                  tag="${GITHUB_REF#refs/tags/}"
+                  manifest_version="$(node -p "require('./manifest.json').version")"
+
+                  if [ "$tag" != "$manifest_version" ]; then
+                    echo "Release tag ($tag) must match manifest.json version ($manifest_version)."
+                    exit 1
+                  fi
+
             - name: Check and build plugin
               run: pnpm run check:ci
 

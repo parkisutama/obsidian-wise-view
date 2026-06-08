@@ -1,7 +1,7 @@
 {
 	"id": "wise-view",
 	"name": "Wise View",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "1.10.0",
 	"description": "Enriched Obsidian Bases views: Calendar, Kanban, and Gantt — task-management agnostic.",
 	"author": "Parkis Utama",
