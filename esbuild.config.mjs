@@ -10,6 +10,7 @@ import {
 	collectBundledPackages,
 	findUnlistedPackages,
 } from "./scripts/license-banner.mjs";
+import { createCssMergePlugin } from "./scripts/css-merge.mjs";
 
 const prod = (process.argv[2] === "production");
 
@@ -33,32 +34,7 @@ const htmlPlugin = {
 	},
 };
 
-// Build a preserved (/*! */) license comment for a CSS file shipped from an npm package.
-// Name, version, license, and copyright line are read from the package itself so the notice
-// cannot drift from the bundled version.
-function packageLicenseNotice(cssPath, note) {
-	let dir = path.dirname(cssPath);
-	while (!fs.existsSync(path.join(dir, "package.json"))) {
-		const parent = path.dirname(dir);
-		if (parent === dir) return `/* From: ${path.basename(cssPath)} */`;
-		dir = parent;
-	}
-	const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
-	const licenseFile = fs.readdirSync(dir).find((f) => /^licen[cs]e/i.test(f));
-	const copyright = licenseFile
-		? fs.readFileSync(path.join(dir, licenseFile), "utf8").match(/^\s*Copyright.*$/m)?.[0].trim()
-		: undefined;
-	const parts = [
-		`${pkg.name} v${pkg.version}`,
-		`${pkg.license} License`,
-		copyright,
-		note,
-		`From: ${path.basename(cssPath)}`,
-	].filter(Boolean);
-	return `/*! ${parts.join(" | ")} */`;
-}
-
-// Plugin to extract and merge CSS into styles.css
+// Frappe Gantt's stylesheet targets :root; scope it to the view and map its variables to Obsidian's theme.
 function scopeFrappeGanttCss(css) {
 	const scoped = css
 		.replace(/:root/g, ".bases-gantt-view")
@@ -93,74 +69,19 @@ function scopeFrappeGanttCss(css) {
 	);
 }
 
-const cssPlugin = {
-	name: "css-merge",
-	setup(build) {
-		// Collect CSS from imports as { path, css }
-		const cssContents = [];
-
-		// Start every (re)build empty; in watch mode imports would otherwise accumulate.
-		build.onStart(() => {
-			cssContents.length = 0;
-		});
-
-		build.onLoad({ filter: /\.css$/ }, async (args) => {
-			const css = await fs.promises.readFile(args.path, "utf8");
-			cssContents.push({ path: args.path, css: `${packageLicenseNotice(args.path)}\n${css}` });
-			return { contents: "", loader: "js" };
-		});
-
-		build.onEnd(async () => {
-			// Read existing styles.css
-			let existingStyles = "";
-			const stylesPath = "./styles.css";
-			if (fs.existsSync(stylesPath)) {
-				existingStyles = await fs.promises.readFile(stylesPath, "utf8");
-			}
-
-			// Strip any previous bundled CSS section so we always re-merge
-			const bundleMarker = "/* === BUNDLED CSS IMPORTS === */";
-			const markerIdx = existingStyles.indexOf(bundleMarker);
-			if (markerIdx >= 0) {
-				existingStyles = existingStyles.substring(0, markerIdx).trimEnd();
-				}
-
-				// Replace any previous license banner so it always matches scripts/license-banner.mjs
-				if (existingStyles.startsWith(BANNER_START)) {
-					existingStyles = existingStyles.substring(existingStyles.indexOf("*/") + 2).trimStart();
-				}
-				existingStyles = buildLicenseBanner("styles.css") + "\n" + existingStyles;
-
-				// Always inject frappe-gantt base CSS from node_modules
-				const frappeGanttCssPath = path.resolve(
-					"node_modules/frappe-gantt/dist/frappe-gantt.css",
-				);
-				if (fs.existsSync(frappeGanttCssPath)) {
-					const frappeCSS = scopeFrappeGanttCss(
-						await fs.promises.readFile(frappeGanttCssPath, "utf8"),
-					);
-					const hasIt = cssContents.some(c => c.css.includes("From: frappe-gantt.css"));
-					if (!hasIt) {
-						const notice = packageLicenseNotice(
-							frappeGanttCssPath,
-							"Modified: scoped to .bases-gantt-view and themed with Obsidian CSS variables",
-						);
-						cssContents.unshift({ path: "", css: `${notice}\n${frappeCSS}` });
-				}
-			}
-
-			if (cssContents.length > 0) {
-				// onLoad runs concurrently, so sort by path for a deterministic stylesheet. Frappe Gantt
-				// (empty path) stays first; fullcalendar/skeleton.css sorts ahead of
-				// fullcalendar/themes/*, the order FullCalendar requires.
-				cssContents.sort((a, b) => a.path.localeCompare(b.path));
-				const mergedCSS = existingStyles + "\n\n" + bundleMarker + "\n" + cssContents.map(c => c.css).join("\n\n");
-				await fs.promises.writeFile(stylesPath, mergedCSS);
-				console.log("Merged CSS imports into styles.css");
-			}
-		});
-	},
-};
+// Merge imported CSS (and Frappe Gantt's stylesheet, which nothing imports) into styles.css.
+const cssPlugin = createCssMergePlugin({
+	stylesPath: "./styles.css",
+	banner: buildLicenseBanner("styles.css"),
+	bannerStart: BANNER_START,
+	extraCss: [
+		{
+			path: path.resolve("node_modules/frappe-gantt/dist/frappe-gantt.css"),
+			transform: scopeFrappeGanttCss,
+			note: "Modified: scoped to .bases-gantt-view and themed with Obsidian CSS variables",
+		},
+	],
+});
 
 // Plugin to verify that every bundled npm package is attributed in THIRD_PARTY_NOTICES.md.
 // Production builds exit non-zero on a problem; watch mode only warns.
