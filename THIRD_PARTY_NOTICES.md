@@ -52,7 +52,7 @@ SOFTWARE.
 ## FullCalendar (`@fullcalendar/core`, `daygrid`, `interaction`, `list`, `multimonth`, `timegrid`)
 
 - Source: <https://github.com/fullcalendar/fullcalendar>
-- Version: 6.1.20
+- Version: 6.1.21
 - License: MIT
 - Used for: Calendar view; bundled in `main.js`
 

@@ -430,7 +430,6 @@ export function applyResolvedColors(containerEl: HTMLElement, tasks: GanttTask[]
         const progressRect = wrapper.querySelector('.bar-progress');
         if (progressRect instanceof SVGElement) {
             progressRect.style.fill = task.resolvedColor;
-            // eslint-disable-next-line obsidianmd/no-static-styles-assignment -- SVG inline style for dynamic color
             progressRect.style.filter = 'brightness(0.85)';
         }
     }

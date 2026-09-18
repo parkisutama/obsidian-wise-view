@@ -26,7 +26,7 @@ import {
 } from './views/BasesGanttView';
 
 export default class PlannerPlugin extends Plugin {
-  settings: PlannerSettings;
+  settings!: PlannerSettings;
 
   async onload() {
     await this.loadSettings();

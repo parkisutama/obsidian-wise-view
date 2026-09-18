@@ -58,7 +58,7 @@ Tidak ada file upstream yang memiliki header hak cipta sendiri.
 | --- | --- | --- | --- | --- |
 | Planner | main | GPL-3.0 | Copyright (C) 2025 Sawyer Rensel | `main.js`, `styles.css` |
 | obsidian-bases-gantt | main | MIT | Copyright (c) 2026 Lars Tray | `main.js`, `styles.css` |
-| FullCalendar (`@fullcalendar/*`) | 6.1.20 | MIT | Copyright (c) Adam Shaw | `main.js` (termasuk CSS via JS) |
+| FullCalendar (`@fullcalendar/*`) | 6.1.21 | MIT | Copyright (c) Adam Shaw | `main.js` (termasuk CSS via JS) |
 | Preact (dep. FullCalendar) | 10.12.1 | MIT | Copyright (c) 2015-present Jason Miller | `main.js` |
 | Frappe Gantt | 1.2.2 | MIT | Copyright (c) 2024 Frappe Technologies Pvt. Ltd. | `main.js`, `styles.css` |
 | tslib | 2.8.1 | 0BSD | Copyright (c) Microsoft Corporation | `main.js` (tanpa kewajiban atribusi) |

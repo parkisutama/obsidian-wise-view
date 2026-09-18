@@ -176,7 +176,7 @@ export class BasesGanttView extends BasesView {
 
     private plugin: PlannerPlugin;
     private containerEl: HTMLElement;
-    private ganttEl: HTMLElement;
+    private ganttEl!: HTMLElement;
     /** Element where Frappe Gantt renders. Equals ganttEl when sidebar is off. */
     private chartEl: HTMLElement;
     private gantt: Gantt | null = null;

@@ -479,7 +479,7 @@ export class BasesCalendarView extends BasesView {
           const date = new Date(y, m - 1, d);
           const journalPath = this.getJournalNotePathForDate(date);
 
-          const cushionEl = row.querySelector('.fc-list-day-cushion');
+          const cushionEl = row.querySelector<HTMLElement>('.fc-list-day-cushion');
           if (!cushionEl) return;
           cushionEl.addClass('planner-cursor-pointer');
 
@@ -490,8 +490,8 @@ export class BasesCalendarView extends BasesView {
             }
           };
 
-          const textEl = cushionEl.querySelector('.fc-list-day-text');
-          const sideTextEl = cushionEl.querySelector('.fc-list-day-side-text');
+          const textEl = cushionEl.querySelector<HTMLElement>('.fc-list-day-text');
+          const sideTextEl = cushionEl.querySelector<HTMLElement>('.fc-list-day-side-text');
           if (textEl) {
             textEl.addEventListener('click', clickHandler);
             textEl.addEventListener('mouseenter', hoverHandler);
