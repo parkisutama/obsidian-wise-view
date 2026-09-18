@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import { afterEach, describe, expect, it } from "vitest";
+import { buildLicenseBanner, requiredNoticeFragments } from "../scripts/license-banner.mjs";
 import { verifyBuildArtifacts } from "../scripts/verify-build-artifacts.mjs";
 
 const tempDirs = [];
@@ -12,6 +13,12 @@ function makeTempDir() {
 	return cwd;
 }
 
+function writeValidArtifacts(cwd) {
+	writeFileSync(path.join(cwd, "main.js"), `${buildLicenseBanner("main.js", "1.0.0")}ok\n`);
+	writeFileSync(path.join(cwd, "manifest.json"), "ok\n");
+	writeFileSync(path.join(cwd, "styles.css"), `${buildLicenseBanner("styles.css")}ok\n`);
+}
+
 afterEach(() => {
 	while (tempDirs.length > 0) {
 		rmSync(tempDirs.pop(), { recursive: true, force: true });
@@ -19,11 +26,9 @@ afterEach(() => {
 });
 
 describe("verifyBuildArtifacts", () => {
-	it("passes when all required plugin artifacts exist and are non-empty", () => {
+	it("passes when all required plugin artifacts exist, are non-empty, and carry license notices", () => {
 		const cwd = makeTempDir();
-		for (const artifact of ["main.js", "manifest.json", "styles.css"]) {
-			writeFileSync(path.join(cwd, artifact), "ok\n");
-		}
+		writeValidArtifacts(cwd);
 
 		expect(verifyBuildArtifacts({ cwd }).ok).toBe(true);
 	});
@@ -37,6 +42,32 @@ describe("verifyBuildArtifacts", () => {
 			ok: false,
 			missing: ["styles.css"],
 			empty: ["main.js"],
+			missingNotices: {},
 		});
+	});
+
+	it("reports distributed files without a license banner", () => {
+		const cwd = makeTempDir();
+		writeValidArtifacts(cwd);
+		writeFileSync(path.join(cwd, "main.js"), "ok\n");
+
+		const result = verifyBuildArtifacts({ cwd });
+		expect(result.ok).toBe(false);
+		expect(result.missingNotices).toEqual({ "main.js": requiredNoticeFragments("main.js") });
+	});
+});
+
+describe("buildLicenseBanner", () => {
+	it("lists only components shipped in the given file", () => {
+		const css = buildLicenseBanner("styles.css");
+		expect(css.startsWith("/*!")).toBe(true);
+		expect(css).toContain("Frappe Gantt (MIT)");
+		expect(css).not.toContain("FullCalendar");
+
+		const js = buildLicenseBanner("main.js", "1.2.3");
+		expect(js).toContain("Wise View v1.2.3");
+		for (const fragment of requiredNoticeFragments("main.js")) {
+			expect(js).toContain(fragment);
+		}
 	});
 });
