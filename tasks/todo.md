@@ -222,15 +222,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ## Phase 2: Modular regular CSS
 
-### T012: Support ordered first-party CSS sources in the build
+### T012: Support ordered first-party CSS sources in the build — done
 
 **Description:** Extend the CSS merge plugin so the root artifact is generated from an explicit ordered list of first-party regular CSS modules plus licensed vendor CSS.
 
 **Acceptance criteria:**
 
-- [ ] First-party order is explicit and deterministic.
-- [ ] Repeated builds are byte-identical.
-- [ ] Existing vendor transformation and notice behavior remains intact.
+- [x] First-party order is explicit and deterministic.
+- [x] Repeated builds are byte-identical.
+- [x] Existing vendor transformation and notice behavior remains intact.
 
 **Verification:** `pnpm run test -- css-merge && pnpm run build && pnpm run verify:artifacts`
 
@@ -240,35 +240,37 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T013: Extract CSS foundations and shared primitives
+### T013: Extract CSS foundations and shared primitives — done
 
 **Description:** Move theme mappings, tokens, focus states, empty states, toolbars, badges, and virtual-collection primitives into regular CSS source modules.
 
+**Corrected file boundary:** the existing "1. GLOBAL UTILITIES & SHARED COMPONENTS" section had no separate theme-token layer to split out (it consumes Obsidian's own variables directly, defines none of its own) — it became one file, `src/styles/foundations/common.css`. Settings/modal styles (originally section 5, not covered by any task) were folded in here as `src/styles/components/settings.css` since they aren't view-specific.
+
 **Acceptance criteria:**
 
-- [ ] Shared variables use Obsidian variables as their base.
-- [ ] No visual rule is duplicated between old and new source regions.
-- [ ] Root artifact output remains valid without Sass/PostCSS.
+- [x] Shared variables use Obsidian variables as their base. (No first-party tokens exist; rules reference `var(--...)` Obsidian variables directly, unchanged from before extraction.)
+- [x] No visual rule is duplicated between old and new source regions. (Verified: extraction was by exact line range with a byte-for-byte diff against the original, not retyped.)
+- [x] Root artifact output remains valid without Sass/PostCSS.
 
-**Verification:** `pnpm run build && pnpm run verify:artifacts`; visual comparison at Checkpoint C.
+**Verification:** `pnpm run build && pnpm run verify:artifacts` passed. Visual comparison deferred to the maintainer (native rendering is outside this session's reach).
 
 **Dependencies:** T012.
 
-**Likely files:** `src/styles/foundations/tokens.css`, `src/styles/foundations/accessibility.css`, `src/styles/components/common.css`, `esbuild.config.mjs`, `styles.css`
+**Likely files (corrected):** `src/styles/foundations/common.css`, `src/styles/components/settings.css`, `esbuild.config.mjs`, `styles.css`
 
 **Estimated scope:** M
 
-### T014: Extract Calendar CSS module
+### T014: Extract Calendar CSS module — done (automated portion)
 
 **Description:** Move Calendar-owned rules into its view CSS module while retaining selector compatibility and FullCalendar override order.
 
 **Acceptance criteria:**
 
-- [ ] Calendar rules have one source location.
-- [ ] FullCalendar package CSS still precedes Wise View overrides.
-- [ ] Year/month/week/day/list views retain their layout.
+- [x] Calendar rules have one source location (`src/styles/views/calendar.css`).
+- [x] FullCalendar package CSS still precedes Wise View overrides. (Unchanged: FullCalendar's own CSS is still merged via `imported`/`extraCss` after BUNDLE_MARKER, i.e. after all first-party modules including calendar.css — same relative order as before extraction.)
+- [ ] Year/month/week/day/list views retain their layout. **Needs the maintainer**: native visual check.
 
-**Verification:** `pnpm run build && pnpm run test -- css-merge`; native Calendar visual smoke.
+**Verification:** `pnpm run build && pnpm run test -- css-merge` passed. Native Calendar visual smoke deferred to the maintainer.
 
 **Dependencies:** T013.
 
@@ -276,17 +278,17 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T015: Extract Gantt CSS module
+### T015: Extract Gantt CSS module — done (automated portion)
 
 **Description:** Move Gantt/WBS rules into a view module and preserve scoped, theme-mapped Frappe CSS.
 
 **Acceptance criteria:**
 
-- [ ] Vendor variables remain scoped to the Gantt root.
-- [ ] WBS, popup, bar, and resize styles have one source location.
-- [ ] Light/dark behavior remains equivalent.
+- [x] Vendor variables remain scoped to the Gantt root. (Unchanged: `esbuild.config.mjs`'s `scopeFrappeGanttCss` transform, which scopes `:root`/dark-theme selectors to `.bases-gantt-view`, still runs on the vendor CSS after the marker; not touched by this task.)
+- [x] WBS, popup, bar, and resize styles have one source location (`src/styles/views/gantt.css`, combining the former "4. GANTT VIEW STYLES" and "6. VENDOR OVERRIDES — Frappe Gantt" sections, which were both first-party Gantt-selector rules despite the old section name).
+- [ ] Light/dark behavior remains equivalent. **Needs the maintainer**: native visual check.
 
-**Verification:** `pnpm run build && pnpm run verify:artifacts`; native Gantt visual smoke.
+**Verification:** `pnpm run build && pnpm run verify:artifacts` passed. Native Gantt visual smoke deferred to the maintainer.
 
 **Dependencies:** T013.
 
@@ -294,17 +296,18 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T016: Extract Swimlane CSS and compatibility aliases
+### T016: Extract Swimlane CSS and compatibility aliases — partially done
 
 **Description:** Move board/card/drag/touch rules into a view module, introduce Wise View/Swimlane root names, and retain temporary aliases for legacy Planner/Kanban selectors.
 
 **Acceptance criteria:**
 
-- [ ] New component rules use `wise-view`/`swimlane` names.
-- [ ] Existing DOM remains styled during the incremental TypeScript migration.
-- [ ] Alias removal conditions are documented.
+- [x] Board/card/drag/touch rules moved verbatim to `src/styles/views/swimlane.css` (byte-for-byte diff confirmed against the original section).
+- [ ] New component rules use `wise-view`/`swimlane` names, with temporary Planner/Kanban aliases. **Deliberately deferred**: this is a generative rename coordinated with `BasesSwimlaneView.ts`'s own class names (still `.planner-kanban-*`, unchanged since T011), not a pure extraction. Renaming CSS selectors without a matching TS change would leave the new names unused; doing both together is real, unverified-by-me visual risk on top of a change the maintainer already agreed to review by eye. Revisit as its own follow-up once native visual verification of this extraction is confirmed.
+- [x] Existing DOM remains styled during the incremental TypeScript migration (unchanged selectors — nothing to break).
+- [ ] Alias removal conditions are documented. Pending the rename above.
 
-**Verification:** `pnpm run build`; native desktop/mobile Swimlane visual and drag smoke.
+**Verification:** `pnpm run build` passed. Native desktop/mobile Swimlane visual and drag smoke deferred to the maintainer.
 
 **Dependencies:** T013.
 
@@ -314,9 +317,9 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ### Checkpoint C
 
-- [ ] `pnpm run check:ci`
-- [ ] Visual comparison for existing views in light/dark desktop/mobile.
-- [ ] No Sass or CSS runtime dependency added.
+- [x] `pnpm run check:ci`
+- [ ] Visual comparison for existing views in light/dark desktop/mobile. **Needs the maintainer**: outside this session's reach; mitigated by byte-for-byte diffs proving the extraction moved text without altering it (see T013-T016 commit).
+- [x] No Sass or CSS runtime dependency added.
 
 ## Phase 3: Shared Bases data and interaction foundation
 
