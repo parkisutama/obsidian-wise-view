@@ -2,11 +2,19 @@
 
 ## Setup
 
-Use the pinned package manager from `package.json`.
+Requirements:
+
+- Node.js 24 LTS. The version is pinned in `.node-version`; with
+  [fnm](https://github.com/Schniz/fnm) run `fnm use` (or enable `--use-on-cd`).
+- pnpm 12, pinned in `package.json` (`packageManager`). Update a standalone install with
+  `pnpm self-update`.
 
 ```bash
 pnpm install --frozen-lockfile
 ```
+
+pnpm settings live in `pnpm-workspace.yaml`. pnpm refuses to resolve packages published less
+than 24 hours ago (`minimumReleaseAge`); wait a day before adopting a brand-new release.
 
 Recommended branch naming:
 
@@ -58,14 +66,15 @@ CI uses the stricter release-oriented gate:
 pnpm run check:ci
 ```
 
-That command runs `check`, creates a production build, and verifies that `main.js`, `manifest.json`, and `styles.css` exist and are non-empty.
+That command runs `check`, creates a production build, and verifies that `main.js`, `manifest.json`, and `styles.css` exist, are non-empty, and start with the license banner defined in `scripts/license-banner.mjs`.
 
 ## Versioning
 
-Use `pnpm version` so npm runs the `version` lifecycle script:
+Use `pnpm version` so the `version` lifecycle script runs. Pass an empty tag prefix: the
+release workflow requires the tag to equal `manifest.json.version` (`1.2.3`, not `v1.2.3`).
 
 ```bash
-pnpm version patch
+pnpm version patch --tag-version-prefix=""
 ```
 
 The version script syncs `manifest.json` to the package version and writes `versions[version] = manifest.minAppVersion` in `versions.json`.
@@ -81,7 +90,7 @@ git push origin main
 git push origin 1.2.3
 ```
 
-The GitHub release workflow installs with `pnpm install --frozen-lockfile`, runs `pnpm run check:ci`, uploads `main.js`, `manifest.json`, `styles.css`, and attaches `wise-view.zip`.
+The GitHub release workflow installs with `pnpm install --frozen-lockfile`, runs `pnpm run check:ci`, uploads `main.js`, `manifest.json`, `styles.css`, `LICENSE`, and `THIRD_PARTY_NOTICES.md`, and attaches `wise-view.zip` containing all five.
 
 ## Manual QA Checklist
 
