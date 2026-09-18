@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
+/**
+ * ViewDescriptor registry (T006).
+ *
+ * The single source of truth for a Bases view's stable ID, display metadata, factory, view
+ * options, hover-preview attribution, optional commands, and capability declaration (spec
+ * §7.3). Building descriptor objects and validating them never instantiates a view: `factory`
+ * is stored, not called, until Obsidian itself mounts the view.
+ */
+
+import type { BasesViewFactory, BasesAllOptions, BasesViewConfig, Command, HoverLinkSource } from 'obsidian';
+
+/** Every Wise View type ID must use this prefix; enforced by validateViewDescriptor. */
+export const VIEW_ID_PREFIX = 'wise-view-';
+
+/**
+ * Capabilities a descriptor may declare. `legacyMutation` marks a view that keeps existing
+ * direct vault/frontmatter write behavior during the refactor (spec §7.10); it must not be set
+ * on a new view without a separately approved decision.
+ */
+export interface ViewCapabilities {
+	legacyMutation?: boolean;
+}
+
+/**
+ * Everything needed to register one Bases view with Obsidian: the view registration itself,
+ * hover-preview attribution, optional command-palette commands, and its capability
+ * declaration. Expressive enough for Calendar, Gantt, and Swimlane without per-view branching
+ * in the registry or in `main.ts`.
+ */
+export interface ViewDescriptor {
+	/** Stable type ID, e.g. `wise-view-calendar`. Never changes once released (spec §8). */
+	id: string;
+	name: string;
+	icon: string;
+	factory: BasesViewFactory;
+	options?: (config: BasesViewConfig) => BasesAllOptions[];
+	/** Page Preview attribution for this view's hover-link events. Omitted if the view never hovers. */
+	hover?: HoverLinkSource;
+	/** Command-palette commands scoped to this view. Empty/omitted if the view exposes none. */
+	commands?: Command[];
+	capabilities?: ViewCapabilities;
+}
+
+export class DuplicateViewIdError extends Error {
+	constructor(public readonly id: string) {
+		super(`A view with id "${id}" is already registered.`);
+	}
+}
+
+export class InvalidViewIdError extends Error {
+	constructor(public readonly id: string) {
+		super(`View id "${id}" must start with "${VIEW_ID_PREFIX}".`);
+	}
+}
+
+/** Validates id format only; does not touch `factory` or any other view-instantiating field. */
+export function validateViewDescriptor(descriptor: ViewDescriptor): void {
+	if (!descriptor.id.startsWith(VIEW_ID_PREFIX)) {
+		throw new InvalidViewIdError(descriptor.id);
+	}
+}
+
+/**
+ * Ordered collection of view descriptors. `main.ts` iterates `list()` to register Bases views,
+ * hover sources, and commands from one place instead of separate per-view lists (spec §7.3).
+ */
+export class ViewRegistry {
+	private readonly byId = new Map<string, ViewDescriptor>();
+	private readonly order: string[] = [];
+
+	/** Validates and stores the descriptor. Throws before storing on an invalid or duplicate id. */
+	register(descriptor: ViewDescriptor): void {
+		validateViewDescriptor(descriptor);
+		if (this.byId.has(descriptor.id)) {
+			throw new DuplicateViewIdError(descriptor.id);
+		}
+		this.byId.set(descriptor.id, descriptor);
+		this.order.push(descriptor.id);
+	}
+
+	/** Descriptors in registration order. */
+	list(): ViewDescriptor[] {
+		return this.order.map((id) => this.byId.get(id)!);
+	}
+
+	get(id: string): ViewDescriptor | undefined {
+		return this.byId.get(id);
+	}
+
+	has(id: string): boolean {
+		return this.byId.has(id);
+	}
+}
