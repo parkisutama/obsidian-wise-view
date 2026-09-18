@@ -34,7 +34,7 @@ These checks validate shared navigation integration only. They do not accept the
 
 ## Visual and behavioral gaps
 
-| Area | Current Wise View evidence | Reference behavior to adopt |
+| Area | Current Wise View evidence | Pinned upstream behavior to adapt |
 | --- | --- | --- |
 | Zoom control | Separate Day, Week, Month, Quarter, Year buttons | One compact zoom selector beside Today |
 | Sidebar | Fixed-width list without an obvious collapse control | Compact collapse/expand control and more efficient label truncation |
@@ -60,3 +60,11 @@ The context menu screenshot also shows a **Show details** action separated from 
 destinations. The maintainer considers the centered-window model useful for Timeline and potentially
 other views. T034D records this as a shared design problem. It is not part of the current Timeline
 fidelity fix and must not be implemented as a one-off modal.
+
+## Approved source reuse
+
+On 2026-09-19 the maintainer approved selective source adaptation from
+`mmattia09/obsidian-project-manager` at commit
+`2c6ee7ca2ab881f5557df5a042a377b0139b8608`, with attribution in adapted code. T034A may adapt
+the read-only layout and interaction slices recorded in the provenance ledger. Workflow ordering,
+priority behavior, drag/resize, quick scheduling, and property writes remain prohibited.

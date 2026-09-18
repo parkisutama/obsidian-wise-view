@@ -240,6 +240,7 @@ bundled.
   clean pattern for integrating Frappe Gantt into Obsidian Bases.
 - **[mmattia09](https://github.com/mmattia09)** — whose MIT-licensed
   [obsidian-project-manager](https://github.com/mmattia09/obsidian-project-manager) provided
-  design evidence for Timeline behavior; Wise View's implementation is an independent rewrite.
+  the selectively adapted read-only Timeline controls, temporal grid, navigation behavior, and
+  styling. Task-workflow and write features remain intentionally excluded.
 - The [Obsidian](https://obsidian.md/) team for building the Bases API.
 - [FullCalendar](https://fullcalendar.io/) projects.

@@ -658,7 +658,7 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ### T034A: Close Timeline header, grid, and toolbar fidelity gaps
 
-**Description:** Refine the native Timeline surface from the 2026-09-19 screenshot comparison so its temporal hierarchy and controls retain the useful upstream behavior without importing its task workflow.
+**Description:** Selectively adapt the pinned MIT upstream Timeline controls, temporal hierarchy, grid, today indicator, and scroll behavior identified by the 2026-09-19 native comparison, while excluding its task workflow and write paths.
 
 **Acceptance criteria:**
 

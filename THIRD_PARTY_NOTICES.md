@@ -160,15 +160,40 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-## Bases Timeline design reference
+## Bases Timeline
 
 - Source: <https://github.com/mmattia09/obsidian-project-manager>
 - Reference commit: `2c6ee7ca2ab881f5557df5a042a377b0139b8608`
 - Upstream license: MIT
-- Used for: behavioral design evidence for time domains, zoom levels, synchronized sidebar and
-  timeline scrolling, grouping, edge indicators, and responsive layout
-- Reuse mode: independent reimplementation; no upstream source file is copied or incorporated
+- Used for: selectively adapted Timeline toolbar/sidebar controls, temporal header/grid, today
+  indicator, edge navigation, scroll anchoring, responsive layout, and related styling
+- Excluded from Wise View: task status/priority workflow, property writes, drag/resize, and quick
+  scheduling
 
-This acknowledgment records the design reference even though its source code is not bundled into
-Wise View. The authoritative reuse decision is maintained in
-`docs/architecture/upstream-provenance.md`.
+The authoritative file-level reuse decision is maintained in
+`docs/architecture/upstream-provenance.md`. The adapted work is distributed as part of Wise View
+under GPL-3.0-only while preserving the upstream MIT notice and permission terms:
+
+```text
+MIT License
+
+Copyright (c) 2026 mmattia09
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

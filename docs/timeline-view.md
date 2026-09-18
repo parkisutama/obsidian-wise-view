@@ -72,10 +72,11 @@ hover dinonaktifkan saat sistem meminta reduced motion.
 
 ## Perbedaan dari referensi upstream
 
-Desain perilaku terinspirasi oleh
+Bagian kontrol, header/grid temporal, today indicator, scroll anchoring, dan styling terkait
+diadaptasi secara selektif dari
 [obsidian-project-manager](https://github.com/mmattia09/obsidian-project-manager) pada commit
-`2c6ee7ca2ab881f5557df5a042a377b0139b8608` (MIT). Implementasi Wise View dibuat ulang dari
-design evidence dan tidak menyalin file upstream.
+`2c6ee7ca2ab881f5557df5a042a377b0139b8608` (MIT), dengan notice dipertahankan pada file yang
+diadaptasi dan di `THIRD_PARTY_NOTICES.md`.
 
 Berbeda dari workflow upstream yang editable, Timeline Wise View:
 

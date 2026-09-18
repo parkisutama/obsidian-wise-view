@@ -29,15 +29,24 @@ repository listed here beyond what its **Reuse mode** and **Excluded** rows perm
 - **Repository:** <https://github.com/mmattia09/obsidian-project-manager>
 - **Commit:** `2c6ee7ca2ab881f5557df5a042a377b0139b8608`
 - **License:** MIT
-- **Reuse mode:** Design evidence only / behaviorally reimplemented.
+- **Reuse mode:** Selective source adaptation approved by the maintainer on 2026-09-19.
 - **Useful design evidence:** time-domain model, zoom levels, synchronized sidebar/timeline
   scroll, edge arrows, grouping, mobile list mode.
 - **Excluded:** hardcoded status/priority workflows, direct writes, quick scheduling, the
   monolithic 1,316-line view structure.
-- **File-level provenance:** none yet. Record here when a Timeline task (T028-T034) adapts a
-  specific upstream file; otherwise Timeline is implemented from design evidence only and no
-  `THIRD_PARTY_NOTICES.md` entry is required.
-- **Attribution required:** only if a file-level entry above is added.
+- **File-level provenance:** T034A may adapt the following pinned files:
+  - upstream `src/timeline-view.ts` -> Wise View `src/views/timeline/TimelineRenderer.ts` and,
+    only where lifecycle wiring is necessary, `src/views/timeline/BasesTimelineView.ts`;
+    permitted scope is toolbar/sidebar controls, temporal header/grid, today indicator, edge
+    navigation, and scroll-anchor behavior;
+  - upstream `styles.css` -> Wise View `src/styles/views/timeline.css`; permitted scope is the
+    corresponding read-only layout and presentation rules.
+- **Must remain excluded:** `PRIORITY_LEVELS`, `PRIORITY_RANK`, `STATUS_ORDER`, workflow group
+  sorting, group/status drops, priority editing, quick scheduling, bar drag/resize, date/property
+  writes, and hardcoded task property defaults.
+- **Attribution required:** adapted TypeScript files carry an SPDX/copyright adaptation header;
+  adapted CSS carries a preserved attribution header; the upstream MIT text is included in
+  `THIRD_PARTY_NOTICES.md`.
 
 ### Keep Bases View
 
