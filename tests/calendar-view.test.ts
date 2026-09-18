@@ -250,3 +250,27 @@ describe("BasesCalendarView events", () => {
 		expect(h.frontmatter).toHaveLength(0);
 	});
 });
+
+describe("BasesCalendarView lifecycle", () => {
+	it("leaves no calendar or shared container class alive after repeated update/unload", async () => {
+		const h = mount();
+		internals(h).calendar.changeView("timeGridWeek");
+		await flush();
+		internals(h).calendar.changeView("dayGridMonth");
+		await flush();
+
+		expect(h.host.classList.contains("planner-bases-calendar")).toBe(true);
+		expect(h.host.querySelector(".planner-fc-toolbar")).not.toBeNull();
+		h.view.onunload();
+		expect(h.host.classList.contains("planner-bases-calendar")).toBe(false);
+		expect(h.host.querySelector(".planner-fc-toolbar")).toBeNull();
+	});
+
+	it("is safe to unload twice", () => {
+		const h = mount();
+		expect(() => {
+			h.view.onunload();
+			h.view.onunload();
+		}).not.toThrow();
+	});
+});

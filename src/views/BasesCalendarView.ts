@@ -29,6 +29,7 @@ import classicThemePlugin from 'fullcalendar/themes/classic';
 import 'fullcalendar/skeleton.css';
 import 'fullcalendar/themes/classic/theme.css';
 import 'fullcalendar/themes/classic/palette.css';
+import { ViewRuntime } from '../platform/dom/ViewRuntime';
 
 /**
  * Type interfaces for Obsidian's undocumented internal plugins API
@@ -147,6 +148,7 @@ export class BasesCalendarView extends BasesView {
   type = BASES_CALENDAR_VIEW_ID;
   private plugin: PlannerPlugin;
   private containerEl: HTMLElement;
+  private readonly runtime: ViewRuntime;
   private calendarEl: HTMLElement | null = null;
   private calendar: Calendar | null = null;
   private currentView: CalendarViewType | null = null; // null means use config default
@@ -233,6 +235,14 @@ export class BasesCalendarView extends BasesView {
     super(controller);
     this.plugin = plugin;
     this.containerEl = containerEl;
+    this.runtime = new ViewRuntime(containerEl);
+    // Registered once; each closure reads the current `this.calendar`/class state at dispose
+    // time, so it stays correct across however many times render() replaces the calendar.
+    this.runtime.add(() => {
+      this.calendar?.destroy();
+      this.calendar = null;
+    });
+    this.runtime.add(() => this.containerEl.removeClass('planner-bases-calendar'));
     this.setupContainer();
   }
 
@@ -253,12 +263,9 @@ export class BasesCalendarView extends BasesView {
 
   onunload(): void {
     // FullCalendar 7 tracks its container size itself, so no ResizeObserver is needed.
-    if (this.calendar) {
-      this.calendar.destroy();
-      this.calendar = null;
-    }
-    // Clean up styles and classes added to the shared container
-    this.containerEl.removeClass('planner-bases-calendar');
+    // Destroying the calendar and clearing the shared container's class both run through the
+    // runtime's DisposableScope, registered once in the constructor; dispose() is idempotent.
+    this.runtime.dispose();
   }
 
   private render(): void {
@@ -636,8 +643,10 @@ export class BasesCalendarView extends BasesView {
       const namedColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'];
 
       if (typeof colorSetting === 'string' && namedColors.includes(colorSetting)) {
-        // Resolve Obsidian theme CSS variable (e.g. --color-red-rgb) to a concrete hex color
-        const rgbStr = getComputedStyle(document.body)
+        // Resolve Obsidian theme CSS variable (e.g. --color-red-rgb) to a concrete hex color.
+        // Read from this view's own owning document so a popout window (with its own theme
+        // class state) resolves the variable from its own body, not the main window's.
+        const rgbStr = getComputedStyle(this.runtime.doc.body)
           .getPropertyValue(`--color-${colorSetting}-rgb`)
           .trim();
         if (rgbStr) {
