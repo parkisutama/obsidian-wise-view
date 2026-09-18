@@ -22,7 +22,7 @@ note, lalu memetakannya menjadi event kalender tanpa memaksakan workflow task te
 2. Ubah tipe view Bases menjadi **Calendar**.
 3. Buka pengaturan view Calendar di Bases.
 4. Pilih properti tanggal pada **Date start field**.
-5. Opsional: pilih **Date end field**, **Title field**, dan **Color by**.
+5. Opsional: pilih **Date end field**, **Title field**, **All-day field**, dan **Color by**.
 
 Minimal, setiap note yang ingin muncul di kalender harus punya nilai pada properti yang dipilih
 sebagai **Date start field**.
@@ -57,7 +57,8 @@ Calendar View menggunakan konfigurasi berikut dari view Bases:
 | --- | --- |
 | **Date start field** | Properti tanggal mulai. Wajib agar note tampil sebagai event. |
 | **Date end field** | Properti tanggal selesai. Opsional untuk event berdurasi atau multi-day. |
-| **Title field** | Properti teks yang dipakai sebagai judul event. Default: `note.title`. |
+| **Title field** | Properti teks yang dipakai sebagai judul event. Kosong: nama file. |
+| **All-day field** | Properti yang menandai event seharian (mis. checkbox). Kosong: event dianggap seharian bila tanggal mulai tidak punya jam. |
 | **Color by** | Properti kategori yang menentukan warna event. |
 | **Default view** | Tampilan awal saat Calendar dibuka. |
 | **Week starts on** | Hari pertama dalam minggu. |

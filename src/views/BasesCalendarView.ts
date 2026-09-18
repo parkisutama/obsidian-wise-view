@@ -170,9 +170,16 @@ export class BasesCalendarView extends BasesView {
     return (validViews.includes(def as CalendarViewType) ? def : 'dayGridMonth') as CalendarViewType;
   }
 
-  private getTitleField(): string {
+  /** Title property; null means events show the file name. */
+  private getTitleField(): string | null {
     const value = this.config.get('titleField') as string | undefined;
-    return value || 'note.title';
+    return value || null;
+  }
+
+  /** Property marking all-day events; null means all-day follows the start time. */
+  private getAllDayField(): string | null {
+    const value = this.config.get('allDayField') as string | undefined;
+    return value || null;
   }
 
   private getDateStartField(): string {
@@ -516,14 +523,15 @@ export class BasesCalendarView extends BasesView {
 
     const dateStart = entry.getValue(dateStartField as BasesPropertyId);
     const dateEnd = entry.getValue(dateEndField as BasesPropertyId);
-    const allDayValue = entry.getValue('note.all_day' as BasesPropertyId);
+    const allDayField = this.getAllDayField();
+    const allDayValue = allDayField ? entry.getValue(allDayField as BasesPropertyId) : null;
 
     // Must have a start date
     if (!dateStart) return null;
 
     // Get title using configured field, with fallbacks
     let title: string;
-    if (titleField === 'file.basename') {
+    if (!titleField || titleField === 'file.basename') {
       title = entry.file.basename;
     } else {
       const titleValue = entry.getValue(titleField as BasesPropertyId);
@@ -1255,8 +1263,8 @@ export function createCalendarViewRegistration(plugin: PlannerPlugin): BasesView
         type: 'property',
         key: 'titleField',
         displayName: 'Title field',
-        default: 'note.title',
-        placeholder: 'Select property',
+        default: '',
+        placeholder: 'File name',
         filter: (propId: BasesPropertyId) =>
           PropertyTypeService.isTextProperty(propId, plugin.app),
       },
@@ -1277,6 +1285,13 @@ export function createCalendarViewRegistration(plugin: PlannerPlugin): BasesView
         placeholder: 'Select property',
         filter: (propId: BasesPropertyId) =>
           PropertyTypeService.isDateProperty(propId, plugin.app),
+      },
+      {
+        type: 'property',
+        key: 'allDayField',
+        displayName: 'All-day field',
+        default: '',
+        placeholder: 'None (use start time)',
       },
       {
         type: 'group',

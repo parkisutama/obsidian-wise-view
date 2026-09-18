@@ -1,5 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
+import { createCalendarViewRegistration } from "../src/views/BasesCalendarView";
+import { DEFAULT_SETTINGS } from "../src/types/settings";
+import type PlannerPlugin from "../src/main";
 import { type CalendarHarness, createCalendarHarness, dayOffset } from "./fixtures/calendar";
 
 let harness: CalendarHarness | null = null;
@@ -18,7 +21,7 @@ type ViewInternals = {
 	calendar: {
 		view: { type: string };
 		changeView(view: string): void;
-		getEvents(): Array<{ title: string; color: string; contrastColor: string; extendedProps: Record<string, unknown> }>;
+		getEvents(): Array<{ title: string; allDay: boolean; color: string; contrastColor: string; extendedProps: Record<string, unknown> }>;
 	};
 	handleEventDrop(info: unknown): Promise<void>;
 	handleEventResize(info: unknown): Promise<void>;
@@ -151,6 +154,42 @@ describe("BasesCalendarView day cells and daily notes", () => {
 		expect(h.hovered).toEqual([`${today}.md`, `${today}.md`]);
 	});
 
+});
+
+describe("BasesCalendarView property defaults", () => {
+	const registrationOptions = () => {
+		const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
+		return createCalendarViewRegistration(plugin).options?.({} as never) ?? [];
+	};
+
+	it("does not preselect any property in its options", () => {
+		const preselected = registrationOptions()
+			.filter((option) => option.type === "property" && "default" in option && option.default)
+			.map((option) => ("key" in option ? option.key : ""));
+		expect(preselected).toEqual([]);
+	});
+
+	it("offers an all-day property option instead of reading note.all_day", () => {
+		const allDay = registrationOptions().find((option) => "key" in option && option.key === "allDayField");
+		expect(allDay).toMatchObject({ type: "property", default: "" });
+	});
+
+	it("uses the file name as event title when Title field is unset", () => {
+		const h = mount({ config: { titleField: undefined } });
+		expect(internals(h).calendar.getEvents().map((e) => e.title).sort()).toEqual(["Launch", "Offsite", "Report"]);
+	});
+
+	const allDayNote = { path: "Standup.md", title: "Standup", date_start: dayOffset(0, 9), date_end: dayOffset(0, 10), all_day: "true" };
+
+	it("decides all-day from the start time when no all-day property is set", () => {
+		const h = mount({ notes: [allDayNote] });
+		expect(internals(h).calendar.getEvents()[0]?.allDay).toBe(false);
+	});
+
+	it("uses the configured all-day property", () => {
+		const h = mount({ notes: [allDayNote], config: { allDayField: "note.all_day" } });
+		expect(internals(h).calendar.getEvents()[0]?.allDay).toBe(true);
+	});
 });
 
 describe("BasesCalendarView events", () => {
