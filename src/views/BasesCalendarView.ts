@@ -123,12 +123,15 @@ import listPlugin from 'fullcalendar/list';
 import interactionPlugin from 'fullcalendar/interaction';
 import multiMonthPlugin from 'fullcalendar/multimonth';
 import type PlannerPlugin from '../main';
-import { stringToColor } from '../utils/colorUtils';
 import { openFileInNewTab, showOpenFileMenuWithItems } from '../utils/openFile';
 import type { NoteTemplateDefaults, WeekDay } from '../types/settings';
 import { PropertyTypeService } from '../services/PropertyTypeService';
 import { isOngoing } from '../utils/dateUtils';
 import { NoteTemplateService } from '../services/NoteTemplateService';
+import { resolveColor, type ResolvedColor } from '../platform/colors/ColorResolver';
+import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAdapter';
+import { triggerHoverPreview as dispatchHoverPreview } from '../platform/navigation/NavigationService';
+import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
 
@@ -149,6 +152,7 @@ export class BasesCalendarView extends BasesView {
   private plugin: PlannerPlugin;
   private containerEl: HTMLElement;
   private readonly runtime: ViewRuntime;
+  private readonly mutations: LegacyMutationGateway;
   private calendarEl: HTMLElement | null = null;
   private calendar: Calendar | null = null;
   private currentView: CalendarViewType | null = null; // null means use config default
@@ -236,6 +240,7 @@ export class BasesCalendarView extends BasesView {
     this.plugin = plugin;
     this.containerEl = containerEl;
     this.runtime = new ViewRuntime(containerEl);
+    this.mutations = new LegacyMutationGateway(this.app);
     // Registered once; each closure reads the current `this.calendar`/class state at dispose
     // time, so it stays correct across however many times render() replaces the calendar.
     this.runtime.add(() => {
@@ -385,14 +390,16 @@ export class BasesCalendarView extends BasesView {
       events: events,
       eventClick: (info) => { void this.handleEventClick(info); },
       eventDidMount: (info) => {
-        const entry = this.getEventEntry(info.event.extendedProps);
-        if (!entry) return;
+        const path = this.getEventPath(info.event.extendedProps);
+        if (!path) return;
         info.el.addEventListener('contextmenu', (e) => {
-          this.showEventContextMenu(entry, e);
+          // Resolved fresh at click time — never the closure-captured entry (spec §7.5).
+          const entry = this.findEntryByPath(path);
+          if (entry) this.showEventContextMenu(entry, e);
         });
         // Page Preview source settings decide whether hover requires Ctrl/Cmd.
         info.el.addEventListener('mouseenter', (e) => {
-          this.triggerHoverPreview(e, entry.file.path, info.el);
+          this.triggerHoverPreview(e, path, info.el);
         });
       },
       eventDrop: (info) => { void this.handleEventDrop(info); },
@@ -546,7 +553,7 @@ export class BasesCalendarView extends BasesView {
     }
 
     // Get color
-    const color = this.getEntryColor(entry, colorByProp);
+    const resolvedColor = this.resolveEntryColor(entry, colorByProp);
 
     // Convert dates to ISO strings (handles both Date objects and strings)
     const startStr = this.toISOString(dateStart);
@@ -563,128 +570,47 @@ export class BasesCalendarView extends BasesView {
       start: startStr,
       end: endStr,
       allDay: isAllDay,
-      color,
-      contrastColor: this.getContrastColor(color),
+      color: resolvedColor.background,
+      contrastColor: resolvedColor.foreground,
+      // Path only — never a live BasesEntry, which Obsidian recreates on the next update
+      // (spec §7.5). Anything needing entry data resolves it fresh, by path, at interaction time.
       extendedProps: {
-        entry,
+        path: entry.file.path,
       },
     };
   }
 
-  private getEntryColor(entry: BasesEntry, colorByProp: string): string {
-    if (colorByProp === 'none' || !colorByProp) return '#6b7280';
+  /** Resolves an event's color through the shared ColorResolver (spec §7.8), consolidating what
+   * used to be three private methods (direct-color/folder/Pretty-Properties/valueStyles/hash). */
+  private resolveEntryColor(entry: BasesEntry, colorByProp: string): ResolvedColor {
+    if (colorByProp === 'none' || !colorByProp) return resolveColor({});
 
     const propName = colorByProp.split('.')[1] || colorByProp;
 
-    // If note has a direct 'color' hex property, use it
     if (propName === 'color') {
       const colorValue = entry.getValue(colorByProp as BasesPropertyId);
-      if (colorValue) {
-        const colorStr = String(colorValue);
-        return colorStr.startsWith('#') ? colorStr : `#${colorStr}`;
-      }
-      return '#6b7280';
+      return resolveColor({ explicitColor: colorValue ? String(colorValue) : null });
     }
 
-    // Folder-based coloring
     if (propName === 'folder') {
       const folderPath = entry.file.parent?.path || '/';
       const folderName = folderPath === '/' ? 'Root' : entry.file.parent?.name || 'Root';
-      return this.getValueStyleColor(colorByProp, folderName);
+      return resolveColor({
+        categoryValue: folderName,
+        valueStyleColor: this.plugin.settings.valueStyles[colorByProp]?.[folderName]?.color ?? null,
+      });
     }
 
     const value = entry.getValue(colorByProp as BasesPropertyId);
-    if (!value) return '#6b7280';
-
-    const valueStr = Array.isArray(value)
-      ? (value[0] != null ? String(value[0]) : undefined)
+    const valueStr = value == null ? null : Array.isArray(value)
+      ? (value[0] != null ? String(value[0]) : null)
       : String(value);
-    if (!valueStr) return '#6b7280';
 
-    // Try Pretty Properties color first, then valueStyles config, then hash color
-    const ppColor = this.getPrettyPropertiesColor(propName, valueStr);
-    if (ppColor) return ppColor;
-
-    return this.getValueStyleColor(colorByProp, valueStr);
-  }
-
-  /** Check settings valueStyles first, then fall back to stringToColor hash. */
-  private getValueStyleColor(field: string, value: string): string {
-    return this.plugin.settings.valueStyles[field]?.[value]?.color ?? stringToColor(value);
-  }
-
-  /**
-   * Resolve a Pretty Properties color setting to a hex color string.
-   * Uses the global `window.PrettyPropertiesApi` exposed by the Pretty Properties plugin.
-   * Returns null if Pretty Properties is not installed, no color is assigned, or color cannot be resolved.
-   *
-   * Pretty Properties stores colors by VALUE (not by property name), so `propName` is only
-   * used to determine which settings dictionary to look in (multitext, tags, or text).
-   */
-  private getPrettyPropertiesColor(propName: string, propValue: string): string | null {
-    /** Minimal subset of the Pretty Properties public API we actually use. */
-    interface PPColorSetting { h: number; s: number; l: number }
-    interface PrettyPropertiesApi {
-      getPropertyBackgroundColorSetting(
-        propName: string, propValue: string
-      ): string | PPColorSetting | undefined;
-    }
-    interface WindowWithPP extends Window { PrettyPropertiesApi?: PrettyPropertiesApi }
-
-    const ppApi = (window as WindowWithPP).PrettyPropertiesApi;
-    if (!ppApi) return null;
-
-    try {
-      // Returns a named color string ("red", "blue", …), an HSL object {h, s, l},
-      // "none" (transparent), or "default" (no color assigned).
-      const colorSetting = ppApi.getPropertyBackgroundColorSetting(propName, propValue);
-      if (!colorSetting || colorSetting === 'default' || colorSetting === 'none') return null;
-
-      const namedColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'];
-
-      if (typeof colorSetting === 'string' && namedColors.includes(colorSetting)) {
-        // Resolve Obsidian theme CSS variable (e.g. --color-red-rgb) to a concrete hex color.
-        // Read from this view's own owning document so a popout window (with its own theme
-        // class state) resolves the variable from its own body, not the main window's.
-        const rgbStr = getComputedStyle(this.runtime.doc.body)
-          .getPropertyValue(`--color-${colorSetting}-rgb`)
-          .trim();
-        if (rgbStr) {
-          const parts = rgbStr.split(/[\s,]+/).map((n: string) => parseInt(n.trim(), 10));
-          if (parts.length >= 3 && parts.every((n: number) => !isNaN(n))) {
-            const r = parts[0] ?? 0;
-            const g = parts[1] ?? 0;
-            const b = parts[2] ?? 0;
-            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-          }
-        }
-        return null;
-      }
-
-      if (typeof colorSetting === 'object' && colorSetting.h !== undefined) {
-        return this.hslToHex(colorSetting.h, colorSetting.s, colorSetting.l);
-      }
-    } catch {
-      // Pretty Properties API error — fall through to default behavior
-    }
-
-    return null;
-  }
-
-  /**
-   * Convert HSL color values to a hex color string.
-   * Uses the standard CSS HSL model: h in [0, 360], s and l in [0, 100].
-   */
-  private hslToHex(h: number, s: number, l: number): string {
-    s /= 100;
-    l /= 100;
-    const k = (n: number) => (n + h / 30) % 12;
-    const a = s * Math.min(l, 1 - l);
-    const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-    const r = Math.round(255 * f(0));
-    const g = Math.round(255 * f(8));
-    const b = Math.round(255 * f(4));
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    return resolveColor({
+      categoryValue: valueStr,
+      resolvePrettyPropertiesColor: (v) => resolvePrettyPropertiesColor(this.runtime.win, this.runtime.doc, propName, v),
+      valueStyleColor: valueStr ? this.plugin.settings.valueStyles[colorByProp]?.[valueStr]?.color ?? null : null,
+    });
   }
 
   private hasTime(dateStr: string): boolean {
@@ -774,82 +700,60 @@ export class BasesCalendarView extends BasesView {
   }
 
   private async handleEventClick(info: EventClickInfo): Promise<void> {
-    const entry = this.getEventEntry(info.event.extendedProps);
-    if (!entry) return;
-    openFileInNewTab(this.app, entry.file.path);
+    const path = this.getEventPath(info.event.extendedProps);
+    if (!path) return;
+    openFileInNewTab(this.app, path);
   }
 
   private async handleEventDrop(info: EventDropInfo): Promise<void> {
-    const entry = this.getEventEntry(info.event.extendedProps);
-    if (!entry) {
-      info.revert();
-      return;
-    }
-    const newStart = info.event.start;
-    const newEnd = info.event.end;
-
-    // Formula properties are computed by Bases — never write them to frontmatter
-    const dateStartField = this.getDateStartField();
-    const dateEndField = this.getDateEndField();
-    if (dateStartField.startsWith('formula.') || dateEndField.startsWith('formula.')) {
-      info.revert();
-      return;
-    }
-
-    // Update the file's frontmatter - preserve duration by updating both start and end
-    // Use local timezone format for user-friendly display in frontmatter
-    const startFieldName = dateStartField.replace(/^(note|file|formula)\./, '');
-    const endFieldName = dateEndField.replace(/^(note|file|formula)\./, '');
-    await this.app.fileManager.processFrontMatter(entry.file, (fm: EditableFrontmatter) => {
-      if (newStart && startFieldName) {
-        fm[startFieldName] = this.toLocalISOString(newStart);
-      }
-      if (newEnd && endFieldName) {
-        fm[endFieldName] = this.toLocalISOString(newEnd);
-      }
-    });
+    await this.applyDateRangeMutation(info.event.extendedProps, info.event.start, info.event.end, info.revert);
   }
 
   private async handleEventResize(info: EventResizeDoneInfo): Promise<void> {
-    const entry = this.getEventEntry(info.event.extendedProps);
-    if (!entry) {
-      info.revert();
+    await this.applyDateRangeMutation(info.event.extendedProps, info.event.start, info.event.end, info.revert);
+  }
+
+  /** Shared by drag (drop) and resize: writes the new range through the legacy mutation capability. */
+  private async applyDateRangeMutation(
+    extendedProps: unknown,
+    newStart: Date | null,
+    newEnd: Date | null,
+    revert: () => void,
+  ): Promise<void> {
+    const path = this.getEventPath(extendedProps);
+    if (!path || !newStart) {
+      revert();
       return;
     }
-    const newStart = info.event.start;
-    const newEnd = info.event.end;
 
-    // Formula properties are computed by Bases — never write them to frontmatter
-    const dateStartField = this.getDateStartField();
-    const dateEndField = this.getDateEndField();
-    if (dateStartField.startsWith('formula.') || dateEndField.startsWith('formula.')) {
-      info.revert();
-      return;
-    }
-
-    // Update the file's frontmatter with new start/end times
-    // Use local timezone format for user-friendly display in frontmatter
-    const startFieldName = dateStartField.replace(/^(note|file|formula)\./, '');
-    const endFieldName = dateEndField.replace(/^(note|file|formula)\./, '');
-    await this.app.fileManager.processFrontMatter(entry.file, (fm: EditableFrontmatter) => {
-      if (newStart && startFieldName) {
-        fm[startFieldName] = this.toLocalISOString(newStart);
-      }
-      if (newEnd && endFieldName) {
-        fm[endFieldName] = this.toLocalISOString(newEnd);
-      }
-    });
+    // Use local timezone format for user-friendly display in frontmatter.
+    const result = await this.mutations.updateRange(
+      path,
+      this.getDateStartField(),
+      this.toLocalISOString(newStart),
+      this.getDateEndField(),
+      newEnd ? this.toLocalISOString(newEnd) : null,
+    );
+    if (!result.ok) revert();
   }
 
   private handleDateSelect(info: DateSelectInfo): void {
     void this.createNewItem(info);
   }
 
-  private getEventEntry(extendedProps: unknown): BasesEntry | null {
-    const props = extendedProps as { entry?: unknown } | null;
-    const entry = props?.entry as Partial<BasesEntry> | undefined;
-    if (entry?.file instanceof TFile) {
-      return entry as BasesEntry;
+  /** Path only — the event model never carries a live BasesEntry (spec §7.5). */
+  private getEventPath(extendedProps: unknown): string | null {
+    const path = (extendedProps as { path?: unknown } | null)?.path;
+    return typeof path === 'string' ? path : null;
+  }
+
+  /** Resolves the current entry for `path` at interaction time; never stored beyond this call. */
+  private findEntryByPath(path: string): BasesEntry | null {
+    const groupedData = this.data.groupedData as BasesGroupedData[];
+    for (const group of groupedData) {
+      for (const entry of group.entries) {
+        if (entry.file.path === path) return entry;
+      }
     }
     return null;
   }
@@ -896,8 +800,8 @@ export class BasesCalendarView extends BasesView {
   }
 
   private async deleteEventNote(entry: BasesEntry): Promise<void> {
-    await this.app.fileManager.trashFile(entry.file);
-    new Notice(`Deleted ${entry.file.basename}`);
+    const result = await this.mutations.trash(entry.file.path);
+    if (result.ok) new Notice(`Deleted ${entry.file.basename}`);
   }
 
   /**
@@ -991,13 +895,13 @@ export class BasesCalendarView extends BasesView {
    * for this registered hover source.
    */
   private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
-    this.app.workspace.trigger('hover-link', {
-      event,
-      source: BASES_CALENDAR_VIEW_ID,
+    dispatchHoverPreview({
+      app: this.app,
       hoverParent: this.plugin,
+      sourceId: BASES_CALENDAR_VIEW_ID,
+      event,
+      filePath,
       targetEl,
-      linktext: filePath,
-      sourcePath: '/',
     });
   }
 

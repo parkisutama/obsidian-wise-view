@@ -47,6 +47,8 @@ export interface CalendarHarness {
 	hovered: string[];
 	/** Frontmatter written through fileManager.processFrontMatter. */
 	frontmatter: Array<{ path: string; values: Record<string, unknown> }>;
+	/** Paths trashed through fileManager.trashFile. */
+	trashed: string[];
 	destroy(): void;
 }
 
@@ -66,14 +68,21 @@ export function createCalendarHarness(options: CalendarHarnessOptions = {}): Cal
 	const opened: string[] = [];
 	const hovered: string[] = [];
 	const frontmatter: CalendarHarness["frontmatter"] = [];
+	const trashed: string[] = [];
 
 	const entries = notes.map((note) => ({
 		file: new TFile(note.path),
 		getValue: (id: string) => note[id.replace(/^(note|file|formula)\./, "")] ?? null,
 	}));
+	// The gateway resolves a TFile by path before writing/trashing; the vault must know about
+	// both the entries' own notes and any extra "existing" files (e.g. daily notes).
+	const entryPaths = new Set(entries.map((entry) => entry.file.path));
 
 	const app = {
-		vault: { getAbstractFileByPath: (path: string) => (files.has(path) ? new TFile(path) : null) },
+		vault: {
+			getAbstractFileByPath: (path: string) =>
+				files.has(path) || entryPaths.has(path) ? new TFile(path) : null,
+		},
 		workspace: {
 			openLinkText: async (path: string) => {
 				opened.push(path);
@@ -87,6 +96,9 @@ export function createCalendarHarness(options: CalendarHarnessOptions = {}): Cal
 				const values: Record<string, unknown> = {};
 				update(values);
 				frontmatter.push({ path: file.path, values });
+			},
+			trashFile: async (file: TFile) => {
+				trashed.push(file.path);
 			},
 		},
 	};
@@ -112,6 +124,7 @@ export function createCalendarHarness(options: CalendarHarnessOptions = {}): Cal
 		opened,
 		hovered,
 		frontmatter,
+		trashed,
 		destroy() {
 			view.onunload();
 			host.remove();

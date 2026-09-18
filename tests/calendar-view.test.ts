@@ -25,6 +25,7 @@ type ViewInternals = {
 	};
 	handleEventDrop(info: unknown): Promise<void>;
 	handleEventResize(info: unknown): Promise<void>;
+	deleteEventNote(entry: { file: { path: string; basename: string } }): Promise<void>;
 };
 const internals = (h: CalendarHarness) => h.view as unknown as ViewInternals;
 
@@ -209,10 +210,10 @@ describe("BasesCalendarView events", () => {
 
 	it("writes moved dates back to the configured frontmatter fields", async () => {
 		const h = mount();
-		const entry = internals(h).calendar.getEvents().find((e) => e.title === "Quarterly report")?.extendedProps.entry;
+		const path = internals(h).calendar.getEvents().find((e) => e.title === "Quarterly report")?.extendedProps.path;
 		let reverted = false;
 		await internals(h).handleEventDrop({
-			event: { start: new Date(2026, 8, 23, 14), end: new Date(2026, 8, 23, 15), extendedProps: { entry } },
+			event: { start: new Date(2026, 8, 23, 14), end: new Date(2026, 8, 23, 15), extendedProps: { path } },
 			revert: () => {
 				reverted = true;
 			},
@@ -226,9 +227,9 @@ describe("BasesCalendarView events", () => {
 
 	it("writes resized end times back to frontmatter", async () => {
 		const h = mount();
-		const entry = internals(h).calendar.getEvents().find((e) => e.title === "Launch review")?.extendedProps.entry;
+		const path = internals(h).calendar.getEvents().find((e) => e.title === "Launch review")?.extendedProps.path;
 		await internals(h).handleEventResize({
-			event: { start: new Date(2026, 8, 18, 10), end: new Date(2026, 8, 18, 13), extendedProps: { entry } },
+			event: { start: new Date(2026, 8, 18, 10), end: new Date(2026, 8, 18, 13), extendedProps: { path } },
 			revert: () => {},
 		});
 		expect(h.frontmatter[0]?.values.date_end).toMatch(/^2026-09-18T13:00:00/);
@@ -238,16 +239,29 @@ describe("BasesCalendarView events", () => {
 		const h = mount({ config: { dateStartField: "formula.start", dateEndField: "formula.end" }, notes: [
 			{ path: "Formula.md", title: "Computed", start: dayOffset(0), end: dayOffset(1) },
 		] });
-		const entry = internals(h).calendar.getEvents()[0]?.extendedProps.entry;
+		const path = internals(h).calendar.getEvents()[0]?.extendedProps.path;
 		let reverted = false;
 		await internals(h).handleEventDrop({
-			event: { start: new Date(), end: new Date(), extendedProps: { entry } },
+			event: { start: new Date(), end: new Date(), extendedProps: { path } },
 			revert: () => {
 				reverted = true;
 			},
 		});
 		expect(reverted).toBe(true);
 		expect(h.frontmatter).toHaveLength(0);
+	});
+
+	it("carries only a path in extendedProps, never a live BasesEntry (spec §7.5)", () => {
+		const h = mount();
+		const event = internals(h).calendar.getEvents()[0];
+		expect(event?.extendedProps.path).toBeTypeOf("string");
+		expect(event?.extendedProps).not.toHaveProperty("entry");
+	});
+
+	it("trashes the note through the legacy mutation gateway when deleted", async () => {
+		const h = mount();
+		await internals(h).deleteEventNote({ file: { path: "Projects/Launch.md", basename: "Launch" } });
+		expect(h.trashed).toEqual(["Projects/Launch.md"]);
 	});
 });
 
