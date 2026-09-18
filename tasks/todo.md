@@ -566,15 +566,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T030: Implement the linear virtual-row foundation
+### T030: Implement the linear virtual-row foundation — done
 
 **Description:** Add pure visible-range calculations and a DOM controller for fixed-height path-keyed rows, overscan, mount/unmount handles, and anchor restoration.
 
 **Acceptance criteria:**
 
-- [ ] Mounted rows remain bounded for 5,000 items.
-- [ ] Reordering and grouping retain identity by path.
-- [ ] Unmount invokes every row cleanup handle.
+- [x] Mounted rows remain bounded for 5,000 items.
+- [x] Reordering and grouping retain identity by path.
+- [x] Unmount invokes every row cleanup handle.
 
 **Verification:** `pnpm run test -- virtual-linear && pnpm run typecheck`
 
