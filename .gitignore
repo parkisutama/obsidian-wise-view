@@ -23,3 +23,6 @@ data.json
 .env
 lint-output.json
 .claude/settings.local.json
+
+# vitest coverage reports
+coverage/
