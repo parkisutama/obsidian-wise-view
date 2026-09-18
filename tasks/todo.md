@@ -530,15 +530,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ## Phase 4: Temporal Core to Timeline
 
-### T028: Implement strict temporal value and range semantics
+### T028: Implement strict temporal value and range semantics — done
 
 **Description:** Add pure date-only/datetime parsing, ongoing/open-ended handling, inclusive range normalization, and explicit timezone behavior.
 
 **Acceptance criteria:**
 
-- [ ] Date-only values do not shift across local timezone boundaries.
-- [ ] Reversed and missing endpoints follow documented rules.
-- [ ] Invalid values fail without guessing.
+- [x] Date-only values do not shift across local timezone boundaries.
+- [x] Reversed and missing endpoints follow documented rules.
+- [x] Invalid values fail without guessing.
 
 **Verification:** `pnpm run test -- temporal && pnpm run typecheck`
 
