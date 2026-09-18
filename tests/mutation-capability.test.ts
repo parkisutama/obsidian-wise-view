@@ -1,0 +1,139 @@
+import { describe, expect, it } from "vitest";
+import { TFile } from "./fixtures/obsidian";
+import { LegacyMutationGateway } from "../src/platform/mutations/LegacyMutationGateway";
+import type { App } from "obsidian";
+
+interface MockAppOptions {
+	existingFiles?: string[];
+	existingFolders?: string[];
+	throwOnProcessFrontMatter?: boolean;
+}
+
+function makeApp(options: MockAppOptions = {}) {
+	const files = new Set(options.existingFiles ?? []);
+	const folders = new Set(options.existingFolders ?? []);
+	const frontmatterWrites: Array<{ path: string; values: Record<string, unknown> }> = [];
+	const trashed: string[] = [];
+	const created: Array<{ path: string; content: string }> = [];
+	const createdFolders: string[] = [];
+
+	const app = {
+		vault: {
+			getAbstractFileByPath: (path: string) => {
+				if (files.has(path)) return new TFile(path);
+				if (folders.has(path)) return { path } as never;
+				return null;
+			},
+			createFolder: async (path: string) => {
+				createdFolders.push(path);
+				folders.add(path);
+			},
+			create: async (path: string, content: string) => {
+				created.push({ path, content });
+				files.add(path);
+				return new TFile(path);
+			},
+		},
+		fileManager: {
+			processFrontMatter: async (file: TFile, fn: (fm: Record<string, unknown>) => void) => {
+				if (options.throwOnProcessFrontMatter) throw new Error("disk error");
+				const values: Record<string, unknown> = {};
+				fn(values);
+				frontmatterWrites.push({ path: file.path, values });
+			},
+			trashFile: async (file: TFile) => {
+				trashed.push(file.path);
+			},
+		},
+	} as unknown as App;
+
+	return { app, frontmatterWrites, trashed, created, createdFolders };
+}
+
+describe("LegacyMutationGateway.setProperty", () => {
+	it("writes the property's bare name to frontmatter, keyed by path", async () => {
+		const { app, frontmatterWrites } = makeApp({ existingFiles: ["Tasks/A.md"] });
+		const result = await new LegacyMutationGateway(app).setProperty("Tasks/A.md", "note.status", "Done");
+		expect(result).toEqual({ ok: true });
+		expect(frontmatterWrites).toEqual([{ path: "Tasks/A.md", values: { status: "Done" } }]);
+	});
+
+	it("rejects a formula property before touching the vault", async () => {
+		const { app, frontmatterWrites } = makeApp({ existingFiles: ["Tasks/A.md"] });
+		const result = await new LegacyMutationGateway(app).setProperty("Tasks/A.md", "formula.status", "Done");
+		expect(result).toEqual({ ok: false, reason: "formula-property", message: expect.any(String) });
+		expect(frontmatterWrites).toEqual([]);
+	});
+
+	it("fails deterministically for a path with no file", async () => {
+		const { app } = makeApp();
+		const result = await new LegacyMutationGateway(app).setProperty("Missing.md", "note.status", "Done");
+		expect(result).toEqual({ ok: false, reason: "file-not-found", message: expect.any(String) });
+	});
+
+	it("reports a stable error result instead of throwing when the write itself fails", async () => {
+		const { app } = makeApp({ existingFiles: ["Tasks/A.md"], throwOnProcessFrontMatter: true });
+		const result = await new LegacyMutationGateway(app).setProperty("Tasks/A.md", "note.status", "Done");
+		expect(result).toEqual({ ok: false, reason: "error", message: "disk error" });
+	});
+});
+
+describe("LegacyMutationGateway.updateRange", () => {
+	it("writes both start and end properties in one call", async () => {
+		const { app, frontmatterWrites } = makeApp({ existingFiles: ["A.md"] });
+		const result = await new LegacyMutationGateway(app).updateRange("A.md", "note.start", "2026-01-01", "note.end", "2026-01-02");
+		expect(result).toEqual({ ok: true });
+		expect(frontmatterWrites).toEqual([{ path: "A.md", values: { start: "2026-01-01", end: "2026-01-02" } }]);
+	});
+
+	it("rejects the whole write when either date property is a formula", async () => {
+		const { app, frontmatterWrites } = makeApp({ existingFiles: ["A.md"] });
+		const result = await new LegacyMutationGateway(app).updateRange("A.md", "note.start", "2026-01-01", "formula.end", "2026-01-02");
+		expect(result.ok).toBe(false);
+		expect(frontmatterWrites).toEqual([]);
+	});
+});
+
+describe("LegacyMutationGateway.setDependencies", () => {
+	it("writes the dependency string as a plain property", async () => {
+		const { app, frontmatterWrites } = makeApp({ existingFiles: ["A.md"] });
+		const result = await new LegacyMutationGateway(app).setDependencies("A.md", "note.depends_on", "task-b, task-c");
+		expect(result).toEqual({ ok: true });
+		expect(frontmatterWrites).toEqual([{ path: "A.md", values: { depends_on: "task-b, task-c" } }]);
+	});
+});
+
+describe("LegacyMutationGateway.trash", () => {
+	it("trashes the resolved file by path", async () => {
+		const { app, trashed } = makeApp({ existingFiles: ["A.md"] });
+		const result = await new LegacyMutationGateway(app).trash("A.md");
+		expect(result).toEqual({ ok: true });
+		expect(trashed).toEqual(["A.md"]);
+	});
+
+	it("fails deterministically for a path with no file", async () => {
+		const { app } = makeApp();
+		const result = await new LegacyMutationGateway(app).trash("Missing.md");
+		expect(result).toEqual({ ok: false, reason: "file-not-found", message: expect.any(String) });
+	});
+});
+
+describe("LegacyMutationGateway.createNote", () => {
+	it("creates parent folders that don't exist yet, then the note", async () => {
+		const { app, created, createdFolders } = makeApp();
+		const result = await new LegacyMutationGateway(app).createNote({
+			path: "Journal/2026-01-01.md",
+			frontmatter: { start: "2026-01-01" },
+		});
+		expect(result).toEqual({ ok: true });
+		expect(createdFolders).toEqual(["Journal"]);
+		expect(created[0]?.path).toBe("Journal/2026-01-01.md");
+		expect(created[0]?.content).toContain('start: "2026-01-01"');
+	});
+
+	it("does not recreate an existing parent folder", async () => {
+		const { app, createdFolders } = makeApp({ existingFolders: ["Journal"] });
+		await new LegacyMutationGateway(app).createNote({ path: "Journal/A.md" });
+		expect(createdFolders).toEqual([]);
+	});
+});

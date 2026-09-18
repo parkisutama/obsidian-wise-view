@@ -1,0 +1,125 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2026 Parkis Utama
+
+/**
+ * Legacy mutation gateway (T023, spec §7.10).
+ *
+ * The one place direct `vault`/`fileManager` write APIs are called on behalf of existing views.
+ * Resolves a `TFile` from a path for the duration of one call only — never stores one. Rejects
+ * a write to a `formula.*` property id up front, before touching the vault, since a formula
+ * property has no frontmatter field to write to.
+ */
+
+import { TFile, type App } from 'obsidian';
+import type {
+	DateMutationCapability,
+	DependencyMutationCapability,
+	FileCreateCapability,
+	MutationResult,
+	NoteCreationRequest,
+	PropertyMutationCapability,
+	TrashCapability,
+} from './types';
+
+function isFormulaProperty(propertyId: string): boolean {
+	return propertyId.startsWith('formula.');
+}
+
+/** The frontmatter key for a `note.status`/`file.status`-shaped property id. */
+function propertyName(propertyId: string): string {
+	const dot = propertyId.indexOf('.');
+	return dot >= 0 ? propertyId.slice(dot + 1) : propertyId;
+}
+
+function errorResult(error: unknown): MutationResult {
+	return { ok: false, reason: 'error', message: error instanceof Error ? error.message : String(error) };
+}
+
+export class LegacyMutationGateway
+	implements DateMutationCapability, PropertyMutationCapability, DependencyMutationCapability, FileCreateCapability, TrashCapability
+{
+	constructor(private readonly app: App) {}
+
+	private resolveFile(path: string): TFile | null {
+		const file = this.app.vault.getAbstractFileByPath(path);
+		return file instanceof TFile ? file : null;
+	}
+
+	async setProperty(path: string, propertyId: string, value: unknown): Promise<MutationResult> {
+		if (isFormulaProperty(propertyId)) {
+			return { ok: false, reason: 'formula-property', message: `"${propertyId}" is a formula property and cannot be written.` };
+		}
+		const file = this.resolveFile(path);
+		if (!file) return { ok: false, reason: 'file-not-found', message: `No file at "${path}".` };
+
+		try {
+			const name = propertyName(propertyId);
+			await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+				frontmatter[name] = value;
+			});
+			return { ok: true };
+		} catch (error) {
+			return errorResult(error);
+		}
+	}
+
+	async updateRange(
+		path: string,
+		startPropertyId: string,
+		start: string,
+		endPropertyId?: string | null,
+		end?: string | null,
+	): Promise<MutationResult> {
+		if (isFormulaProperty(startPropertyId) || (endPropertyId && isFormulaProperty(endPropertyId))) {
+			return { ok: false, reason: 'formula-property', message: 'Date range properties cannot be formulas.' };
+		}
+		const file = this.resolveFile(path);
+		if (!file) return { ok: false, reason: 'file-not-found', message: `No file at "${path}".` };
+
+		try {
+			await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+				frontmatter[propertyName(startPropertyId)] = start;
+				if (endPropertyId && end != null) {
+					frontmatter[propertyName(endPropertyId)] = end;
+				}
+			});
+			return { ok: true };
+		} catch (error) {
+			return errorResult(error);
+		}
+	}
+
+	async setDependencies(path: string, propertyId: string, dependencies: string): Promise<MutationResult> {
+		return this.setProperty(path, propertyId, dependencies);
+	}
+
+	async trash(path: string): Promise<MutationResult> {
+		const file = this.resolveFile(path);
+		if (!file) return { ok: false, reason: 'file-not-found', message: `No file at "${path}".` };
+
+		try {
+			await this.app.fileManager.trashFile(file);
+			return { ok: true };
+		} catch (error) {
+			return errorResult(error);
+		}
+	}
+
+	async createNote(request: NoteCreationRequest): Promise<MutationResult> {
+		try {
+			const folder = request.path.includes('/') ? request.path.slice(0, request.path.lastIndexOf('/')) : '';
+			if (folder && !this.app.vault.getAbstractFileByPath(folder)) {
+				await this.app.vault.createFolder(folder);
+			}
+			const frontmatterBlock = request.frontmatter && Object.keys(request.frontmatter).length > 0
+				? `---\n${Object.entries(request.frontmatter)
+						.map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+						.join('\n')}\n---\n`
+				: '';
+			await this.app.vault.create(request.path, `${frontmatterBlock}${request.body ?? ''}`);
+			return { ok: true };
+		} catch (error) {
+			return errorResult(error);
+		}
+	}
+}
