@@ -10,9 +10,9 @@ import { PlannerSettings, DEFAULT_SETTINGS } from './types/settings';
 import { PlannerSettingTab } from './settings/SettingsTab';
 
 import {
-  BASES_KANBAN_VIEW_ID,
-  createKanbanViewRegistration,
-} from './views/BasesKanbanView';
+  BASES_SWIMLANE_VIEW_ID,
+  createSwimlaneViewRegistration,
+} from './views/BasesSwimlaneView';
 
 import {
   BASES_CALENDAR_VIEW_ID,
@@ -43,8 +43,8 @@ export default class PlannerPlugin extends Plugin {
    */
   private registerBasesViews(): void {
     this.registerBasesView(
-      BASES_KANBAN_VIEW_ID,
-      createKanbanViewRegistration(this)
+      BASES_SWIMLANE_VIEW_ID,
+      createSwimlaneViewRegistration(this)
     );
 
     this.registerBasesView(
@@ -69,8 +69,8 @@ export default class PlannerPlugin extends Plugin {
    * hover events from all Wise View surfaces consistently.
    */
   private registerHoverPreviewSources(): void {
-    this.registerHoverLinkSource(BASES_KANBAN_VIEW_ID, {
-      display: 'Kanban',
+    this.registerHoverLinkSource(BASES_SWIMLANE_VIEW_ID, {
+      display: 'Swimlane',
       defaultMod: true,
     });
 
@@ -168,14 +168,16 @@ export default class PlannerPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const loadedData = await this.loadData() as Partial<PlannerSettings> | null;
-    const data = loadedData ?? {};
+    const loadedData = await this.loadData() as (Partial<PlannerSettings> & { kanbanDefaults?: unknown }) | null;
+    // Versions before the Swimlane rename saved every Kanban default, including a forced
+    // "note.status" column property. Drop that key instead of migrating it.
+    const { kanbanDefaults: _legacyKanbanDefaults, ...data } = loadedData ?? {};
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...data,
       // Deep-merge nested objects so missing sub-keys still get defaults
       calendarDefaults: { ...DEFAULT_SETTINGS.calendarDefaults, ...(data.calendarDefaults ?? {}) },
-      kanbanDefaults: { ...DEFAULT_SETTINGS.kanbanDefaults, ...(data.kanbanDefaults ?? {}) },
+      swimlaneDefaults: { ...DEFAULT_SETTINGS.swimlaneDefaults, ...(data.swimlaneDefaults ?? {}) },
       ganttDefaults: { ...DEFAULT_SETTINGS.ganttDefaults, ...(data.ganttDefaults ?? {}) },
       valueStyles: { ...DEFAULT_SETTINGS.valueStyles, ...(data.valueStyles ?? {}) },
     };

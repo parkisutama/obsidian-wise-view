@@ -2,7 +2,7 @@
 
 > **A focused, task-management-agnostic view enrichment plugin for Obsidian Bases.**
 
-Wise View adds Calendar, Kanban, and Gantt views directly into Obsidian Bases — without
+Wise View adds Calendar, Swimlane, and Gantt views directly into Obsidian Bases — without
 any opinion about *how* you manage your tasks or which plugin you use for that.  Your data model is
 yours. This plugin just gives you richer ways to look at it.
 
@@ -31,7 +31,7 @@ The original Planner is a full-featured planning and task management plugin. Wis
 | Item hierarchy & blocking dependencies | ✗ Removed |
 | Task management workflow & statuses | ✗ Removed |
 | Calendar view | ✓ Kept |
-| Kanban view | ✓ Kept |
+| Kanban view | ✓ Kept, renamed **Swimlane** |
 | Gantt view (Frappe Gantt) | Added |
 
 ### Gantt code attribution
@@ -50,8 +50,9 @@ whole project is then governed by GPL v3. The original MIT copyright notice is p
 
 - **Calendar view** — Month, Week, Day, and List layouts. Open and navigate your dated notes at a
   glance. See the [Calendar View documentation](docs/calendar-view.md).
-- **Kanban view** — Drag-and-drop board. Group by any frontmatter property (status, priority,
-  category, etc.).
+- **Swimlane view** — Drag-and-drop board with columns and optional swimlane rows. You choose
+  the property for columns (and rows); nothing is preselected. Formerly named "Kanban"; renamed
+  because Obsidian now ships a core Kanban view.
 - **Gantt view** — Date-range chart powered by [Frappe Gantt](https://frappe.io/gantt).
   Map existing start, end, progress, dependency, parent, and color properties from your notes.
 
@@ -98,7 +99,7 @@ feature set.
 ## Usage
 
 Open any folder as a Base (right-click → **New base from folder**), then select the view type
-dropdown to **Calendar**, **Kanban**, or **Gantt**.
+dropdown to **Calendar**, **Swimlane**, or **Gantt**.
 
 ### Recommended frontmatter shape
 
@@ -120,7 +121,7 @@ progress: 40
 ## Platform support
 
 Wise View is designed for Obsidian desktop and does not use Electron-only runtime APIs in the
-plugin source. Mobile support is enabled for beta testing, but complex Calendar, Kanban, and Gantt
+plugin source. Mobile support is enabled for beta testing, but complex Calendar, Swimlane, and Gantt
 interactions may need platform-specific testing on Android and iOS.
 
 ---
@@ -129,6 +130,26 @@ interactions may need platform-specific testing on Android and iOS.
 
 Wise View reads and writes notes through Obsidian's vault APIs. It does not use network requests,
 telemetry, analytics, account sign-in, payments, ads, or files outside your vault.
+
+---
+
+## Upgrading
+
+### Kanban view renamed to Swimlane
+
+The Kanban view is now the **Swimlane** view, and its view type changed from `wise-view-kanban`
+to `wise-view-swimlane`. Bases created with the old view no longer find it. Update each `.base`
+file that uses it:
+
+```yaml
+views:
+  - type: wise-view-swimlane # was: wise-view-kanban
+```
+
+Views no longer preselect properties. Choose **Columns by** (the board shows a prompt until you
+do), and **Title by**, **Color by**, **Cover field**, and **Summary field** if you want them; an
+unset title shows the file name. In Calendar, **Title field** is empty by default (file name) and
+all-day events come from the new **All-day field** option instead of a fixed `all_day` property.
 
 ---
 

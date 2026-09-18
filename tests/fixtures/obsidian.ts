@@ -6,18 +6,6 @@
 
 type DomOptions = { cls?: string | string[]; text?: string };
 
-declare global {
-	interface HTMLElement {
-		empty(): void;
-		addClass(...cls: string[]): void;
-		removeClass(...cls: string[]): void;
-		toggleClass(cls: string, value: boolean): void;
-		setText(text: string): void;
-		createDiv(options?: DomOptions): HTMLDivElement;
-		createSpan(options?: DomOptions): HTMLSpanElement;
-	}
-}
-
 function createChild<K extends keyof HTMLElementTagNameMap>(
 	parent: HTMLElement,
 	tag: K,
@@ -32,7 +20,8 @@ function createChild<K extends keyof HTMLElementTagNameMap>(
 
 /** Install Obsidian's HTMLElement helpers. Call once per DOM environment. */
 export function installDomHelpers(): void {
-	const proto = HTMLElement.prototype;
+	// Obsidian's globals are typed by the obsidian package; the test double only needs to exist.
+	const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
 	proto.empty = function (this: HTMLElement) {
 		this.replaceChildren();
 	};
@@ -53,6 +42,14 @@ export function installDomHelpers(): void {
 	};
 	proto.createSpan = function (this: HTMLElement, options?: DomOptions) {
 		return createChild(this, "span", options);
+	};
+	proto.createEl = function <K extends keyof HTMLElementTagNameMap>(this: HTMLElement, tag: K, options?: DomOptions) {
+		return createChild(this, tag, options);
+	};
+	proto.setCssProps = function (this: HTMLElement, props: Record<string, string>) {
+		for (const [name, value] of Object.entries(props)) {
+			this.style.setProperty(name, value);
+		}
 	};
 }
 
@@ -113,6 +110,61 @@ export class Menu {
 		return this;
 	}
 	showAtPosition(): void {}
+}
+
+// Bases value wrappers; the views only use them for instanceof checks and toString.
+export class Value {}
+export class NullValue extends Value {}
+export class NumberValue extends Value {
+	constructor(private readonly value: number) {
+		super();
+	}
+	toString(): string {
+		return String(this.value);
+	}
+}
+export class DateValue extends Value {
+	constructor(private readonly value: Date) {
+		super();
+	}
+	dateOnly(): this {
+		return this;
+	}
+	toString(): string {
+		return this.value.toISOString().slice(0, 10);
+	}
+}
+
+/** Plugin base with in-memory data.json (set `storedData` before calling loadData). */
+export class Plugin {
+	app: unknown;
+	storedData: unknown = null;
+	constructor(app?: unknown) {
+		this.app = app;
+	}
+	async loadData(): Promise<unknown> {
+		return this.storedData;
+	}
+	async saveData(data: unknown): Promise<void> {
+		this.storedData = data;
+	}
+}
+
+export class PluginSettingTab {
+	constructor(
+		public app: unknown,
+		public plugin: unknown,
+	) {}
+}
+export class Setting {}
+
+export class Modal {
+	constructor(public app: unknown) {}
+	open(): void {}
+	close(): void {}
+}
+export class SuggestModal<T> extends Modal {
+	declare readonly suggestion?: T;
 }
 
 export const normalizePath = (path: string): string => path;

@@ -117,7 +117,7 @@ The GitHub release workflow installs with `pnpm install --frozen-lockfile`, runs
 - Install the release artifacts into a test vault.
 - Confirm the plugin loads on desktop.
 - Confirm the plugin loads on mobile if available.
-- Open a Bases view using Calendar, Kanban, and Gantt.
+- Open a Bases view using Calendar, Swimlane, and Gantt.
 - Confirm view resize behavior in a narrow pane.
 - Confirm light and dark themes render readable cards/bars.
 - Confirm no unexpected file edits happen while opening views.

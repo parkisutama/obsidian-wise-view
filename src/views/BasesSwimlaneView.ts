@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Derived from Planner (https://github.com/SawyerRensel/Planner): src/views/BasesKanbanView.ts
+// Derived from Planner (https://github.com/SawyerRensel/Planner): src/views/BasesSwimlaneView.ts
 // Copyright (C) 2025 Sawyer Rensel
 // Modifications Copyright (C) 2026 Parkis Utama
 
@@ -26,7 +26,7 @@ import { stringToColor } from '../utils/colorUtils';
 import { openFileInNewTab, showOpenFileMenu } from '../utils/openFile';
 
 
-export const BASES_KANBAN_VIEW_ID = 'wise-view-kanban';
+export const BASES_SWIMLANE_VIEW_ID = 'wise-view-swimlane';
 
 type BorderStyle = 'none' | 'left-accent' | 'full-border';
 type CoverDisplay = 'none' | 'banner' | 'thumbnail-left' | 'thumbnail-right' | 'background';
@@ -40,11 +40,11 @@ type SwimHeaderDisplay = 'horizontal' | 'vertical';
 const VIRTUAL_SCROLL_THRESHOLD = 15;
 
 /**
- * Kanban view for Obsidian Bases
+ * Swimlane view for Obsidian Bases
  * Displays items in a drag-and-drop board with configurable columns
  */
-export class BasesKanbanView extends BasesView {
-  type = BASES_KANBAN_VIEW_ID;
+export class BasesSwimlaneView extends BasesView {
+  type = BASES_SWIMLANE_VIEW_ID;
   private plugin: PlannerPlugin;
   private containerEl: HTMLElement;
   private boardEl: HTMLElement | null = null;
@@ -96,32 +96,33 @@ export class BasesKanbanView extends BasesView {
   // Configuration getters
   private getGroupBy(): string {
     const value = this.config.get('plannerGroupBy') as string | undefined;
-    return value || this.plugin.settings.kanbanDefaults.plannerGroupBy;
+    return value || this.plugin.settings.swimlaneDefaults.plannerGroupBy;
   }
 
   private getSwimlaneBy(): string | null {
     const value = this.config.get('swimlaneBy') as string | undefined;
-    return value || this.plugin.settings.kanbanDefaults.swimlaneBy || null;
+    return value || this.plugin.settings.swimlaneDefaults.swimlaneBy || null;
   }
 
   private getColorBy(): string {
     const value = this.config.get('colorBy') as string | undefined;
-    return value || this.plugin.settings.kanbanDefaults.colorBy || '';
+    return value || this.plugin.settings.swimlaneDefaults.colorBy || '';
   }
 
-  private getTitleBy(): string {
+  /** Title property; null means the card shows the file name. */
+  private getTitleBy(): string | null {
     const value = this.config.get('titleBy') as string | undefined;
-    return value || 'note.title';
+    return value || null;
   }
 
   private getBorderStyle(): BorderStyle {
     const value = this.config.get('borderStyle') as string | undefined;
-    return (value as BorderStyle) || (this.plugin.settings.kanbanDefaults.borderStyle as BorderStyle) || 'left-accent';
+    return (value as BorderStyle) || (this.plugin.settings.swimlaneDefaults.borderStyle as BorderStyle) || 'left-accent';
   }
 
   private getCoverField(): string | null {
     const value = this.config.get('coverField') as string | undefined;
-    return value || 'note.cover';
+    return value || null;
   }
 
   private getCoverDisplay(): CoverDisplay {
@@ -136,12 +137,12 @@ export class BasesKanbanView extends BasesView {
 
   private getDateStartField(): string {
     const value = this.config.get('dateStartField') as string | undefined;
-    return value || this.plugin.settings.kanbanDefaults.dateStartField || '';
+    return value || this.plugin.settings.swimlaneDefaults.dateStartField || '';
   }
 
   private getDateEndField(): string {
     const value = this.config.get('dateEndField') as string | undefined;
-    return value || this.plugin.settings.kanbanDefaults.dateEndField || '';
+    return value || this.plugin.settings.swimlaneDefaults.dateEndField || '';
   }
 
   private getDateFormat(): string {
@@ -151,24 +152,24 @@ export class BasesKanbanView extends BasesView {
 
   private getBadgePlacement(): BadgePlacement {
     const value = this.config.get('badgePlacement') as string | undefined;
-    return (value as BadgePlacement) || (this.plugin.settings.kanbanDefaults.badgePlacement as BadgePlacement) || 'properties-section';
+    return (value as BadgePlacement) || (this.plugin.settings.swimlaneDefaults.badgePlacement as BadgePlacement) || 'properties-section';
   }
 
   private getColumnWidth(): number {
     const value = this.config.get('columnWidth') as string | number | undefined;
-    if (typeof value === 'string') return parseInt(value, 10) || this.plugin.settings.kanbanDefaults.columnWidth;
-    return value || this.plugin.settings.kanbanDefaults.columnWidth;
+    if (typeof value === 'string') return parseInt(value, 10) || this.plugin.settings.swimlaneDefaults.columnWidth;
+    return value || this.plugin.settings.swimlaneDefaults.columnWidth;
   }
 
   private getHideEmptyColumns(): boolean {
     const value = this.config.get('hideEmptyColumns') as string | boolean | undefined;
     if (typeof value === 'string') return value === 'true';
-    return value ?? this.plugin.settings.kanbanDefaults.hideEmptyColumns;
+    return value ?? this.plugin.settings.swimlaneDefaults.hideEmptyColumns;
   }
 
   private getFreezeHeaders(): FreezeHeaders {
     const value = this.config.get('freezeHeaders') as string | undefined;
-    return (value as FreezeHeaders) || (this.plugin.settings.kanbanDefaults.freezeHeaders as FreezeHeaders) || 'none';
+    return (value as FreezeHeaders) || (this.plugin.settings.swimlaneDefaults.freezeHeaders as FreezeHeaders) || 'none';
   }
 
   private getSwimHeaderDisplay(): SwimHeaderDisplay {
@@ -180,7 +181,7 @@ export class BasesKanbanView extends BasesView {
     const value = this.config.get('showPropertyLabels') as string | boolean | undefined;
     if (value === 'false' || value === false) return false;
     if (value === 'true' || value === true) return true;
-    return this.plugin.settings.kanbanDefaults.showPropertyLabels ?? true;
+    return this.plugin.settings.swimlaneDefaults.showPropertyLabels ?? true;
   }
 
   private getCustomColumnOrder(): string[] {
@@ -224,17 +225,9 @@ export class BasesKanbanView extends BasesView {
   /**
    * Get the list of visible properties from Bases config
    */
+  /** Properties chosen in the Bases "Properties" menu; none are assumed by default. */
   private getVisibleProperties(): string[] {
-    const orderedProps = this.config.getOrder();
-    return orderedProps.length > 0 ? orderedProps : this.getDefaultProperties();
-  }
-
-  private getDefaultProperties(): string[] {
-    return [
-      'note.title',
-      'note.status',
-      'note.priority',
-    ];
+    return this.config.getOrder();
   }
 
   constructor(
@@ -251,7 +244,7 @@ export class BasesKanbanView extends BasesView {
   }
 
   /**
-   * Setup keyboard navigation for the Kanban board
+   * Setup keyboard navigation for the Swimlane board
    * Allows navigating between cards with arrow keys
    */
   private setupKeyboardNavigation(): void {
@@ -453,7 +446,7 @@ export class BasesKanbanView extends BasesView {
     this.renderDebounceTimer = window.setTimeout(() => {
       this.renderDebounceTimer = null;
       this.render();
-    }, BasesKanbanView.RENDER_DEBOUNCE_MS);
+    }, BasesSwimlaneView.RENDER_DEBOUNCE_MS);
   }
 
   onunload(): void {
@@ -493,6 +486,15 @@ export class BasesKanbanView extends BasesView {
     // Build color map for colorBy field
     // Check if swimlanes are enabled
     const swimlaneBy = this.getSwimlaneBy();
+
+    // No column property is assumed: ask for one instead of guessing (e.g. "status").
+    if (!this.getGroupBy()) {
+      this.boardEl?.createDiv({
+        cls: 'planner-empty',
+        text: 'Choose a property in "Columns by" to build the board.',
+      });
+      return;
+    }
 
     if (swimlaneBy) {
       // Render with swimlanes (2D grid)
@@ -1773,7 +1775,7 @@ export class BasesKanbanView extends BasesView {
 
     // Title (CSS class handles font-weight)
     const titleField = this.getTitleBy();
-    const title = this.getEntryValue(entry, titleField) || entry.file.basename;
+    const title = (titleField && this.getEntryValue(entry, titleField)) || entry.file.basename;
     titleRow.createSpan({ cls: 'planner-kanban-card-title', text: this.valueToString(title) });
 
     // For inline placement, render badges in title row
@@ -1784,16 +1786,15 @@ export class BasesKanbanView extends BasesView {
     // Summary - only show if configured and visible (CSS class handles all styles)
     const summaryField = this.getSummaryField();
     const visibleProps = this.getVisibleProperties();
-    const summaryFieldProp = summaryField ? summaryField.replace(/^(note|file|formula)\./, '') : 'summary';
-    const isSummaryVisible = visibleProps.some(p =>
+    const summaryFieldProp = summaryField?.replace(/^(note|file|formula)\./, '');
+    const isSummaryVisible = !!summaryField && visibleProps.some(p =>
       p === summaryField ||
       p === `note.${summaryFieldProp}` ||
       p.endsWith(`.${summaryFieldProp}`)
     );
 
-    if (isSummaryVisible) {
-      const summarySource = summaryField || 'note.summary';
-      const summary = this.getEntryValue(entry, summarySource);
+    if (summaryField && isSummaryVisible) {
+      const summary = this.getEntryValue(entry, summaryField);
       if (summary && summary !== 'null' && summary !== null) {
         const summaryStr = this.valueToString(summary);
         // Auto-format if the summary field points to a date/datetime property
@@ -2007,10 +2008,11 @@ export class BasesKanbanView extends BasesView {
     }
 
     // Fields that are rendered elsewhere on the card — excluded from badges
+    // Unset title/summary fields hide nothing: no property name is assumed.
     const titleField = this.getTitleBy();
-    const titleProp = titleField.replace(/^(note|file|formula)\./, '');
+    const titleProp = titleField?.replace(/^(note|file|formula)\./, '');
     const summaryField = this.getSummaryField();
-    const summaryProp = summaryField ? summaryField.replace(/^(note|file|formula)\./, '') : 'summary';
+    const summaryProp = summaryField?.replace(/^(note|file|formula)\./, '');
     const coverField = this.getCoverField();
 
     // Render all other visible properties, one row per property
@@ -2689,7 +2691,7 @@ export class BasesKanbanView extends BasesView {
   private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
     this.plugin.app.workspace.trigger('hover-link', {
       event,
-      source: BASES_KANBAN_VIEW_ID,
+      source: BASES_SWIMLANE_VIEW_ID,
       hoverParent: this.plugin,
       targetEl,
       linktext: filePath,
@@ -2699,21 +2701,21 @@ export class BasesKanbanView extends BasesView {
 }
 
 /**
- * Create the Bases view registration for the Kanban
+ * Create the Bases view registration for the Swimlane
  */
-export function createKanbanViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
+export function createSwimlaneViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
   return {
-    name: 'Kanban',
+    name: 'Swimlane',
     icon: 'square-kanban',
     factory: (controller: QueryController, containerEl: HTMLElement) => {
-      return new BasesKanbanView(controller, containerEl, plugin);
+      return new BasesSwimlaneView(controller, containerEl, plugin);
     },
     options: (_config: BasesViewConfig): BasesAllOptions[] => [
       {
         type: 'property',
         key: 'plannerGroupBy',
         displayName: 'Columns by',
-        default: 'note.status',
+        default: '',
         placeholder: 'Select property',
         filter: (propId: BasesPropertyId) =>
           PropertyTypeService.isCategoricalProperty(propId, plugin.app),
@@ -2731,8 +2733,8 @@ export function createKanbanViewRegistration(plugin: PlannerPlugin): BasesViewRe
         type: 'property',
         key: 'colorBy',
         displayName: 'Color by',
-        default: 'note.calendar',
-        placeholder: 'Select property',
+        default: '',
+        placeholder: 'None',
         filter: (propId: BasesPropertyId) =>
           PropertyTypeService.isCategoricalProperty(propId, plugin.app),
       },
@@ -2740,8 +2742,8 @@ export function createKanbanViewRegistration(plugin: PlannerPlugin): BasesViewRe
         type: 'property',
         key: 'titleBy',
         displayName: 'Title by',
-        default: 'note.title',
-        placeholder: 'Select property',
+        default: '',
+        placeholder: 'File name',
         filter: (propId: BasesPropertyId) =>
           PropertyTypeService.isTextProperty(propId, plugin.app),
       },
@@ -2760,7 +2762,7 @@ export function createKanbanViewRegistration(plugin: PlannerPlugin): BasesViewRe
         type: 'property',
         key: 'coverField',
         displayName: 'Cover field',
-        default: 'note.cover',
+        default: '',
         placeholder: 'None',
         filter: (propId: BasesPropertyId) =>
           PropertyTypeService.isTextProperty(propId, plugin.app),
@@ -2797,7 +2799,7 @@ export function createKanbanViewRegistration(plugin: PlannerPlugin): BasesViewRe
         type: 'property',
         key: 'summaryField',
         displayName: 'Summary field',
-        default: 'note.summary',
+        default: '',
         placeholder: 'None',
       },
       {

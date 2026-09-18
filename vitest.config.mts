@@ -17,13 +17,13 @@ export default defineConfig({
 			provider: "v8",
 			include: ["src/**/*.ts", "scripts/**/*.mjs"],
 			reporter: ["text-summary", "lcov"],
-			// Ratchet: the floor sits just below current coverage (Kanban and Gantt views have no
-			// tests yet). Raise it as coverage grows; CI fails if coverage drops below it.
+			// Ratchet: the floor sits just below current coverage (the Gantt view has no tests yet).
+			// Raise it as coverage grows; CI fails if coverage drops below it.
 			thresholds: {
-				statements: 12,
-				branches: 9,
-				functions: 16,
-				lines: 12,
+				statements: 22,
+				branches: 18,
+				functions: 26,
+				lines: 23,
 			},
 		},
 	},

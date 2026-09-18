@@ -30,8 +30,8 @@ export interface CalendarDefaults {
   defaultView: string;
 }
 
-/** Default field mappings for the Kanban view */
-export interface KanbanDefaults {
+/** Default field mappings for the Swimlane view */
+export interface SwimlaneDefaults {
   plannerGroupBy: string;
   swimlaneBy: string;
   colorBy: string;
@@ -88,7 +88,7 @@ export interface NoteTemplateDefaults {
 export interface PlannerSettings {
   // Per-view field defaults (used as fallback when not set in the .base file)
   calendarDefaults: CalendarDefaults;
-  kanbanDefaults: KanbanDefaults;
+  swimlaneDefaults: SwimlaneDefaults;
   ganttDefaults: GanttDefaults;
 
   /**
@@ -118,8 +118,8 @@ export const DEFAULT_SETTINGS: PlannerSettings = {
     defaultView: 'dayGridMonth',
   },
 
-  kanbanDefaults: {
-    plannerGroupBy: 'note.status',
+  swimlaneDefaults: {
+    plannerGroupBy: '',
     swimlaneBy: '',
     colorBy: '',
     dateStartField: '',

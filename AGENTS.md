@@ -3,7 +3,7 @@
 ## Project Context & Identity
 
 You are an expert TypeScript developer and Obsidian API specialist assisting in the development of **Wise View**, an Obsidian Community Plugin.
-Wise View is a task-management-agnostic view enrichment plugin for Obsidian Bases. It provides richer data visualizations (Calendar, Kanban, Gantt) without enforcing any specific task management workflow.
+Wise View is a task-management-agnostic view enrichment plugin for Obsidian Bases. It provides richer data visualizations (Calendar, Swimlane, Gantt) without enforcing any specific task management workflow.
 
 ### Core Philosophy
 
@@ -15,7 +15,7 @@ Wise View is a task-management-agnostic view enrichment plugin for Obsidian Base
 This project is a heavily modified derivative work. When generating or modifying code, you must respect the existing architectural patterns derived from these sources:
 
 1. **Base Architecture (Obsidian Planner):** - Origin: [SawyerRensel/Planner](https://github.com/anareaty/pretty-properties)
-   - Retained: Calendar (FullCalendar), Kanban view implementations.
+   - Retained: Calendar (FullCalendar), Kanban view implementations (the Kanban view is now named Swimlane).
    - Removed: Task list view, item modals, quick capture, `chrono-node` (date parsing), `rrule` (recurrence), and blocking dependencies.
 2. **Gantt Integration:**
    - Origin: Adapted from [lhassa8/obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt).
@@ -23,7 +23,7 @@ This project is a heavily modified derivative work. When generating or modifying
    - Objective: Seamlessly integrate Frappe Gantt into the Obsidian Bases API architecture inherited from the Planner codebase.
 3. **Styling & Color Configuration:**
    - Integration: [anareaty/pretty-properties](https://github.com/anareaty/pretty-properties)
-   - Objective: Utilize existing color configurations and CSS variables provided by `pretty-properties` to theme the views (especially Kanban cards and Gantt bars) rather than hardcoding new color logic.
+   - Objective: Utilize existing color configurations and CSS variables provided by `pretty-properties` to theme the views (especially Swimlane cards and Gantt bars) rather than hardcoding new color logic.
 
 ## Technical Environment & Tooling
 
