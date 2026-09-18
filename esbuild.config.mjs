@@ -27,6 +27,31 @@ const htmlPlugin = {
 	},
 };
 
+// Build a preserved (/*! */) license comment for a CSS file shipped from an npm package.
+// Name, version, license, and copyright line are read from the package itself so the notice
+// cannot drift from the bundled version.
+function packageLicenseNotice(cssPath, note) {
+	let dir = path.dirname(cssPath);
+	while (!fs.existsSync(path.join(dir, "package.json"))) {
+		const parent = path.dirname(dir);
+		if (parent === dir) return `/* From: ${path.basename(cssPath)} */`;
+		dir = parent;
+	}
+	const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
+	const licenseFile = fs.readdirSync(dir).find((f) => /^licen[cs]e/i.test(f));
+	const copyright = licenseFile
+		? fs.readFileSync(path.join(dir, licenseFile), "utf8").match(/^\s*Copyright.*$/m)?.[0].trim()
+		: undefined;
+	const parts = [
+		`${pkg.name} v${pkg.version}`,
+		`${pkg.license} License`,
+		copyright,
+		note,
+		`From: ${path.basename(cssPath)}`,
+	].filter(Boolean);
+	return `/*! ${parts.join(" | ")} */`;
+}
+
 // Plugin to extract and merge CSS into styles.css
 function scopeFrappeGanttCss(css) {
 	const scoped = css
@@ -70,7 +95,7 @@ const cssPlugin = {
 
 		build.onLoad({ filter: /\.css$/ }, async (args) => {
 			const css = await fs.promises.readFile(args.path, "utf8");
-			cssContents.push(`/* From: ${path.basename(args.path)} */\n${css}`);
+			cssContents.push(`${packageLicenseNotice(args.path)}\n${css}`);
 			return { contents: "", loader: "js" };
 		});
 
@@ -99,7 +124,11 @@ const cssPlugin = {
 					);
 					const hasIt = cssContents.some(c => c.includes("From: frappe-gantt.css"));
 					if (!hasIt) {
-						cssContents.unshift(`/* From: frappe-gantt.css */\n${frappeCSS}`);
+						const notice = packageLicenseNotice(
+							frappeGanttCssPath,
+							"Modified: scoped to .bases-gantt-view and themed with Obsidian CSS variables",
+						);
+						cssContents.unshift(`${notice}\n${frappeCSS}`);
 				}
 			}
 
