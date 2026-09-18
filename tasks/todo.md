@@ -323,15 +323,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ## Phase 3: Shared Bases data and interaction foundation
 
-### T017: Define normalized entry value contracts
+### T017: Define normalized entry value contracts — done
 
 **Description:** Add pure discriminated value types for missing, text, number, boolean, date, list, link, file, and unsupported values.
 
 **Acceptance criteria:**
 
-- [ ] Core value types import no Obsidian module.
-- [ ] Missing and empty values are distinguishable.
-- [ ] Formatting is not embedded in raw normalization types.
+- [x] Core value types import no Obsidian module.
+- [x] Missing and empty values are distinguishable.
+- [x] Formatting is not embedded in raw normalization types.
 
 **Verification:** `pnpm run test -- normalized-value && pnpm run typecheck`
 
@@ -341,15 +341,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** S
 
-### T018: Implement the Bases snapshot adapter
+### T018: Implement the Bases snapshot adapter — done
 
 **Description:** Convert requested properties from current grouped/ungrouped results into immutable path-keyed snapshots without retaining entries.
 
 **Acceptance criteria:**
 
-- [ ] Note, file, formula, link, list, checkbox, date, and malformed values are covered.
-- [ ] Snapshot grouping preserves Bases order and null groups.
-- [ ] A test proves replacing all `BasesEntry` objects does not invalidate stored snapshots.
+- [x] Note, file, formula, link, list, checkbox, date, and malformed values are covered.
+- [x] Snapshot grouping preserves Bases order and null groups.
+- [x] A test proves replacing all `BasesEntry` objects does not invalidate stored snapshots.
 
 **Verification:** `pnpm run test -- entry-snapshot && pnpm run typecheck`
 
@@ -359,15 +359,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T019: Implement validated view configuration access
+### T019: Implement validated view configuration access — done
 
 **Description:** Centralize typed reads, coercion, defaults, property IDs, and CSS-only classifications while preserving existing option keys.
 
 **Acceptance criteria:**
 
-- [ ] Invalid enum/number/property values resolve predictably.
-- [ ] View defaults do not introduce task-specific property names.
-- [ ] CSS-only keys can be queried without rebuilding data models.
+- [x] Invalid enum/number/property values resolve predictably.
+- [x] View defaults do not introduce task-specific property names.
+- [x] CSS-only keys can be queried without rebuilding data models.
 
 **Verification:** `pnpm run test -- view-config && pnpm run typecheck`
 
@@ -377,15 +377,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T020: Implement shared color resolution
+### T020: Implement shared color resolution — done
 
 **Description:** Consolidate explicit color, Pretty Properties, value styles, deterministic fallback, and readable foreground logic into one service.
 
 **Acceptance criteria:**
 
-- [ ] Resolution source and semantic CSS variables are testable.
-- [ ] Invalid colors cannot become unsafe inline style values.
-- [ ] Calendar and Swimlane color fixtures can be expressed through the service.
+- [x] Resolution source and semantic CSS variables are testable.
+- [x] Invalid colors cannot become unsafe inline style values.
+- [x] Calendar and Swimlane color fixtures can be expressed through the service.
 
 **Verification:** `pnpm run test -- color && pnpm run typecheck`
 
@@ -395,15 +395,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T021: Implement shared navigation and hover service
+### T021: Implement shared navigation and hover service — done
 
 **Description:** Consolidate modifier-key open behavior, context-menu destinations, keyboard activation, and Page Preview dispatch using registry source metadata.
 
 **Acceptance criteria:**
 
-- [ ] Mouse and keyboard activation produce the same destination contract.
-- [ ] Context menus use the event's owning document.
-- [ ] Hover events contain the correct registered source ID and target.
+- [x] Mouse and keyboard activation produce the same destination contract.
+- [x] Context menus use the event's owning document.
+- [x] Hover events contain the correct registered source ID and target.
 
 **Verification:** `pnpm run test -- navigation && pnpm run typecheck`
 
@@ -413,15 +413,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T022: Implement render epochs and change detection
+### T022: Implement render epochs and change detection — done
 
 **Description:** Add path/mtime/config/group signatures, abortable render epochs, stale-result rejection, and CSS-only fast paths.
 
 **Acceptance criteria:**
 
-- [ ] Identical updates can be skipped without retaining query objects.
-- [ ] Superseded async work cannot commit DOM/cache results.
-- [ ] Group/order/property changes invalidate the correct layer.
+- [x] Identical updates can be skipped without retaining query objects.
+- [x] Superseded async work cannot commit DOM/cache results.
+- [x] Group/order/property changes invalidate the correct layer.
 
 **Verification:** `pnpm run test -- render-scheduler && pnpm run typecheck`
 
@@ -431,15 +431,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T023: Define legacy mutation capabilities
+### T023: Define legacy mutation capabilities — done
 
 **Description:** Create explicit interfaces/adapters for existing date, property, file-create, dependency, and trash behavior without granting them to new views.
 
 **Acceptance criteria:**
 
-- [ ] Capability interfaces accept path/value data, not stored `BasesEntry`.
-- [ ] Direct Obsidian mutation APIs are confined to the adapter directory after migrations.
-- [ ] Failure contracts are stable and testable.
+- [x] Capability interfaces accept path/value data, not stored `BasesEntry`.
+- [ ] Direct Obsidian mutation APIs are confined to the adapter directory after migrations. **Pending T024-T026**: the capability/adapter exists and is allowlisted by the T005 guard, but Calendar/Gantt/Swimlane still call `processFrontMatter`/`trashFile`/`vault.create` directly until those tasks migrate them.
+- [x] Failure contracts are stable and testable.
 
 **Verification:** `pnpm run test -- mutation-capability && pnpm run typecheck`
 
