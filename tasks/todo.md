@@ -106,15 +106,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ## Phase 1: Plugin shell and lifecycle foundation
 
-### T006: Define the view descriptor registry contract
+### T006: Define the view descriptor registry contract — done
 
 **Description:** Create descriptor types covering registration, hover metadata, commands, and capability declarations, with validation for duplicate IDs.
 
 **Acceptance criteria:**
 
-- [ ] Duplicate/invalid IDs fail deterministically.
-- [ ] Descriptors can express all three existing views without view-specific branching.
-- [ ] Registry types do not instantiate views during validation.
+- [x] Duplicate/invalid IDs fail deterministically.
+- [x] Descriptors can express all three existing views without view-specific branching.
+- [x] Registry types do not instantiate views during validation.
 
 **Verification:** `pnpm run test -- view-registry && pnpm run typecheck`
 
@@ -124,15 +124,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T007: Migrate plugin registration to descriptors
+### T007: Migrate plugin registration to descriptors — done
 
 **Description:** Register Bases views, hover sources, and Gantt commands by iterating the descriptor registry while preserving current behavior.
 
 **Acceptance criteria:**
 
-- [ ] `main.ts` contains no separate manual list of view IDs for hover sources.
-- [ ] Existing three IDs, names, icons, factories, options, and commands remain unchanged.
-- [ ] Registration tests prove each descriptor is registered once.
+- [x] `main.ts` contains no separate manual list of view IDs for hover sources.
+- [x] Existing three IDs, names, icons, factories, options, and commands remain unchanged.
+- [x] Registration tests prove each descriptor is registered once.
 
 **Verification:** `pnpm run test -- view-registry && pnpm run typecheck`
 
@@ -142,15 +142,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T008: Implement owner-window helpers and disposable runtime
+### T008: Implement owner-window helpers and disposable runtime — done
 
 **Description:** Add popout-safe DOM/window helpers plus an idempotent disposal scope for events, observers, timers, RAFs, abort controllers, and child components.
 
 **Acceptance criteria:**
 
-- [ ] Disposing twice is safe.
-- [ ] Every owned resource is cancelled/disconnected exactly once.
-- [ ] Observer/RAF constructors come from the element's owning window.
+- [x] Disposing twice is safe.
+- [x] Every owned resource is cancelled/disconnected exactly once.
+- [x] Observer/RAF constructors come from the element's owning window.
 
 **Verification:** `pnpm run test -- view-runtime && pnpm run typecheck`
 
@@ -160,15 +160,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T009: Migrate Calendar lifecycle to ViewRuntime
+### T009: Migrate Calendar lifecycle to ViewRuntime — done
 
 **Description:** Route Calendar-owned DOM handlers and FullCalendar destruction through the runtime without changing rendering or mutation behavior.
 
 **Acceptance criteria:**
 
-- [ ] Repeated update/unload leaves no Calendar or registered handler alive.
-- [ ] FullCalendar is destroyed once per replacement/unload.
-- [ ] Existing Calendar tests remain unchanged in outcome.
+- [x] Repeated update/unload leaves no Calendar or registered handler alive.
+- [x] FullCalendar is destroyed once per replacement/unload.
+- [x] Existing Calendar tests remain unchanged in outcome.
 
 **Verification:** `pnpm run test -- calendar-view && pnpm run typecheck`
 
@@ -178,15 +178,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T010: Migrate Gantt lifecycle and remove global monkey-patching
+### T010: Migrate Gantt lifecycle and remove global monkey-patching — done
 
 **Description:** Own Frappe/WBS/document interactions explicitly and eliminate replacement of `document.addEventListener` during Gantt initialization.
 
 **Acceptance criteria:**
 
-- [ ] No global browser API is overwritten.
-- [ ] Document handlers, resize handlers, popups, and Frappe instances are released on update/unload.
-- [ ] Gantt initialization still captures only the events required by the adapter.
+- [x] No global browser API is overwritten.
+- [x] Document handlers, resize handlers, popups, and Frappe instances are released on update/unload. (Frappe Gantt's own internal document mouseup listener is a documented residual upstream leak — see docs/architecture/upstream-provenance.md.)
+- [x] Gantt initialization still captures only the events required by the adapter.
 
 **Verification:** `pnpm run test -- gantt-view && pnpm run typecheck`; native Gantt smoke at Checkpoint B.
 
@@ -196,15 +196,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T011: Migrate Swimlane lifecycle to ViewRuntime
+### T011: Migrate Swimlane lifecycle to ViewRuntime — done
 
 **Description:** Route resize, keyboard, drag/touch, interval, debounce, observer, and virtual-card cleanup through the runtime.
 
 **Acceptance criteria:**
 
-- [ ] Touch/drag cancellation clears clones, document handlers, timers, and intervals.
-- [ ] Virtual-card handles are disposed when unmounted or rerendered.
-- [ ] Current Swimlane ordering and movement behavior remains characterized.
+- [x] Touch/drag cancellation clears clones, document handlers, timers, and intervals.
+- [x] Virtual-card handles are disposed when unmounted or rerendered.
+- [x] Current Swimlane ordering and movement behavior remains characterized.
 
 **Verification:** `pnpm run test -- swimlane-view && pnpm run typecheck`
 
@@ -216,9 +216,9 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ### Checkpoint B
 
-- [ ] `pnpm run check`
-- [ ] Native mount/switch/unload smoke for all existing views.
-- [ ] Gantt global monkey-patch absence confirmed in source and runtime.
+- [x] `pnpm run check`
+- [ ] Native mount/switch/unload smoke for all existing views. **Needs the maintainer**: this requires a real Obsidian desktop/mobile install, which this session cannot run. Automated tests are not treated as native proof (spec §9.3.5).
+- [x] Gantt global monkey-patch absence confirmed in source and runtime (regression test in tests/gantt-view.test.ts).
 
 ## Phase 2: Modular regular CSS
 
