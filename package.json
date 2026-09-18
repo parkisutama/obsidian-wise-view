@@ -38,16 +38,17 @@
 		"@typescript-eslint/utils": "^8.53.0",
 		"builtin-modules": "^5.0.0",
 		"dotenv": "^17.3.1",
-		"esbuild": "^0.27.3",
+		"esbuild": "^0.28.2",
 		"eslint": "^9.39.2",
 		"eslint-plugin-import": "^2.32.0",
 		"eslint-plugin-obsidianmd": "^0.1.9",
 		"jiti": "^2.6.1",
-		"obsidian": "latest",
+		"obsidian": "1.12.3",
 		"typescript": "^5.3.0",
 		"typescript-eslint": "^8.53.0",
 		"ultracite": "7.7.0",
-		"vitest": "^4.1.6"
+		"vite": "^8.3.0",
+		"vitest": "^4.1.11"
 	},
 	"dependencies": {
 		"@fullcalendar/core": "^6.1.20",
