@@ -602,15 +602,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T032: Implement the read-only Timeline surface
+### T032: Implement the read-only Timeline surface — done
 
 **Description:** Render header/ticks/grid/today marker/bars/edge indicators through Temporal Core and the shared lifecycle/navigation services.
 
 **Acceptance criteria:**
 
-- [ ] Bar geometry comes only from Temporal Core.
-- [ ] Open, context menu, hover, and keyboard activation use shared services.
-- [ ] No pointer gesture can write a date/property.
+- [x] Bar geometry comes only from Temporal Core.
+- [x] Open, context menu, hover, and keyboard activation use shared services.
+- [x] No pointer gesture can write a date/property.
 
 **Verification:** `pnpm run test -- timeline-view && pnpm run typecheck`
 

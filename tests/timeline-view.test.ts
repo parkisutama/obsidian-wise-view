@@ -1,0 +1,80 @@
+// @vitest-environment happy-dom
+import { afterEach, describe, expect, it } from 'vitest';
+import { dateOnlyFromParts } from '../src/core/temporal/TemporalValue';
+import { buildTimelineModel } from '../src/views/timeline/TimelineModel';
+import { createTimelineLayout, TimelineRenderer } from '../src/views/timeline/TimelineRenderer';
+import type { TimelineOptions } from '../src/views/timeline/timelineOptions';
+import { createTimelineHarness, date, timelineSnapshot, type TimelineHarness } from './fixtures/timeline';
+
+const options: TimelineOptions = {
+	startProperty: 'note.start',
+	endProperty: 'note.end',
+	titleProperty: null,
+	colorProperty: null,
+	groupProperty: null,
+	zoom: 'month',
+};
+
+let harness: TimelineHarness | null = null;
+afterEach(() => {
+	harness?.destroy();
+	harness = null;
+});
+
+describe('Timeline renderer', () => {
+	it('derives bar geometry from Temporal Core day coordinates', () => {
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		const model = buildTimelineModel([
+			timelineSnapshot('A.md', { 'note.start': date('2026-01-01'), 'note.end': date('2026-01-03') }),
+		], options, today);
+		const layout = createTimelineLayout(model, today, 'month');
+		expect(layout.bars[0]?.width).toBe(18);
+		expect(layout.bars[0]?.left).toBe(42);
+	});
+
+	it('renders ticks, grid rows, today marker, and accessible bars', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		const model = buildTimelineModel([
+			timelineSnapshot('A.md', { 'note.start': date('2026-01-01') }),
+		], options, today);
+		new TimelineRenderer(host).render(model, today, 'day');
+		expect(host.querySelector('.wise-view-timeline__tick')).not.toBeNull();
+		expect(host.querySelector('.wise-view-timeline__row')).not.toBeNull();
+		expect(host.querySelector('.wise-view-timeline__today')).not.toBeNull();
+		expect(host.querySelector('button[data-path="A.md"]')).not.toBeNull();
+	});
+});
+
+describe('Timeline view interactions', () => {
+	it('routes click, keyboard activation, hover, and context menu through shared behavior', () => {
+		harness = createTimelineHarness();
+		const bar = harness.host.querySelector<HTMLElement>('[data-path="Notes/Alpha.md"]')!;
+		bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		bar.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		bar.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		const context = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+		bar.dispatchEvent(context);
+		expect(harness.opened).toEqual(['Notes/Alpha.md', 'Notes/Alpha.md']);
+		expect(harness.hovers[0]).toMatchObject({ source: 'wise-view-timeline', linktext: 'Notes/Alpha.md' });
+		expect(context.defaultPrevented).toBe(true);
+	});
+
+	it('has no pointer gesture that writes dates or properties', () => {
+		harness = createTimelineHarness();
+		const bar = harness.host.querySelector<HTMLElement>('[data-path="Notes/Alpha.md"]')!;
+		bar.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+		bar.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+		bar.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+		expect(harness.frontmatterWrites).toBe(0);
+	});
+
+	it('removes delegated listeners and DOM on unload', () => {
+		harness = createTimelineHarness();
+		const bar = harness.host.querySelector<HTMLElement>('[data-path="Notes/Alpha.md"]')!;
+		harness.view.onunload();
+		bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(harness.opened).toEqual([]);
+		expect(harness.host.childElementCount).toBe(0);
+	});
+});
