@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Portions adapted from Planner (https://github.com/SawyerRensel/Planner): src/settings/SettingsTab.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type PlannerPlugin from '../main';
 import { PlannerSettings } from '../types/settings';

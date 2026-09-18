@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later AND MIT
+// Derived from obsidian-bases-gantt (https://github.com/lhassa8/obsidian-bases-gantt): src/frappe-gantt.d.ts
+// Copyright (c) 2026 Lars Tray. MIT License, see THIRD_PARTY_NOTICES.md
+// Modifications Copyright (C) 2026 Parkis Utama
+
 /**
  * TypeScript declarations for frappe-gantt.
  * Modelled from: https://github.com/frappe/gantt and

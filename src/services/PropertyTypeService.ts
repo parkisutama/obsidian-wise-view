@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Derived from Planner (https://github.com/SawyerRensel/Planner): src/services/PropertyTypeService.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 import { App } from 'obsidian';
 
 /**

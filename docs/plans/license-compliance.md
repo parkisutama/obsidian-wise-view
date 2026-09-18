@@ -48,7 +48,7 @@ Tidak ada file upstream yang memiliki header hak cipta sendiri.
 | `src/main.ts` | 28% / 11% | Planner `src/main.ts` / lg `src/main.ts` | Portions (GPL + MIT) |
 | `src/views/BasesGanttView.ts` | 28% | lg `src/gantt-view.ts` | Portions (MIT) |
 | `styles.css` | 43% / 15% | Planner `styles.css` / lg `gantt-overrides.css` + Frappe CSS | Portions (GPL + MIT) |
-| `src/types/settings.ts` | 7% | — | Original |
+| `src/types/settings.ts` | 7% | Planner `src/types/settings.ts` (nama & bentuk `PlannerSettings`) | Portions (GPL) |
 | `src/services/NoteTemplateService.ts` | 3% | — | Original |
 | `src/utils/openFile.ts` | 6% | — | Original |
 

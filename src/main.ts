@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later AND MIT
+// Portions adapted from Planner (https://github.com/SawyerRensel/Planner): src/main.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Portions adapted from obsidian-bases-gantt (https://github.com/lhassa8/obsidian-bases-gantt): src/main.ts
+// Copyright (c) 2026 Lars Tray. MIT License, see THIRD_PARTY_NOTICES.md
+// Modifications Copyright (C) 2026 Parkis Utama
+
 import { Plugin } from 'obsidian';
 import { PlannerSettings, DEFAULT_SETTINGS } from './types/settings';
 import { PlannerSettingTab } from './settings/SettingsTab';

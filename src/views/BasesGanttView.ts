@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later AND MIT
+// Portions adapted from obsidian-bases-gantt (https://github.com/lhassa8/obsidian-bases-gantt): src/gantt-view.ts
+// Copyright (c) 2026 Lars Tray. MIT License, see THIRD_PARTY_NOTICES.md
+// Modifications Copyright (C) 2026 Parkis Utama
+
 /**
  * BasesGanttView — Frappe Gantt integration for Obsidian Bases.
  *

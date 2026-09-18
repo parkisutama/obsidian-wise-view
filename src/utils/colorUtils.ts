@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Derived from Planner (https://github.com/SawyerRensel/Planner): src/views/BasesCalendarView.ts, src/views/BasesKanbanView.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 /**
  * Solarized accent palette — 8 colors, used for deterministic property value coloring.
  * Replaces settings-driven status/priority/calendar color configs.
