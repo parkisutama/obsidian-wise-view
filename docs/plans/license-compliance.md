@@ -23,7 +23,7 @@
 
 | # | Keputusan | Hasil |
 | --- | --- | --- |
-| D1 | Lisensi keseluruhan proyek | **`GPL-3.0-or-later`** (diputuskan pemilik, 2026-09-18). Catatan risiko: Planner hanya menyatakan "GPL v3"; disarankan meminta konfirmasi tertulis dari Sawyer Rensel bahwa kode turunannya boleh didistribusikan "or later". |
+| D1 | Lisensi keseluruhan proyek | **`GPL-3.0-only`** (diubah pemilik, 2026-09-18; semula `GPL-3.0-or-later`). Planner hanya menyatakan "GPL v3" tanpa klausul "or any later version" (GPL v3 §14), jadi klaim "or later" tidak berlaku untuk kode turunan Planner. Bisa kembali ke "or later" bila Sawyer Rensel memberi izin tertulis. |
 | D2 | Blok CSS Frappe di `styles.css` | **Pertahankan + beri notice lisensi.** |
 
 ## Bukti provenance (hasil perbandingan baris dengan upstream)
@@ -85,7 +85,7 @@ CI di setiap branch + Windows + ambang coverage.
 
 Masih terbuka (butuh tindakan pemilik):
 
-- Konfirmasi tertulis dari Sawyer Rensel untuk distribusi "or later" (D1).
+- (Opsional) Izin tertulis dari Sawyer Rensel bila ingin kembali ke GPL-3.0-or-later (D1).
 - Uji manual di Obsidian, terutama Calendar view setelah FullCalendar 7.
 - Push branch, buka PR, dan jadikan check CI wajib di branch protection `main`.
 - Rilis 1.0.4 (Task 9): `pnpm version patch --tag-version-prefix=""`.

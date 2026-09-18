@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later AND MIT
+// SPDX-License-Identifier: GPL-3.0-only AND MIT
 // Portions adapted from Planner (https://github.com/SawyerRensel/Planner): src/main.ts
 // Copyright (C) 2025 Sawyer Rensel
 // Portions adapted from obsidian-bases-gantt (https://github.com/lhassa8/obsidian-bases-gantt): src/main.ts

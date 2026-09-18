@@ -174,8 +174,9 @@ The build output is `main.js` at the project root.
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0 or later**
-(`GPL-3.0-or-later`).
+This project is licensed under the **GNU General Public License v3.0 only** (`GPL-3.0-only`).
+The original Planner code is licensed under GPL v3 without an "or any later version" clause, so
+the combined work is distributed under that version.
 
 ```text
 Copyright (C) 2025  Sawyer Rensel  (original Planner codebase)
@@ -183,8 +184,7 @@ Copyright (C) 2026  Parkis Utama   (modifications in Wise View)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+the Free Software Foundation, version 3 of the License only.
 ```
 
 See the [LICENSE](LICENSE) file for the full license text.

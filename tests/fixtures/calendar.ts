@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
 // Import the test double directly so this file type-checks against it; at runtime "obsidian"

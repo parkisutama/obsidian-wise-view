@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-only
 // Derived from Planner (https://github.com/SawyerRensel/Planner): src/views/BasesCalendarView.ts
 // Copyright (C) 2025 Sawyer Rensel
 // Modifications Copyright (C) 2026 Parkis Utama

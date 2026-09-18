@@ -31,7 +31,7 @@
 		"view"
 	],
 	"author": "Parkis Utama",
-	"license": "GPL-3.0-or-later",
+	"license": "GPL-3.0-only",
 	"devDependencies": {
 		"@biomejs/biome": "2.5.14",
 		"@eslint/json": "0.14.0",

@@ -1,7 +1,7 @@
 # Third-Party Notices
 
-Wise View is distributed under the GNU General Public License, version 3 or (at your option) any
-later version (GPL-3.0-or-later). See [LICENSE](LICENSE).
+Wise View is distributed under the GNU General Public License, version 3 only (GPL-3.0-only).
+See [LICENSE](LICENSE).
 
 The distributed plugin files (`main.js`, `styles.css`) include the third-party software listed
 below. Each component remains under its own license, reproduced verbatim from the upstream

@@ -1,7 +1,7 @@
 // License notices prepended to the distributed plugin files.
 // Full license texts live in THIRD_PARTY_NOTICES.md; keep both in sync.
 
-export const PROJECT_LICENSE = "GPL-3.0-or-later";
+export const PROJECT_LICENSE = "GPL-3.0-only";
 export const REPOSITORY_URL = "https://github.com/parkisutama/obsidian-wise-view";
 
 export const PROJECT_COPYRIGHTS = [

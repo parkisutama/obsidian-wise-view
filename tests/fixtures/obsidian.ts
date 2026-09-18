@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
-// Test double for the `obsidian` module (aliased in vitest.config.ts). The real package only
+// Test double for the `obsidian` module (aliased in vitest.config.mts). The real package only
 // ships type declarations; its runtime is provided by the Obsidian app.
 
 type DomOptions = { cls?: string | string[]; text?: string };
