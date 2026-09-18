@@ -122,7 +122,7 @@ import timeGridPlugin from 'fullcalendar/timegrid';
 import listPlugin from 'fullcalendar/list';
 import interactionPlugin from 'fullcalendar/interaction';
 import multiMonthPlugin from 'fullcalendar/multimonth';
-import type PlannerPlugin from '../main';
+import type WiseViewPlugin from '../main';
 import { openFileInNewTab, showOpenFileMenuWithItems } from '../utils/openFile';
 import type { NoteTemplateDefaults, WeekDay } from '../types/settings';
 import { PropertyTypeService } from '../services/PropertyTypeService';
@@ -149,7 +149,7 @@ const isYearView = (view: string | null | undefined): boolean =>
  */
 export class BasesCalendarView extends BasesView {
   type = BASES_CALENDAR_VIEW_ID;
-  private plugin: PlannerPlugin;
+  private plugin: WiseViewPlugin;
   private containerEl: HTMLElement;
   private readonly runtime: ViewRuntime;
   private readonly mutations: LegacyMutationGateway;
@@ -234,7 +234,7 @@ export class BasesCalendarView extends BasesView {
   constructor(
     controller: QueryController,
     containerEl: HTMLElement,
-    plugin: PlannerPlugin
+    plugin: WiseViewPlugin
   ) {
     super(controller);
     this.plugin = plugin;
@@ -1118,7 +1118,7 @@ export class BasesCalendarView extends BasesView {
 /**
  * Create the Bases view registration for the Calendar
  */
-export function createCalendarViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
+export function createCalendarViewRegistration(plugin: WiseViewPlugin): BasesViewRegistration {
   return {
     name: 'Calendar',
     icon: 'calendar-range',

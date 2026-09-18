@@ -6,7 +6,7 @@
 import { TFile } from "./obsidian";
 import { BasesSwimlaneView } from "../../src/views/BasesSwimlaneView";
 import { DEFAULT_SETTINGS } from "../../src/types/settings";
-import type PlannerPlugin from "../../src/main";
+import type WiseViewPlugin from "../../src/main";
 
 /** A note as Bases exposes it: frontmatter keyed by property name. */
 export interface NoteFixture {
@@ -92,7 +92,7 @@ export async function createSwimlaneHarness(options: SwimlaneHarnessOptions = {}
 		},
 		data: { groupedData: [{ entries, hasKey: () => false }] },
 	};
-	const plugin = { app, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
+	const plugin = { app, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as WiseViewPlugin;
 
 	const host = document.createElement("div");
 	document.body.appendChild(host);

@@ -5,10 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
-import type PlannerPlugin from "../src/main";
+import type WiseViewPlugin from "../src/main";
 import { createSwimlaneHarness, waitForRender, type SwimlaneHarness } from "./fixtures/swimlane";
 
-const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
+const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as WiseViewPlugin;
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 let harness: SwimlaneHarness | null = null;

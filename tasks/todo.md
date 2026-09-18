@@ -503,15 +503,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T027: Complete Wise View naming and dead-model cleanup
+### T027: Complete Wise View naming and dead-model cleanup — done
 
 **Description:** Rename remaining Planner shell/settings identifiers, remove the unused task-oriented item model, and keep persisted setting compatibility.
 
 **Acceptance criteria:**
 
-- [ ] No production type claims Wise View owns a Planner task schema.
-- [ ] Plugin/settings names use Wise View terminology.
-- [ ] Existing `data.json` shape still loads without migration loss.
+- [x] No production type claims Wise View owns a Planner task schema.
+- [x] Plugin/settings names use Wise View terminology.
+- [x] Existing `data.json` shape still loads without migration loss.
 
 **Verification:** `rg -n "PlannerItem|ComputedItemFields" src` returns no result; `pnpm run check`.
 

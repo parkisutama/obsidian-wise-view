@@ -10,9 +10,9 @@ import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/v
 import { BASES_GANTT_VIEW_ID, createGanttViewRegistration } from "../src/views/BasesGanttView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
-import PlannerPlugin from "../src/main";
+import WiseViewPlugin from "../src/main";
 
-const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
+const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as WiseViewPlugin;
 
 function throwIfCalled(): never {
 	throw new Error("factory must not be called while building or validating a descriptor");
@@ -107,10 +107,10 @@ describe("ViewRegistry", () => {
 	});
 });
 
-describe("PlannerPlugin.onload view registration", () => {
+describe("WiseViewPlugin.onload view registration", () => {
 	it("registers each Bases view, hover source, and Gantt command exactly once", async () => {
 		const app = { plugins: { plugins: {} } };
-		const realPlugin = new PlannerPlugin(app as never, {} as never);
+		const realPlugin = new WiseViewPlugin(app as never, {} as never);
 		const registeredViews: string[] = [];
 		const registeredHovers: string[] = [];
 		const registeredCommands: string[] = [];

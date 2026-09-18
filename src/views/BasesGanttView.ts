@@ -41,7 +41,7 @@ import {
 } from 'obsidian';
 import Gantt from 'frappe-gantt';
 import type { GanttOptions } from 'frappe-gantt';
-import type PlannerPlugin from '../main';
+import type WiseViewPlugin from '../main';
 import { addOpenFileMenuItems } from '../utils/openFile';
 import {
     GanttTask,
@@ -184,7 +184,7 @@ export class BasesGanttView extends BasesView {
     /** Static registry of active instances for command palette integration. */
     static instances: Set<BasesGanttView> = new Set();
 
-    private plugin: PlannerPlugin;
+    private plugin: WiseViewPlugin;
     private containerEl: HTMLElement;
     private ganttEl!: HTMLElement;
     /** Element where Frappe Gantt renders. Equals ganttEl when sidebar is off. */
@@ -209,7 +209,7 @@ export class BasesGanttView extends BasesView {
     private readonly runtime: ViewRuntime;
     private readonly mutations: LegacyMutationGateway;
 
-    constructor(controller: QueryController, containerEl: HTMLElement, plugin: PlannerPlugin) {
+    constructor(controller: QueryController, containerEl: HTMLElement, plugin: WiseViewPlugin) {
         super(controller);
         this.plugin = plugin;
         this.containerEl = containerEl;
@@ -1503,7 +1503,7 @@ export class BasesGanttView extends BasesView {
 
 // ── View registration ────────────────────────────────────────────────────────
 
-export function createGanttViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
+export function createGanttViewRegistration(plugin: WiseViewPlugin): BasesViewRegistration {
     return {
         name: 'Gantt',
         icon: 'gantt-chart-square',

@@ -6,8 +6,8 @@
 // Modifications Copyright (C) 2026 Parkis Utama
 
 import { Plugin } from 'obsidian';
-import { PlannerSettings, DEFAULT_SETTINGS } from './types/settings';
-import { PlannerSettingTab } from './settings/SettingsTab';
+import { WiseViewSettings, DEFAULT_SETTINGS } from './types/settings';
+import { WiseViewSettingTab } from './settings/SettingsTab';
 import { ViewRegistry, type ViewDescriptor } from './viewRegistry';
 
 import {
@@ -74,8 +74,8 @@ function buildGanttCommands() {
   ];
 }
 
-export default class PlannerPlugin extends Plugin {
-  settings!: PlannerSettings;
+export default class WiseViewPlugin extends Plugin {
+  settings!: WiseViewSettings;
 
   async onload() {
     await this.loadSettings();
@@ -84,7 +84,7 @@ export default class PlannerPlugin extends Plugin {
     this.registerViewDescriptors(this.buildViewDescriptors());
 
     // Add settings tab
-    this.addSettingTab(new PlannerSettingTab(this.app, this));
+    this.addSettingTab(new WiseViewSettingTab(this.app, this));
   }
 
   /**
@@ -159,7 +159,7 @@ export default class PlannerPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const loadedData = await this.loadData() as (Partial<PlannerSettings> & { kanbanDefaults?: unknown }) | null;
+    const loadedData = await this.loadData() as (Partial<WiseViewSettings> & { kanbanDefaults?: unknown }) | null;
     // Versions before the Swimlane rename saved every Kanban default, including a forced
     // "note.status" column property. Drop that key instead of migrating it.
     const { kanbanDefaults: _legacyKanbanDefaults, ...data } = loadedData ?? {};

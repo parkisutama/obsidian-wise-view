@@ -81,11 +81,11 @@ export interface NoteTemplateDefaults {
 }
 
 /**
- * Planner Plugin Settings
- * Stored at: vault/.obsidian/plugins/planner/data.json
+ * Wise View plugin settings. Property names are persisted API and remain stable.
+ * Stored at: vault/.obsidian/plugins/wise-view/data.json
  * Dates in YAML frontmatter use ISO 8601 (e.g. 2026-02-25T12:53:27+07:00).
  */
-export interface PlannerSettings {
+export interface WiseViewSettings {
   // Per-view field defaults (used as fallback when not set in the .base file)
   calendarDefaults: CalendarDefaults;
   swimlaneDefaults: SwimlaneDefaults;
@@ -108,7 +108,7 @@ export type WeekDay = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday'
 /**
  * Default settings — also serves as documentation for data.json structure.
  */
-export const DEFAULT_SETTINGS: PlannerSettings = {
+export const DEFAULT_SETTINGS: WiseViewSettings = {
   calendarDefaults: {
     weekStartsOn: 'monday',
     fontSize: 10,

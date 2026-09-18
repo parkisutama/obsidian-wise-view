@@ -4,8 +4,8 @@
 // Modifications Copyright (C) 2026 Parkis Utama
 
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import type PlannerPlugin from '../main';
-import { PlannerSettings } from '../types/settings';
+import type WiseViewPlugin from '../main';
+import { WiseViewSettings } from '../types/settings';
 
 /**
  * Tab configuration
@@ -16,13 +16,13 @@ interface TabConfig {
   render: (container: HTMLElement) => void;
 }
 
-export class PlannerSettingTab extends PluginSettingTab {
-  plugin: PlannerPlugin;
+export class WiseViewSettingTab extends PluginSettingTab {
+  plugin: WiseViewPlugin;
   private activeTab = 'general';
   private tabContents: Map<string, HTMLElement> = new Map();
   private tabButtons: Map<string, HTMLElement> = new Map();
 
-  constructor(app: App, plugin: PlannerPlugin) {
+  constructor(app: App, plugin: WiseViewPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -111,7 +111,7 @@ export class PlannerSettingTab extends PluginSettingTab {
         .addOption('sunday', 'Sunday')
         .setValue(this.plugin.settings.calendarDefaults.weekStartsOn)
         .onChange(async (value) => {
-          this.plugin.settings.calendarDefaults.weekStartsOn = value as PlannerSettings['calendarDefaults']['weekStartsOn'];
+          this.plugin.settings.calendarDefaults.weekStartsOn = value as WiseViewSettings['calendarDefaults']['weekStartsOn'];
           await this.plugin.saveSettings();
         }));
 

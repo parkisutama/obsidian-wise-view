@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createCalendarViewRegistration } from "../src/views/BasesCalendarView";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
-import type PlannerPlugin from "../src/main";
+import type WiseViewPlugin from "../src/main";
 import { type CalendarHarness, createCalendarHarness, dayOffset } from "./fixtures/calendar";
 
 let harness: CalendarHarness | null = null;
@@ -159,7 +159,7 @@ describe("BasesCalendarView day cells and daily notes", () => {
 
 describe("BasesCalendarView property defaults", () => {
 	const registrationOptions = () => {
-		const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
+		const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as WiseViewPlugin;
 		return createCalendarViewRegistration(plugin).options?.({} as never) ?? [];
 	};
 

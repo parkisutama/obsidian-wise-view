@@ -6,7 +6,7 @@
 import { TFile } from "./obsidian";
 import { BasesCalendarView } from "../../src/views/BasesCalendarView";
 import { DEFAULT_SETTINGS } from "../../src/types/settings";
-import type PlannerPlugin from "../../src/main";
+import type WiseViewPlugin from "../../src/main";
 
 /** A note as Bases exposes it: frontmatter keyed by property name. */
 export interface NoteFixture {
@@ -108,7 +108,7 @@ export function createCalendarHarness(options: CalendarHarnessOptions = {}): Cal
 		config: { get: (key: string) => config[key] },
 		data: { groupedData: [{ entries, hasKey: () => false }] },
 	};
-	const plugin = { app, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
+	const plugin = { app, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as WiseViewPlugin;
 
 	const host = document.createElement("div");
 	host.style.height = "800px";

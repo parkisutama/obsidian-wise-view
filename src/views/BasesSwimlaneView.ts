@@ -16,7 +16,7 @@ import {
   Notice,
   normalizePath,
 } from 'obsidian';
-import type PlannerPlugin from '../main';
+import type WiseViewPlugin from '../main';
 import { PropertyTypeService } from '../services/PropertyTypeService';
 import { showOpenFileMenu } from '../utils/openFile';
 import { ViewRuntime } from '../platform/dom/ViewRuntime';
@@ -49,7 +49,7 @@ const VIRTUAL_SCROLL_THRESHOLD = 15;
  */
 export class BasesSwimlaneView extends BasesView {
   type = BASES_SWIMLANE_VIEW_ID;
-  private plugin: PlannerPlugin;
+  private plugin: WiseViewPlugin;
   private containerEl: HTMLElement;
   private readonly runtime: ViewRuntime;
   private readonly mutations: LegacyMutationGateway;
@@ -239,7 +239,7 @@ export class BasesSwimlaneView extends BasesView {
   constructor(
     controller: QueryController,
     containerEl: HTMLElement,
-    plugin: PlannerPlugin
+    plugin: WiseViewPlugin
   ) {
     super(controller);
     this.plugin = plugin;
@@ -2624,7 +2624,7 @@ export class BasesSwimlaneView extends BasesView {
 /**
  * Create the Bases view registration for the Swimlane
  */
-export function createSwimlaneViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
+export function createSwimlaneViewRegistration(plugin: WiseViewPlugin): BasesViewRegistration {
   return {
     name: 'Swimlane',
     icon: 'rows-3',
