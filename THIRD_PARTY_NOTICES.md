@@ -159,3 +159,16 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+## Bases Timeline design reference
+
+- Source: <https://github.com/mmattia09/obsidian-project-manager>
+- Reference commit: `2c6ee7ca2ab881f5557df5a042a377b0139b8608`
+- Upstream license: MIT
+- Used for: behavioral design evidence for time domains, zoom levels, synchronized sidebar and
+  timeline scrolling, grouping, edge indicators, and responsive layout
+- Reuse mode: independent reimplementation; no upstream source file is copied or incorporated
+
+This acknowledgment records the design reference even though its source code is not bundled into
+Wise View. The authoritative reuse decision is maintained in
+`docs/architecture/upstream-provenance.md`.

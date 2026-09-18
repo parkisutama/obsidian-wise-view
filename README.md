@@ -2,7 +2,7 @@
 
 > **A focused, task-management-agnostic view enrichment plugin for Obsidian Bases.**
 
-Wise View adds Calendar, Swimlane, and Gantt views directly into Obsidian Bases — without
+Wise View adds Calendar, Swimlane, Gantt, and Timeline views directly into Obsidian Bases — without
 any opinion about *how* you manage your tasks or which plugin you use for that.  Your data model is
 yours. This plugin just gives you richer ways to look at it.
 
@@ -55,6 +55,8 @@ whole project is then governed by GPL v3. The original MIT copyright notice is p
   because Obsidian now ships a core Kanban view.
 - **Gantt view** — Date-range chart powered by [Frappe Gantt](https://frappe.io/gantt).
   Map existing start, end, progress, dependency, parent, and color properties from your notes.
+- **Timeline view** — Read-only, grouped, virtualized date ranges with configurable properties
+  and no task-schema assumptions. See the [Timeline View documentation](docs/timeline-view.md).
 
 All views are **Obsidian Bases-native**: they read your notes' frontmatter properties directly and
 write no extra data.
@@ -99,7 +101,7 @@ feature set.
 ## Usage
 
 Open any folder as a Base (right-click → **New base from folder**), then select the view type
-dropdown to **Calendar**, **Swimlane**, or **Gantt**.
+dropdown to **Calendar**, **Swimlane**, **Gantt**, or **Timeline**.
 
 ### Recommended frontmatter shape
 
@@ -121,7 +123,7 @@ progress: 40
 ## Platform support
 
 Wise View is designed for Obsidian desktop and does not use Electron-only runtime APIs in the
-plugin source. Mobile support is enabled for beta testing, but complex Calendar, Swimlane, and Gantt
+plugin source. Mobile support is enabled for beta testing, but complex Calendar, Swimlane, Gantt, and Timeline
 interactions may need platform-specific testing on Android and iOS.
 
 ---
@@ -236,5 +238,8 @@ bundled.
 - **[lhassa8](https://github.com/lhassa8)** — author of
   [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt), which demonstrated a
   clean pattern for integrating Frappe Gantt into Obsidian Bases.
+- **[mmattia09](https://github.com/mmattia09)** — whose MIT-licensed
+  [obsidian-project-manager](https://github.com/mmattia09/obsidian-project-manager) provided
+  design evidence for Timeline behavior; Wise View's implementation is an independent rewrite.
 - The [Obsidian](https://obsidian.md/) team for building the Bases API.
 - [FullCalendar](https://fullcalendar.io/) projects.

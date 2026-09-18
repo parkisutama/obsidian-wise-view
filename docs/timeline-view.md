@@ -1,0 +1,92 @@
+# Timeline View
+
+Timeline View menampilkan rentang tanggal note Obsidian Bases dalam garis waktu horizontal yang
+read-only. View ini memakai properti yang Anda pilih sendiri dan tidak mengharuskan `status`,
+`priority`, atau schema task tertentu.
+
+## Cara menggunakan
+
+1. Buka folder sebagai Obsidian Base.
+2. Pilih tipe view **Timeline**.
+3. Buka pengaturan view dan pilih **Start date**.
+4. Opsional: pilih **End date**, **Title**, **Color by**, dan **Group by**.
+5. Pilih zoom Day, Week, Month, Quarter, atau Year.
+
+Contoh frontmatter berikut hanya contoh; nama propertinya bebas:
+
+```yaml
+---
+project_start: 2026-03-01
+project_end: 2026-03-31
+caption: Website redesign
+team: Web
+category: Research
+---
+```
+
+Konfigurasikan `project_start` sebagai **Start date**, `project_end` sebagai **End date**, dan
+properti lain sesuai kebutuhan. Nilai tanggal harus berbentuk ISO `YYYY-MM-DD` atau datetime ISO.
+Timeline sengaja tidak menebak tanggal lokal seperti `tomorrow` atau `31/03/2026`.
+
+## Pemetaan properti
+
+| Opsi | Fungsi |
+| --- | --- |
+| **Start date** | Tanggal mulai. Note tanpa nilai valid masuk bagian Unscheduled. |
+| **End date** | Tanggal selesai inklusif. Kosong berarti rentang satu unit dari tanggal mulai. |
+| **Title** | Label bar. Kosong atau tidak tersedia memakai nama file. |
+| **Color by** | Nilai kategori yang dipetakan melalui color resolver bersama. |
+| **Group by** | Membagi note menjadi section. Kosong memakai Ungrouped. |
+| **Zoom** | Skala Day, Week, Month, Quarter, atau Year. |
+
+Nilai akhir `ongoing` didukung dan diselesaikan terhadap tanggal hari ini untuk visualisasi.
+Rentang terbalik dinormalisasi untuk tampilan tanpa menulis perubahan ke note.
+
+## Interaksi
+
+- Klik atau tekan Enter/Space pada judul atau bar untuk membuka note.
+- Modifier Obsidian pada klik tetap menentukan tab, split, atau window tujuan.
+- Hover mengikuti Page Preview Obsidian.
+- Klik kanan membuka menu lokasi file bersama Wise View.
+- Klik heading group untuk collapse atau expand.
+- Tombol **Today** membawa posisi horizontal ke hari ini.
+- Pilihan zoom dan posisi scroll dipertahankan saat data Base diperbarui.
+
+Timeline tidak menyediakan drag, resize, quick scheduling, atau editor properti. Pointer gesture
+tidak pernah mengubah tanggal maupun frontmatter.
+
+## Unscheduled dan data tidak valid
+
+Note ditampilkan di section **Unscheduled** bila start date belum dikonfigurasi, kosong, atau tidak
+valid, atau bila end date yang terisi tidak valid. Ini mempertahankan visibilitas data bermasalah
+tanpa menebak atau membuang note secara diam-diam.
+
+## Responsif dan kumpulan besar
+
+Sidebar dan permukaan timeline memakai identitas serta urutan row virtual yang sama. Hanya row di
+sekitar viewport yang dipasang ke DOM. Tes integrasi mencakup 5.000 note; penerimaan visual native
+desktop/mobile/popout tetap dicatat terpisah dalam acceptance matrix proyek.
+
+Pada panel sempit, sidebar dan chart mengecil tanpa mengganti urutan atau anchor scroll. Animasi
+hover dinonaktifkan saat sistem meminta reduced motion.
+
+## Perbedaan dari referensi upstream
+
+Desain perilaku terinspirasi oleh
+[obsidian-project-manager](https://github.com/mmattia09/obsidian-project-manager) pada commit
+`2c6ee7ca2ab881f5557df5a042a377b0139b8608` (MIT). Implementasi Wise View dibuat ulang dari
+design evidence dan tidak menyalin file upstream.
+
+Berbeda dari workflow upstream yang editable, Timeline Wise View:
+
+- tidak memiliki status atau urutan priority bawaan;
+- tidak melakukan quick scheduling;
+- tidak menulis tanggal, group, atau status;
+- memakai Temporal Core, navigation service, dan virtualization platform Wise View;
+- memisahkan model murni, renderer DOM, dan adapter Obsidian Bases.
+
+## Batas verifikasi
+
+Tes otomatis membuktikan mapping, geometry, interaksi, cleanup, sinkronisasi state, registrasi, dan
+batas mounted DOM. Tes tersebut bukan pengganti native visual acceptance di Obsidian desktop,
+mobile, atau popout window.

@@ -638,17 +638,17 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T034: Register, style, document, and license Timeline
+### T034: Register, style, document, and license Timeline — done (automated portion)
 
 **Description:** Add the descriptor, regular CSS module, user documentation, integration fixture, and MIT attribution for adapted Timeline work.
 
 **Acceptance criteria:**
 
-- [ ] ID is uniquely prefixed and registration appears once.
-- [ ] CSS uses shared tokens and supports light/dark/mobile/reduced motion.
-- [ ] Documentation states differences from the upstream editable workflow.
+- [x] ID is uniquely prefixed and registration appears once.
+- [x] CSS uses shared tokens and supports light/dark/mobile/reduced motion.
+- [x] Documentation states differences from the upstream editable workflow.
 
-**Verification:** `pnpm run check:ci`; native Timeline acceptance.
+**Verification:** `pnpm run check:ci` passed. Native Timeline desktop/mobile/popout acceptance remains deferred to T061.
 
 **Dependencies:** T033, T002, T016.
 
@@ -658,8 +658,8 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ### Checkpoint E: Timeline
 
-- [ ] Automated gates pass.
-- [ ] 5,000-row bounded-DOM evidence recorded.
+- [x] Automated gates pass.
+- [x] 5,000-row bounded-DOM evidence recorded.
 - [ ] Desktop/mobile/popout native acceptance recorded.
 - [ ] Human accepts Timeline before Card Core expansion.
 

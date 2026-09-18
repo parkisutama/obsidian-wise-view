@@ -3,7 +3,7 @@
 	"name": "Wise View",
 	"version": "1.0.3",
 	"minAppVersion": "1.10.2",
-	"description": "Enriched Obsidian Bases views: Calendar, Swimlane, and Gantt — task-management agnostic.",
+	"description": "Enriched Obsidian Bases views: Calendar, Swimlane, Gantt, and Timeline — task-management agnostic.",
 	"author": "Parkis Utama",
 	"authorUrl": "https://github.com/parkisutama",
 	"isDesktopOnly": false
