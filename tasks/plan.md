@@ -138,7 +138,8 @@ Tasks T017-T027 create the common path every current and future view uses.
 
 ## Phase 4: Temporal Core to Timeline
 
-Tasks T028-T034 are the first complete shared-component-to-new-view slice.
+Tasks T028-T034 plus native-fidelity follow-ups T034A-T034C are the first complete
+shared-component-to-new-view slice.
 
 - Build pure strict date/range semantics.
 - Build zoom, tick, time-domain, and coordinate calculations.
@@ -146,8 +147,12 @@ Tasks T028-T034 are the first complete shared-component-to-new-view slice.
 - Map snapshots and view options into a Timeline model.
 - Render the Timeline surface, grouping, sidebar, today marker, edge indicators, scroll synchronization, and mobile mode.
 - Register Timeline with modular CSS, integration tests, and documentation.
+- Use native screenshot comparison to close temporal header/grid, toolbar, sidebar, scheduled,
+  and unscheduled presentation gaps before Timeline is accepted.
 
 Calendar and Gantt tests prove date semantics before Timeline consumes them. Timeline remains read-only.
+Passing shared navigation interactions does not imply visual acceptance: Page Preview and the file
+context menu can pass while the Timeline surface still requires fidelity work.
 
 ### Checkpoint E: Timeline accepted
 
@@ -155,6 +160,11 @@ Calendar and Gantt tests prove date semantics before Timeline consumes them. Tim
 - It has bounded mounted rows with a 5,000-entry fixture.
 - Desktop/mobile/popout behavior and cleanup are verified.
 - No date/status/priority writes exist in the Timeline directory.
+- The human accepts the native surface after comparison with the pinned upstream design evidence.
+
+The centered **Show details** window observed in the Keep Bases View is tracked separately as a
+cross-view interaction proposal (T034D). It does not block Timeline acceptance and must not be
+implemented independently in each view before a shared contract is approved.
 
 ## Phase 5: Card Core to Grid
 

@@ -656,12 +656,84 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
+### T034A: Close Timeline header, grid, and toolbar fidelity gaps
+
+**Description:** Refine the native Timeline surface from the 2026-09-19 screenshot comparison so its temporal hierarchy and controls retain the useful upstream behavior without importing its task workflow.
+
+**Acceptance criteria:**
+
+- [ ] Toolbar uses compact Today plus one zoom selector, and the sidebar has an explicit collapse/expand control.
+- [ ] Header renders synchronized month/year bands and day ticks with weekend/tick banding plus a today badge and line spanning the row surface.
+- [ ] Horizontal header/body scrolling and vertical sidebar/body scrolling remain synchronized without breaking bounded DOM or saved anchors.
+
+**Verification:** `pnpm run test -- timeline-view && pnpm run typecheck`; native desktop screenshot comparison against `tasks/timeline-native-acceptance.md`.
+
+**Dependencies:** T029-T034.
+
+**Likely files:** `src/views/timeline/TimelineRenderer.ts`, `src/views/timeline/BasesTimelineView.ts`, `src/styles/views/timeline.css`, `tests/timeline-view.test.ts`
+
+**Estimated scope:** M
+
+### T034B: Refine Timeline scheduled and unscheduled presentation
+
+**Description:** Make configuration errors, genuinely unscheduled notes, and scheduled bars visually distinct while keeping Timeline schema-agnostic and read-only.
+
+**Acceptance criteria:**
+
+- [ ] An unconfigured start property shows configuration guidance instead of converting every note into an Unscheduled row.
+- [ ] With a configured start property, only missing/invalid dates enter one clear Unscheduled section; note titles are not replaced by repeated generic “Unscheduled” pills.
+- [ ] Scheduled bars, row emphasis, truncation, and labels align with the temporal grid while preserving shared colors/navigation and zero mutation paths.
+
+**Verification:** `pnpm run test -- timeline-model timeline-view && pnpm run check`; native fixtures with scheduled, missing, invalid, ongoing, and reversed ranges.
+
+**Dependencies:** T034A.
+
+**Likely files:** `src/views/timeline/TimelineModel.ts`, `src/views/timeline/TimelineRenderer.ts`, `src/styles/views/timeline.css`, `tests/timeline-model.test.ts`, `tests/timeline-view.test.ts`
+
+**Estimated scope:** M
+
+### T034C: Re-run and record Timeline native acceptance
+
+**Description:** Repeat acceptance after T034A-T034B and record interaction and visual evidence without treating automated tests as native proof.
+
+**Acceptance criteria:**
+
+- [ ] Desktop confirms configured/scheduled and unscheduled layouts, compact controls, Page Preview, complete context menu, keyboard navigation, zoom, today, collapse, and scroll synchronization.
+- [ ] Mobile and popout confirm responsive layout, correct owner-window behavior, and cleanup across mount/switch/unload.
+- [ ] Human records Timeline as accepted or lists remaining concrete gaps before Phase 5 starts.
+
+**Verification:** Native acceptance record in `tasks/timeline-native-acceptance.md`; `pnpm run check:ci` remains green.
+
+**Dependencies:** T034A-T034B.
+
+**Likely files:** `tasks/timeline-native-acceptance.md`, `tasks/todo.md`
+
+**Estimated scope:** S
+
 ### Checkpoint E: Timeline
 
 - [x] Automated gates pass.
 - [x] 5,000-row bounded-DOM evidence recorded.
 - [ ] Desktop/mobile/popout native acceptance recorded.
 - [ ] Human accepts Timeline before Card Core expansion.
+
+### T034D: Design a shared centered details window — future cross-view backlog
+
+**Description:** Capture the Keep Bases View-style **Show details** context action as a reusable, optional Wise View interaction instead of duplicating modal/window behavior per view. This task is design-only until the human approves the contract and target views.
+
+**Acceptance criteria:**
+
+- [ ] A proposal defines the shared navigation/details service, read-only data contract, focus trapping, Escape/close behavior, owner-window handling, mobile fallback, and cleanup ownership.
+- [ ] Context-menu integration places **Show details** after a separator and allows each view to opt in without changing the existing complete open-location actions.
+- [ ] The proposal identifies initial candidate views and explicitly separates read-only details from editing or task-management behavior.
+
+**Verification:** Human review of the proposal and a small interaction contract test plan; no runtime implementation in this task.
+
+**Dependencies:** T021. Does not block Checkpoint E.
+
+**Likely files:** `tasks/plan.md`, `tasks/todo.md`, future ADR/spec after approval
+
+**Estimated scope:** S
 
 ## Phase 5: Card Core to Grid
 
