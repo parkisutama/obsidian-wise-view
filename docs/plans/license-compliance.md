@@ -58,10 +58,38 @@ Tidak ada file upstream yang memiliki header hak cipta sendiri.
 | --- | --- | --- | --- | --- |
 | Planner | main | GPL-3.0 | Copyright (C) 2025 Sawyer Rensel | `main.js`, `styles.css` |
 | obsidian-bases-gantt | main | MIT | Copyright (c) 2026 Lars Tray | `main.js`, `styles.css` |
-| FullCalendar (`@fullcalendar/*`) | 6.1.21 | MIT | Copyright (c) Adam Shaw | `main.js` (termasuk CSS via JS) |
-| Preact (dep. FullCalendar) | 10.12.1 | MIT | Copyright (c) 2015-present Jason Miller | `main.js` |
+| FullCalendar (`fullcalendar`, `@full-ui/headless-calendar`, `temporal-polyfill`, `temporal-utils`) | 7.1.0 / 7.1.0 / 1.0.5 / 1.0.3 | MIT | Copyright (c) 2026 Adam Shaw | `main.js`, `styles.css` |
+| Preact (dep. FullCalendar) | 10.29.8 | MIT | Copyright (c) 2015-present Jason Miller | `main.js` |
 | Frappe Gantt | 1.2.2 | MIT | Copyright (c) 2024 Frappe Technologies Pvt. Ltd. | `main.js`, `styles.css` |
-| tslib | 2.8.1 | 0BSD | Copyright (c) Microsoft Corporation | `main.js` (tanpa kewajiban atribusi) |
+
+Tabel ini diperbarui setelah migrasi FullCalendar 7 (lihat Status). `tslib` dihapus: esbuild tidak
+pernah membundelnya. Sumber kebenaran sekarang `THIRD_PARTY_NOTICES.md`; build produksi gagal bila
+paket terbundel tidak tercantum di sana.
+
+## Status (2026-09-18)
+
+| Task | Status |
+| --- | --- |
+| 1 — `THIRD_PARTY_NOTICES.md` + koreksi LICENSE | Selesai |
+| 2 — Konsistensi metadata lisensi | Selesai |
+| 3 — CSS Frappe yang dibundel | Selesai (dibuat ulang tiap build, diberi notice) |
+| 4 — Notice lisensi di artefak build | Selesai, ditambah cek otomatis paket terbundel |
+| 5 — Dokumen lisensi di rilis | Selesai |
+| 6 — Header SPDX | Selesai |
+| 7 — Update devDependencies | Selesai, diperluas: toolchain terbaru, Node 24 LTS, pnpm 12, FullCalendar 7 |
+| 8 — Kebersihan repo | Selesai |
+| 9 — Changelog & versi 1.0.4 | **Ditunda** atas permintaan pemilik sampai perbaikan selesai |
+
+Tambahan di luar rencana awal: fixture dan tes Vitest (Calendar view, plugin css-merge, runner),
+CI di setiap branch + Windows + ambang coverage.
+
+Masih terbuka (butuh tindakan pemilik):
+
+- Konfirmasi tertulis dari Sawyer Rensel untuk distribusi "or later" (D1).
+- Uji manual di Obsidian, terutama Calendar view setelah FullCalendar 7.
+- Push branch, buka PR, dan jadikan check CI wajib di branch protection `main`.
+- Rilis 1.0.4 (Task 9): `pnpm version patch --tag-version-prefix=""`.
+- Tes Kanban & Gantt view (coverage keseluruhan masih ~12%).
 
 ---
 
