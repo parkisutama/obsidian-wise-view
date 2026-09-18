@@ -83,6 +83,25 @@ describe('Timeline renderer', () => {
 		expect([sidebar.scrollTop, timeline.scrollTop]).toEqual([36, 36]);
 		renderer.dispose();
 	});
+
+	it('keeps both mounted collections bounded for 5,000 scheduled notes', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		const model = buildTimelineModel(Array.from({ length: 5_000 }, (_, index) =>
+			timelineSnapshot(`Notes/${index}.md`, { 'note.start': date('2026-01-01') })
+		), options, today);
+		const renderer = new TimelineRenderer(host);
+		const viewports = host.querySelectorAll<HTMLElement>('.wise-view-timeline__sidebar, .wise-view-timeline__scroller');
+		for (const viewport of viewports) {
+			Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 360 });
+		}
+		renderer.render(model, today, 'month');
+		for (const viewport of viewports) {
+			expect(viewport.querySelectorAll('.wise-view-virtual-linear-content > [data-path]').length).toBeLessThanOrEqual(16);
+		}
+		expect(host.querySelectorAll('[data-note-path]').length).toBeLessThanOrEqual(30);
+		renderer.dispose();
+	});
 });
 
 describe('Timeline view interactions', () => {
