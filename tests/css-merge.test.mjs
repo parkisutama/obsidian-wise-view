@@ -23,7 +23,7 @@ afterEach(() => {
 const BANNER = "/*! Test banner */\n";
 
 /** Build the fixture entry with the css-merge plugin, writing into a temp styles.css. */
-async function buildFixture({ existingStyles = "", extraCss = [], rebuilds = 1 } = {}) {
+async function buildFixture({ existingStyles = "", extraCss = [], firstPartyCss, rebuilds = 1 } = {}) {
 	const dir = makeTempDir();
 	const stylesPath = path.join(dir, "styles.css");
 	writeFileSync(stylesPath, existingStyles);
@@ -33,7 +33,14 @@ async function buildFixture({ existingStyles = "", extraCss = [], rebuilds = 1 }
 		write: false,
 		logLevel: "silent",
 		plugins: [
-			createCssMergePlugin({ stylesPath, banner: BANNER, bannerStart: "/*! Test banner", extraCss, log: () => {} }),
+			createCssMergePlugin({
+				stylesPath,
+				banner: BANNER,
+				bannerStart: "/*! Test banner",
+				extraCss,
+				firstPartyCss,
+				log: () => {},
+			}),
 		],
 	});
 	try {
@@ -104,6 +111,23 @@ describe("composeStyles", () => {
 	it("returns null when there is nothing to merge", () => {
 		expect(composeStyles({ ...base, existing: ".mine {}", imported: [] })).toBeNull();
 	});
+
+	it("uses firstParty verbatim, ignoring whatever precedes the marker in existing", () => {
+		const styles = composeStyles({
+			...base,
+			existing: ".stale-hand-written {}",
+			firstParty: ".foundations {}\n\n.views {}\n",
+			imported: [],
+		});
+		expect(styles).not.toBeNull();
+		expect(styles).not.toContain(".stale-hand-written {}");
+		expect(styles).toContain(".foundations {}\n\n.views {}");
+	});
+
+	it("preserves firstParty's given order even though it isn't path-sorted", () => {
+		const styles = composeStyles({ ...base, existing: "", firstParty: ".z-module {}\n\n.a-module {}\n", imported: [] });
+		expect(styles.indexOf(".z-module {}")).toBeLessThan(styles.indexOf(".a-module {}"));
+	});
 });
 
 describe("createCssMergePlugin", () => {
@@ -152,6 +176,28 @@ describe("createCssMergePlugin", () => {
 		expect(twice).toBe(once);
 		expect(twice.startsWith(BANNER)).toBe(true);
 		expect(count(twice, "/*! Test banner")).toBe(1);
+	});
+
+	it("concatenates ordered first-party CSS modules verbatim, in the given order", async () => {
+		const styles = await buildFixture({
+			existingStyles: ".stale-hand-written {}",
+			firstPartyCss: [
+				path.join(fixtures, "first-party", "foundations.css"),
+				path.join(fixtures, "first-party", "views.css"),
+			],
+		});
+		const head = styles.split(BUNDLE_MARKER)[0];
+		expect(head).not.toContain(".stale-hand-written {}");
+		expect(head.indexOf(".foundations")).toBeLessThan(head.indexOf(".views"));
+	});
+
+	it("produces byte-identical output for the same ordered first-party modules across builds", async () => {
+		const firstPartyCss = [
+			path.join(fixtures, "first-party", "foundations.css"),
+			path.join(fixtures, "first-party", "views.css"),
+		];
+		const outputs = await Promise.all([buildFixture({ firstPartyCss }), buildFixture({ firstPartyCss })]);
+		expect(new Set(outputs).size).toBe(1);
 	});
 
 	it("injects extra vendor CSS first, transformed and annotated", async () => {
