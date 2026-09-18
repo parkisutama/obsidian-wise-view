@@ -1,8 +1,12 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
+import { fileURLToPath } from "url";
 import { afterEach, describe, expect, it } from "vitest";
 import { syncVersionFiles } from "../version-bump.mjs";
+
+const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const readRepoJson = (name) => JSON.parse(readFileSync(path.join(repoRoot, name), "utf8"));
 
 const tempDirs = [];
 
@@ -51,5 +55,21 @@ describe("syncVersionFiles", () => {
 			"1.0.0": "0.15.0",
 			"1.1.0": "0.15.0",
 		});
+	});
+});
+
+describe("manifest compatibility and naming", () => {
+	it("declares the minimum Obsidian version that createFileForView already requires", () => {
+		const manifest = readRepoJson("manifest.json");
+		expect(manifest.minAppVersion).toBe("1.10.2");
+	});
+
+	it("describes the plugin's current views without stale Kanban naming", () => {
+		const manifest = readRepoJson("manifest.json");
+		const pkg = readRepoJson("package.json");
+		expect(manifest.description).not.toMatch(/kanban/i);
+		expect(pkg.description).not.toMatch(/kanban/i);
+		expect(pkg.keywords).not.toContain("kanban");
+		expect(pkg.keywords).toContain("swimlane");
 	});
 });

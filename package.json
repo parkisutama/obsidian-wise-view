@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-wise-view",
 	"version": "1.0.3",
-	"description": "Enriched Obsidian Bases views: Calendar, Kanban, and Gantt — task-management agnostic",
+	"description": "Enriched Obsidian Bases views: Calendar, Swimlane, and Gantt — task-management agnostic",
 	"main": "main.js",
 	"packageManager": "pnpm@12.4.2",
 	"engines": {
@@ -25,7 +25,7 @@
 		"obsidian",
 		"plugin",
 		"calendar",
-		"kanban",
+		"swimlane",
 		"gantt",
 		"bases",
 		"view"
