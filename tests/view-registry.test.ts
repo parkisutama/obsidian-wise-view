@@ -10,7 +10,7 @@ import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/v
 import { BASES_GANTT_VIEW_ID, createGanttViewRegistration } from "../src/views/BasesGanttView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
-import type PlannerPlugin from "../src/main";
+import PlannerPlugin from "../src/main";
 
 const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
 
@@ -104,5 +104,43 @@ describe("ViewRegistry", () => {
 			expect(descriptor.capabilities?.legacyMutation).toBe(true);
 			expect(descriptor.hover?.display).toBeTruthy();
 		}
+	});
+});
+
+describe("PlannerPlugin.onload view registration", () => {
+	it("registers each Bases view, hover source, and Gantt command exactly once", async () => {
+		const app = { plugins: { plugins: {} } };
+		const realPlugin = new PlannerPlugin(app as never, {} as never);
+		const registeredViews: string[] = [];
+		const registeredHovers: string[] = [];
+		const registeredCommands: string[] = [];
+
+		Object.assign(realPlugin, {
+			registerBasesView: (id: string) => {
+				registeredViews.push(id);
+				return true;
+			},
+			registerHoverLinkSource: (id: string) => {
+				registeredHovers.push(id);
+			},
+			addCommand: (command: { id: string }) => {
+				registeredCommands.push(command.id);
+			},
+			addSettingTab: () => {},
+		});
+
+		await realPlugin.onload();
+
+		expect(registeredViews).toEqual([BASES_SWIMLANE_VIEW_ID, BASES_CALENDAR_VIEW_ID, BASES_GANTT_VIEW_ID]);
+		expect(new Set(registeredViews).size).toBe(registeredViews.length);
+		expect(registeredHovers).toEqual([BASES_SWIMLANE_VIEW_ID, BASES_CALENDAR_VIEW_ID, BASES_GANTT_VIEW_ID]);
+		expect(registeredCommands).toEqual([
+			"gantt-scroll-today",
+			"gantt-create-note",
+			"gantt-view-day",
+			"gantt-view-week",
+			"gantt-view-month",
+			"gantt-view-year",
+		]);
 	});
 });

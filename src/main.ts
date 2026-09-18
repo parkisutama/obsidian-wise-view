@@ -8,6 +8,7 @@
 import { Plugin } from 'obsidian';
 import { PlannerSettings, DEFAULT_SETTINGS } from './types/settings';
 import { PlannerSettingTab } from './settings/SettingsTab';
+import { ViewRegistry, type ViewDescriptor } from './viewRegistry';
 
 import {
   BASES_SWIMLANE_VIEW_ID,
@@ -25,142 +26,132 @@ import {
   createGanttViewRegistration,
 } from './views/BasesGanttView';
 
+/** Command-palette commands scoped to the currently active Gantt view, if any. */
+function buildGanttCommands() {
+  const activeGantt = (): BasesGanttView | null => {
+    for (const inst of BasesGanttView.instances) {
+      if (inst.isInActiveLeaf()) return inst;
+    }
+    return null;
+  };
+
+  const viewModeCommand = (id: string, name: string, mode: string) => ({
+    id,
+    name,
+    checkCallback: (checking: boolean) => {
+      const view = activeGantt();
+      if (!view) return false;
+      if (!checking) view.setViewMode(mode);
+      return true;
+    },
+  });
+
+  return [
+    {
+      id: 'gantt-scroll-today',
+      name: 'Gantt: scroll to today',
+      checkCallback: (checking: boolean) => {
+        const view = activeGantt();
+        if (!view) return false;
+        if (!checking) view.scrollToToday();
+        return true;
+      },
+    },
+    {
+      id: 'gantt-create-note',
+      name: 'Gantt: create note at today',
+      checkCallback: (checking: boolean) => {
+        const view = activeGantt();
+        if (!view) return false;
+        if (!checking) view.createNoteAtToday();
+        return true;
+      },
+    },
+    viewModeCommand('gantt-view-day', 'Gantt: day view', 'Day'),
+    viewModeCommand('gantt-view-week', 'Gantt: week view', 'Week'),
+    viewModeCommand('gantt-view-month', 'Gantt: month view', 'Month'),
+    viewModeCommand('gantt-view-year', 'Gantt: year view', 'Year'),
+  ];
+}
+
 export default class PlannerPlugin extends Plugin {
   settings!: PlannerSettings;
 
   async onload() {
     await this.loadSettings();
 
-    // Register Bases views
-    this.registerBasesViews();
+    // Register Bases views, hover sources, and commands from one descriptor list.
+    this.registerViewDescriptors(this.buildViewDescriptors());
 
     // Add settings tab
     this.addSettingTab(new PlannerSettingTab(this.app, this));
   }
 
   /**
-   * Register custom view types with Obsidian Bases
+   * The registry is the single source of truth for every view's id, hover attribution, and
+   * commands (spec §7.3). Building it here does not instantiate any view: each `factory` is
+   * only stored until Obsidian itself mounts the view.
    */
-  private registerBasesViews(): void {
-    this.registerBasesView(
-      BASES_SWIMLANE_VIEW_ID,
-      createSwimlaneViewRegistration(this)
-    );
+  private buildViewDescriptors(): ViewDescriptor[] {
+    const swimlane = createSwimlaneViewRegistration(this);
+    const calendar = createCalendarViewRegistration(this);
+    const gantt = createGanttViewRegistration(this);
 
-    this.registerBasesView(
-      BASES_CALENDAR_VIEW_ID,
-      createCalendarViewRegistration(this)
-    );
-
-    // Register Gantt view for Bases
-    this.registerBasesView(
-      BASES_GANTT_VIEW_ID,
-      createGanttViewRegistration(this)
-    );
-
-    this.registerHoverPreviewSources();
-
-    // Register Gantt command palette commands
-    this.registerGanttCommands();
+    return [
+      {
+        id: BASES_SWIMLANE_VIEW_ID,
+        name: swimlane.name,
+        icon: swimlane.icon,
+        factory: swimlane.factory,
+        options: swimlane.options,
+        hover: { display: 'Swimlane', defaultMod: true },
+        capabilities: { legacyMutation: true },
+      },
+      {
+        id: BASES_CALENDAR_VIEW_ID,
+        name: calendar.name,
+        icon: calendar.icon,
+        factory: calendar.factory,
+        options: calendar.options,
+        hover: { display: 'Calendar', defaultMod: true },
+        capabilities: { legacyMutation: true },
+      },
+      {
+        id: BASES_GANTT_VIEW_ID,
+        name: gantt.name,
+        icon: gantt.icon,
+        factory: gantt.factory,
+        options: gantt.options,
+        hover: { display: 'Gantt', defaultMod: true },
+        commands: buildGanttCommands(),
+        capabilities: { legacyMutation: true },
+      },
+    ];
   }
 
-  /**
-   * Register hover-link sources so Obsidian Page Preview can attribute
-   * hover events from all Wise View surfaces consistently.
-   */
-  private registerHoverPreviewSources(): void {
-    this.registerHoverLinkSource(BASES_SWIMLANE_VIEW_ID, {
-      display: 'Swimlane',
-      defaultMod: true,
-    });
+  /** Registers every descriptor's Bases view, hover source, and commands with Obsidian. */
+  private registerViewDescriptors(descriptors: ViewDescriptor[]): void {
+    const registry = new ViewRegistry();
+    for (const descriptor of descriptors) {
+      registry.register(descriptor);
+    }
 
-    this.registerHoverLinkSource(BASES_CALENDAR_VIEW_ID, {
-      display: 'Calendar',
-      defaultMod: true,
-    });
+    for (const descriptor of registry.list()) {
+      this.registerBasesView(descriptor.id, {
+        name: descriptor.name,
+        icon: descriptor.icon,
+        factory: descriptor.factory,
+        options: descriptor.options,
+      });
 
-    this.registerHoverLinkSource(BASES_GANTT_VIEW_ID, {
-      display: 'Gantt',
-      defaultMod: true,
-    });
-  }
-
-  /**
-   * Register command palette commands for Gantt view interaction.
-   */
-  private registerGanttCommands(): void {
-    const activeGantt = (): BasesGanttView | null => {
-      for (const inst of BasesGanttView.instances) {
-        if (inst.isInActiveLeaf()) return inst;
+      if (descriptor.hover) {
+        this.registerHoverLinkSource(descriptor.id, descriptor.hover);
       }
-      return null;
-    };
 
-    this.addCommand({
-      id: 'gantt-scroll-today',
-      name: 'Gantt: scroll to today',
-      checkCallback: (checking) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.scrollToToday();
-        return true;
-      },
-    });
-
-    this.addCommand({
-      id: 'gantt-create-note',
-      name: 'Gantt: create note at today',
-      checkCallback: (checking) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.createNoteAtToday();
-        return true;
-      },
-    });
-
-    this.addCommand({
-      id: 'gantt-view-day',
-      name: 'Gantt: day view',
-      checkCallback: (checking) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.setViewMode('Day');
-        return true;
-      },
-    });
-
-    this.addCommand({
-      id: 'gantt-view-week',
-      name: 'Gantt: week view',
-      checkCallback: (checking) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.setViewMode('Week');
-        return true;
-      },
-    });
-
-    this.addCommand({
-      id: 'gantt-view-month',
-      name: 'Gantt: month view',
-      checkCallback: (checking) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.setViewMode('Month');
-        return true;
-      },
-    });
-
-    this.addCommand({
-      id: 'gantt-view-year',
-      name: 'Gantt: year view',
-      checkCallback: (checking) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.setViewMode('Year');
-        return true;
-      },
-    });
+      for (const command of descriptor.commands ?? []) {
+        this.addCommand(command);
+      }
+    }
   }
 
   onunload() {
