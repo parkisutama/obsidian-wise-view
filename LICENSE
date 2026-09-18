@@ -13,12 +13,16 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program. If not,
 see <https://www.gnu.org/licenses/>.
 
+Bundled third-party components (FullCalendar, Preact, Frappe Gantt, tslib) and their licenses are
+listed in THIRD_PARTY_NOTICES.md.
+
 -------------------------------------------------------------------------------
 THIRD-PARTY CODE — MIT LICENSE
 
 Portions of this software (Gantt view implementation) are adapted from:
   obsidian-bases-gantt  <https://github.com/lhassa8/obsidian-bases-gantt>
-  Copyright (C) 2026  lhassa8
+
+Copyright (c) 2026 Lars Tray
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
