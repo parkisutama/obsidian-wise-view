@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Portions adapted from Planner (https://github.com/SawyerRensel/Planner): src/types/settings.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 /**
  * Per-value style override for a property field.
  * User edits this directly in data.json:

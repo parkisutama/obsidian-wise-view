@@ -1,6 +1,5 @@
 {
 	"compilerOptions": {
-		"baseUrl": ".",
 		"inlineSourceMap": true,
 		"inlineSources": true,
 		"module": "ESNext",
@@ -9,20 +8,22 @@
 		"noImplicitAny": true,
 		"noImplicitThis": true,
 		"noImplicitReturns": true,
-		"moduleResolution": "node",
-		"importHelpers": true,
+		"moduleResolution": "bundler",
 		"noUncheckedIndexedAccess": true,
 		"isolatedModules": true,
+		// Third-party .d.ts files (e.g. happy-dom via vitest) are not ours to fix; our code is still
+		// checked against them.
+		"skipLibCheck": true,
 		"strictNullChecks": true,
 		"strictBindCallApply": true,
 		"allowSyntheticDefaultImports": true,
 		"useUnknownInCatchVariables": true,
-		"lib": ["DOM", "ES2018"],
+		"lib": ["DOM", "ES2022"],
 		"paths": {
-			"@/*": ["src/*"]
+			"@/*": ["./src/*"]
 		}
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.mts"],
 	"exclude": [
 		"node_modules",
 		"src/services/LpcHost.ts"

@@ -3,18 +3,22 @@
 	"version": "1.0.3",
 	"description": "Enriched Obsidian Bases views: Calendar, Kanban, and Gantt — task-management agnostic",
 	"main": "main.js",
-	"packageManager": "pnpm@10.32.1",
+	"packageManager": "pnpm@12.4.2",
+	"engines": {
+		"node": ">=24"
+	},
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "node esbuild.config.mjs production",
 		"typecheck": "tsc --noEmit",
-		"lint": "biome lint src scripts tests esbuild.config.mjs version-bump.mjs package.json manifest.json biome.jsonc eslint.config.mts tsconfig.json --diagnostic-level=error",
-		"lint:fix": "biome check --write src scripts tests esbuild.config.mjs version-bump.mjs package.json manifest.json biome.jsonc eslint.config.mts tsconfig.json",
+		"lint": "biome lint src scripts tests esbuild.config.mjs version-bump.mjs vitest.config.mts package.json manifest.json biome.jsonc eslint.config.mts tsconfig.json --diagnostic-level=error",
+		"lint:fix": "biome check --write src scripts tests esbuild.config.mjs version-bump.mjs vitest.config.mts package.json manifest.json biome.jsonc eslint.config.mts tsconfig.json",
 		"lint:obsidian": "eslint src manifest.json LICENSE",
 		"test": "node scripts/run-vitest.mjs",
+		"test:coverage": "node scripts/run-vitest.mjs --coverage",
 		"verify:artifacts": "node scripts/verify-build-artifacts.mjs",
 		"check": "pnpm run lint && pnpm run lint:obsidian && pnpm run typecheck && pnpm run test",
-		"check:ci": "pnpm run check && pnpm run build && pnpm run verify:artifacts",
+		"check:ci": "pnpm run lint && pnpm run lint:obsidian && pnpm run typecheck && pnpm run test:coverage && pnpm run build && pnpm run verify:artifacts",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [
@@ -27,36 +31,29 @@
 		"view"
 	],
 	"author": "Parkis Utama",
-	"license": "GPL-3.0-or-later",
+	"license": "GPL-3.0-only",
 	"devDependencies": {
-		"@biomejs/biome": "2.4.15",
+		"@biomejs/biome": "2.5.14",
 		"@eslint/json": "0.14.0",
-		"@microsoft/eslint-plugin-sdl": "^1.1.0",
-		"@types/node": "^25.3.2",
-		"@typescript-eslint/eslint-plugin": "^8.53.0",
-		"@typescript-eslint/parser": "^8.53.0",
-		"@typescript-eslint/utils": "^8.53.0",
-		"builtin-modules": "^5.0.0",
-		"dotenv": "^17.3.1",
-		"esbuild": "^0.27.3",
-		"eslint": "^9.39.2",
-		"eslint-plugin-import": "^2.32.0",
-		"eslint-plugin-obsidianmd": "^0.1.9",
+		"@types/node": "^24.13.5",
+		"@typescript-eslint/parser": "^8.70.0",
+		"@vitest/coverage-v8": "^5.0.1",
+		"dotenv": "^17.4.2",
+		"esbuild": "^0.28.2",
+		"eslint": "^10.10.0",
+		"eslint-plugin-obsidianmd": "^0.4.2",
+		"happy-dom": "^20.14.5",
 		"jiti": "^2.6.1",
-		"obsidian": "latest",
-		"typescript": "^5.3.0",
-		"typescript-eslint": "^8.53.0",
-		"ultracite": "7.7.0",
-		"vitest": "^4.1.6"
+		"obsidian": "1.12.3",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.70.0",
+		"ultracite": "7.12.0",
+		"vite": "^8.3.0",
+		"vitest": "^5.0.1"
 	},
 	"dependencies": {
-		"@fullcalendar/core": "^6.1.20",
-		"@fullcalendar/daygrid": "^6.1.20",
-		"@fullcalendar/interaction": "^6.1.20",
-		"@fullcalendar/list": "^6.1.20",
-		"@fullcalendar/multimonth": "^6.1.20",
-		"@fullcalendar/timegrid": "^6.1.20",
 		"frappe-gantt": "^1.2.2",
-		"tslib": "^2.8.1"
+		"fullcalendar": "^7.1.0",
+		"temporal-polyfill": "^1.0.5"
 	}
 }

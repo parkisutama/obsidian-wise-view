@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Derived from Planner (https://github.com/SawyerRensel/Planner): src/views/BasesCalendarView.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 import {
   BasesView,
   BasesViewRegistration,
@@ -11,19 +16,19 @@ import {
   TFile,
   Notice,
 } from 'obsidian';
-import { Calendar, EventInput, EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
-
-/**
- * Type interfaces for FullCalendar event handlers
- */
-interface EventResizeArg {
-  event: {
-    start: Date | null;
-    end: Date | null;
-    extendedProps: { entry: BasesEntry };
-  };
-  revert(): void;
-}
+import {
+  Calendar,
+  type DateSelectInfo,
+  type EventClickInfo,
+  type EventDropInfo,
+  type EventInput,
+  type EventResizeDoneInfo,
+} from 'fullcalendar';
+import classicThemePlugin from 'fullcalendar/themes/classic';
+// FullCalendar 7 no longer injects CSS; the build merges these into styles.css.
+import 'fullcalendar/skeleton.css';
+import 'fullcalendar/themes/classic/theme.css';
+import 'fullcalendar/themes/classic/palette.css';
 
 /**
  * Type interfaces for Obsidian's undocumented internal plugins API
@@ -111,11 +116,11 @@ interface BasesGroupedData {
  * Field names are dynamic based on user-configured dateStartField / dateEndField
  */
 type EditableFrontmatter = Record<string, unknown>;
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import listPlugin from '@fullcalendar/list';
-import interactionPlugin from '@fullcalendar/interaction';
-import multiMonthPlugin from '@fullcalendar/multimonth';
+import dayGridPlugin from 'fullcalendar/daygrid';
+import timeGridPlugin from 'fullcalendar/timegrid';
+import listPlugin from 'fullcalendar/list';
+import interactionPlugin from 'fullcalendar/interaction';
+import multiMonthPlugin from 'fullcalendar/multimonth';
 import type PlannerPlugin from '../main';
 import { stringToColor } from '../utils/colorUtils';
 import { openFileInNewTab, showOpenFileMenuWithItems } from '../utils/openFile';
@@ -128,6 +133,12 @@ export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
 
 type CalendarViewType = 'multiMonthYear' | 'dayGridYear' | 'dayGridMonth' | 'timeGridWeek' | 'timeGridThreeDay' | 'timeGridDay' | 'listWeek';
 
+/** Toolbar buttons whose DOM is adjusted after FullCalendar mounts them. */
+type ManagedButton = 'yearButton' | 'yearToggleButton';
+
+const isYearView = (view: string | null | undefined): boolean =>
+  view === 'multiMonthYear' || view === 'dayGridYear';
+
 /**
  * Calendar view for Obsidian Bases
  * Displays items on a full calendar using FullCalendar's built-in headerToolbar
@@ -139,8 +150,9 @@ export class BasesCalendarView extends BasesView {
   private calendarEl: HTMLElement | null = null;
   private calendar: Calendar | null = null;
   private currentView: CalendarViewType | null = null; // null means use config default
-  private resizeObserver: ResizeObserver | null = null;
   private yearViewSplit: boolean = true; // true = multiMonthYear (split), false = dayGridYear (continuous)
+  // Captured from each button's didMount hook; FullCalendar 7 renders buttons with hashed classes.
+  private buttonEls: Partial<Record<ManagedButton, HTMLElement>> = {};
 
   // Now accepts any property ID for custom properties
   private getColorByField(): string {
@@ -215,7 +227,6 @@ export class BasesCalendarView extends BasesView {
     this.plugin = plugin;
     this.containerEl = containerEl;
     this.setupContainer();
-    this.setupResizeObserver();
   }
 
   private setupContainer(): void {
@@ -226,15 +237,6 @@ export class BasesCalendarView extends BasesView {
     this.calendarEl = this.containerEl.createDiv({ cls: 'planner-calendar-container' });
   }
 
-  private setupResizeObserver(): void {
-    this.resizeObserver = new ResizeObserver(() => {
-      if (this.calendar) {
-        this.calendar.updateSize();
-      }
-    });
-    this.resizeObserver.observe(this.containerEl);
-  }
-
   /**
    * Called when data changes - re-render the calendar
    */
@@ -243,10 +245,7 @@ export class BasesCalendarView extends BasesView {
   }
 
   onunload(): void {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
-    }
+    // FullCalendar 7 tracks its container size itself, so no ResizeObserver is needed.
     if (this.calendar) {
       this.calendar.destroy();
       this.calendar = null;
@@ -287,13 +286,15 @@ export class BasesCalendarView extends BasesView {
 
     // Use provided view, or current view if re-rendering, or config default for first render
     const viewToUse = initialView || this.currentView || this.getDefaultView();
+    this.buttonEls = {};
 
     this.calendar = new Calendar(this.calendarEl, {
-      plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, multiMonthPlugin],
+      plugins: [classicThemePlugin, dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, multiMonthPlugin],
       initialView: viewToUse,
       initialDate: initialDate,
+      // View buttons are named after their views so FullCalendar tracks which one is selected.
       headerToolbar: {
-        left: 'yearToggleButton,yearButton,monthButton,weekButton,threeDayButton,dayButton,listButton',
+        left: 'yearToggleButton,yearButton,dayGridMonth,timeGridWeek,timeGridThreeDay,timeGridDay,listWeek',
         center: 'title',
         right: 'refreshButton prev,todayButton,next',
       },
@@ -301,97 +302,62 @@ export class BasesCalendarView extends BasesView {
         timeGridThreeDay: {
           type: 'timeGrid',
           duration: { days: 3 },
-          buttonText: '3',
         },
       },
-      customButtons: {
+      buttons: {
         yearButton: {
           text: 'Y',
           hint: 'Year view',
-          click: () => {
-            if (this.calendar) {
-              const view = this.yearViewSplit ? 'multiMonthYear' : 'dayGridYear';
-              this.calendar.changeView(view);
-              this.updateActiveViewButton(view);
-              this.updateYearToggleEnabled(true);
-            }
+          click: () => this.calendar?.changeView(this.yearViewSplit ? 'multiMonthYear' : 'dayGridYear'),
+          didMount: (info) => {
+            this.buttonEls.yearButton = info.el;
+            this.updateActiveViewButton(this.currentView ?? viewToUse);
           },
         },
-        monthButton: {
-          text: 'M',
-          hint: 'Month view',
-          click: () => {
-            if (this.calendar) {
-              this.calendar.changeView('dayGridMonth');
-              this.updateActiveViewButton('dayGridMonth');
-              this.updateYearToggleEnabled(false);
-            }
-          },
-        },
-        weekButton: {
-          text: 'W',
-          hint: 'Week view',
-          click: () => {
-            if (this.calendar) {
-              this.calendar.changeView('timeGridWeek');
-              this.updateActiveViewButton('timeGridWeek');
-              this.updateYearToggleEnabled(false);
-            }
-          },
-        },
-        threeDayButton: {
-          text: '3',
-          hint: '3-day view',
-          click: () => {
-            if (this.calendar) {
-              this.calendar.changeView('timeGridThreeDay');
-              this.updateActiveViewButton('timeGridThreeDay');
-              this.updateYearToggleEnabled(false);
-            }
-          },
-        },
-        dayButton: {
-          text: 'D',
-          hint: 'Day view',
-          click: () => {
-            if (this.calendar) {
-              this.calendar.changeView('timeGridDay');
-              this.updateActiveViewButton('timeGridDay');
-              this.updateYearToggleEnabled(false);
-            }
-          },
-        },
-        listButton: {
-          text: 'L',
-          hint: 'List view',
-          click: () => {
-            if (this.calendar) {
-              this.calendar.changeView('listWeek');
-              this.updateActiveViewButton('listWeek');
-              this.updateYearToggleEnabled(false);
-            }
-          },
-        },
+        dayGridMonth: { text: 'M', hint: 'Month view' },
+        timeGridWeek: { text: 'W', hint: 'Week view' },
+        timeGridThreeDay: { text: '3', hint: '3-day view' },
+        timeGridDay: { text: 'D', hint: 'Day view' },
+        listWeek: { text: 'L', hint: 'List view' },
         yearToggleButton: {
           text: '',
           hint: 'Toggle year view mode',
           click: () => this.toggleYearViewMode(),
+          didMount: (info) => {
+            this.buttonEls.yearToggleButton = info.el;
+            this.updateYearToggleEnabled(isYearView(this.currentView ?? viewToUse));
+            this.updateYearToggleButtonContent();
+          },
         },
         todayButton: {
           text: '',
           hint: 'Go to today',
-          click: () => {
-            if (this.calendar) {
-              this.calendar.today();
-            }
-          },
+          click: () => this.calendar?.today(),
+          didMount: (info) => setIcon(info.el, 'square-split-horizontal'),
         },
         refreshButton: {
           text: '',
           hint: 'Refresh calendar',
           click: () => this.refreshCalendar(),
+          didMount: (info) => setIcon(info.el, 'refresh-ccw'),
         },
       },
+      // FullCalendar 7 renders hashed utility classes; these hooks add stable classes for styles.css.
+      buttonClass: (info) => `planner-fc-button planner-fc-button-${info.name}${info.isSelected ? ' is-active' : ''}`,
+      toolbarClass: 'planner-fc-toolbar',
+      toolbarSectionClass: 'planner-fc-toolbar-section',
+      toolbarTitleClass: 'planner-fc-title',
+      dayHeaderInnerClass: (info) => `planner-fc-day-header${info.isToday ? ' is-today' : ''}`,
+      viewClass: (info) => `planner-fc-view planner-fc-view-${info.view.type}`,
+      dayRowClass: 'planner-fc-row',
+      dayCellTopInnerClass: (info) => `planner-fc-day-number${info.isToday ? ' is-today' : ''}`,
+      singleMonthHeaderInnerClass: 'planner-fc-month-title',
+      slotHeaderInnerClass: 'planner-fc-slot-label',
+      allDayHeaderInnerClass: 'planner-fc-slot-label',
+      moreLinkClass: 'planner-fc-more-link',
+      listDayHeaderInnerClass: (info) => `planner-fc-list-day-text${info.isToday ? ' is-today' : ''}`,
+      eventClass: 'planner-fc-event',
+      listItemEventClass: 'planner-fc-event planner-fc-list-event',
       firstDay: weekStartsOn,
       selectable: true,
       selectMirror: true,
@@ -399,8 +365,9 @@ export class BasesCalendarView extends BasesView {
       eventStartEditable: true,
       eventDurationEditable: true,
       eventResizableFromStart: true,
-      navLinks: true, // Make day numbers clickable
-      navLinkDayClick: (date) => { void this.openJournalOrDailyNote(date); }, // Click on day number opens journal/daily note
+      navLinks: true, // Day numbers and day headers are links
+      // Clicking a day number, day header, or list day header opens the journal/daily note
+      navLinkDayClick: (date) => { void this.openJournalOrDailyNote(date); },
       events: events,
       eventClick: (info) => { void this.handleEventClick(info); },
       eventDidMount: (info) => {
@@ -415,112 +382,53 @@ export class BasesCalendarView extends BasesView {
         });
       },
       eventDrop: (info) => { void this.handleEventDrop(info); },
-      eventResize: (info) => { void this.handleEventResize(info as unknown as EventResizeArg); },
+      eventResize: (info) => { void this.handleEventResize(info); },
       select: (info) => this.handleDateSelect(info),
       dayCellDidMount: (arg) => {
         // Compute journal path once at mount time (reused for dot indicator and hover preview)
         const journalPath = this.getJournalNotePathForDate(arg.date);
-        if (journalPath) {
-          const topEl = arg.el.querySelector('.fc-daygrid-day-top');
-          if (topEl) {
-            const dot = document.createElement('span');
-            dot.addClass('planner-journal-dot');
-            topEl.appendChild(dot);
-          }
-        }
+        if (!journalPath) return;
+        const dayNumberEl = arg.el.querySelector<HTMLElement>('.planner-fc-day-number');
+        if (!dayNumberEl) return;
+        dayNumberEl.parentElement?.createSpan({ cls: 'planner-journal-dot' });
         // Page Preview source settings decide whether hover requires Ctrl/Cmd.
-        const dayNumberEl = arg.el.querySelector('.fc-daygrid-day-number');
-        if (dayNumberEl) {
-          dayNumberEl.addEventListener('mouseenter', (e) => {
-            if (journalPath) {
-              this.triggerHoverPreview(e as MouseEvent, journalPath, dayNumberEl as HTMLElement);
-            }
-          });
-        }
+        dayNumberEl.addEventListener('mouseenter', (e) => {
+          this.triggerHoverPreview(e, journalPath, dayNumberEl);
+        });
       },
       dayHeaderDidMount: (arg) => {
-        // Compute journal path once at mount time
+        // Only dated headers (day/week views) are links; month view headers are weekday names.
+        if (!arg.hasNavLink) return;
         const journalPath = this.getJournalNotePathForDate(arg.date);
-        // Make day header clickable in day/week views to open journal/daily note
-        const el = arg.el;
-        el.addClass('planner-cursor-pointer');
-        el.addEventListener('click', (e) => {
-          // Prevent if clicking on an actual nav link (already handled)
-          if ((e.target as HTMLElement).closest('.fc-col-header-cell-cushion')) {
-            void this.openJournalOrDailyNote(arg.date);
-          }
+        const textEl = arg.el.querySelector<HTMLElement>('.planner-fc-day-header');
+        if (!journalPath || !textEl) return;
+        textEl.addEventListener('mouseenter', (e) => {
+          this.triggerHoverPreview(e, journalPath, textEl);
         });
-        // Page Preview source settings decide whether hover requires Ctrl/Cmd.
-        const cushionEl = el.querySelector('.fc-col-header-cell-cushion');
-        if (cushionEl) {
-          cushionEl.addEventListener('mouseenter', (e) => {
-            if (journalPath) {
-              this.triggerHoverPreview(e as MouseEvent, journalPath, cushionEl as HTMLElement);
-            }
-          });
-        }
       },
-      datesSet: () => {
-        // Wire up list view day headers for hover preview + click-to-open daily note.
-        // @fullcalendar/list exposes no listDayDidMount callback, so we query after each render.
-        const listDayRows = this.calendarEl?.querySelectorAll('.fc-list-day:not([data-planner-wired])');
-        listDayRows?.forEach((row) => {
-          (row as HTMLElement).dataset.plannerWired = 'true';
-          const dateStr = (row as HTMLElement).dataset.date; // e.g. "2026-02-27"
-          if (!dateStr) return;
-          // Parse as local midnight so getFullYear/getMonth/getDate are correct
-          const [y, m, d] = dateStr.split('-').map(Number);
-          if (y == null || m == null || d == null) return;
-          const date = new Date(y, m - 1, d);
-          const journalPath = this.getJournalNotePathForDate(date);
-
-          const cushionEl = row.querySelector('.fc-list-day-cushion');
-          if (!cushionEl) return;
-          cushionEl.addClass('planner-cursor-pointer');
-
-          const clickHandler = () => { void this.openJournalOrDailyNote(date); };
-          const hoverHandler = (e: MouseEvent) => {
-            if (journalPath) {
-              this.triggerHoverPreview(e, journalPath, e.currentTarget as HTMLElement);
-            }
-          };
-
-          const textEl = cushionEl.querySelector('.fc-list-day-text');
-          const sideTextEl = cushionEl.querySelector('.fc-list-day-side-text');
-          if (textEl) {
-            textEl.addEventListener('click', clickHandler);
-            textEl.addEventListener('mouseenter', hoverHandler);
-          }
-          if (sideTextEl) {
-            sideTextEl.addEventListener('click', clickHandler);
-            sideTextEl.addEventListener('mouseenter', hoverHandler);
-          }
-          if (!textEl && !sideTextEl) {
-            cushionEl.addEventListener('click', clickHandler);
-            cushionEl.addEventListener('mouseenter', hoverHandler);
-          }
+      listDayHeaderDidMount: (arg) => {
+        const journalPath = this.getJournalNotePathForDate(arg.date);
+        if (!journalPath) return;
+        arg.el.querySelectorAll<HTMLElement>('.planner-fc-list-day-text').forEach((textEl) => {
+          textEl.addEventListener('mouseenter', (e) => {
+            this.triggerHoverPreview(e, journalPath, textEl);
+          });
         });
       },
       viewDidMount: (arg) => {
         // Track view type changes
         const newViewType = arg.view.type as CalendarViewType;
-        if (newViewType) {
-          this.currentView = newViewType;
-        }
-        // Update year toggle state based on current view
-        const isYearView = newViewType === 'multiMonthYear' || newViewType === 'dayGridYear';
-        this.updateYearToggleEnabled(isYearView);
+        this.currentView = newViewType;
+        this.updateYearToggleEnabled(isYearView(newViewType));
         this.updateYearToggleButtonContent();
-        // Update active view button
         this.updateActiveViewButton(newViewType);
       },
       height: '100%',
       expandRows: true,
-      handleWindowResize: true,
       nowIndicator: true,
       dayMaxEvents: true,
-      // Fix drag offset caused by CSS transforms on Obsidian's workspace containers
-      fixedMirrorParent: document.body,
+      // FullCalendar 7 resizes with its container and always attaches drag mirrors to <body>,
+      // which also avoids offsets from CSS transforms on Obsidian's workspace containers.
     });
 
     this.calendar.render();
@@ -531,33 +439,10 @@ export class BasesCalendarView extends BasesView {
     // Apply year view row height CSS variables
     this.calendarEl.style.setProperty('--planner-year-continuous-row-height', `${this.getYearContinuousRowHeight()}px`);
     this.calendarEl.style.setProperty('--planner-year-split-row-height', `${this.getYearSplitRowHeight()}px`);
-
-    // Set today button icon
-    const todayBtn = this.calendarEl?.querySelector('.fc-todayButton-button');
-    if (todayBtn) {
-      todayBtn.empty();
-      setIcon(todayBtn as HTMLElement, 'square-split-horizontal');
-    }
-
-    // Set refresh button icon
-    const refreshBtn = this.calendarEl?.querySelector('.fc-refreshButton-button');
-    if (refreshBtn) {
-      refreshBtn.empty();
-      setIcon(refreshBtn as HTMLElement, 'refresh-ccw');
-    }
-
-    // Set initial active view button
-    this.updateActiveViewButton(viewToUse);
-
-    // Set initial year toggle state
-    const isYearView = (initialView || this.currentView) === 'multiMonthYear' ||
-      (initialView || this.currentView) === 'dayGridYear';
-    this.updateYearToggleEnabled(isYearView);
-    this.updateYearToggleButtonContent();
   }
 
   private toggleYearViewMode(): void {
-    if (!this.calendar) return;
+    if (!this.calendar || !isYearView(this.currentView)) return;
 
     this.yearViewSplit = !this.yearViewSplit;
     const newView = this.yearViewSplit ? 'multiMonthYear' : 'dayGridYear';
@@ -572,55 +457,37 @@ export class BasesCalendarView extends BasesView {
     this.render();
   }
 
+  // Button state lives in data attributes: FullCalendar owns (and re-renders) the class list.
   private updateYearToggleEnabled(enabled: boolean): void {
-    const toggleBtn = this.calendarEl?.querySelector('.fc-yearToggleButton-button') as HTMLElement;
-    if (toggleBtn) {
-      if (enabled) {
-        toggleBtn.removeAttribute('disabled');
-        toggleBtn.classList.remove('fc-button-disabled');
-      } else {
-        toggleBtn.setAttribute('disabled', 'true');
-        toggleBtn.classList.add('fc-button-disabled');
-      }
+    const toggleBtn = this.buttonEls.yearToggleButton;
+    if (!toggleBtn) return;
+    if (enabled) {
+      delete toggleBtn.dataset.plannerDisabled;
+      toggleBtn.removeAttribute('aria-disabled');
+    } else {
+      toggleBtn.dataset.plannerDisabled = 'true';
+      toggleBtn.setAttribute('aria-disabled', 'true');
     }
   }
 
   private updateYearToggleButtonContent(): void {
-    const toggleBtn = this.calendarEl?.querySelector('.fc-yearToggleButton-button') as HTMLElement | null;
-    if (toggleBtn) {
-      toggleBtn.empty();
-      // Use different icons for split vs continuous mode
-      // layout-grid = split by month (⧉), align-justify = continuous scroll (☰)
-      setIcon(toggleBtn, this.yearViewSplit ? 'layout-grid' : 'align-justify');
-      toggleBtn.setAttribute('title', this.yearViewSplit ? 'Switch to continuous scroll' : 'Switch to split by month');
-    }
+    const toggleBtn = this.buttonEls.yearToggleButton;
+    if (!toggleBtn) return;
+    toggleBtn.empty();
+    // Use different icons for split vs continuous mode
+    // layout-grid = split by month (⧉), align-justify = continuous scroll (☰)
+    setIcon(toggleBtn, this.yearViewSplit ? 'layout-grid' : 'align-justify');
+    toggleBtn.setAttribute('title', this.yearViewSplit ? 'Switch to continuous scroll' : 'Switch to split by month');
   }
 
   private updateActiveViewButton(viewType: CalendarViewType): void {
-    if (!this.calendarEl) return;
-
-    // Map view types to button selectors
-    const viewButtonMap: Record<string, string> = {
-      'multiMonthYear': '.fc-yearButton-button',
-      'dayGridYear': '.fc-yearButton-button',
-      'dayGridMonth': '.fc-monthButton-button',
-      'timeGridWeek': '.fc-weekButton-button',
-      'timeGridThreeDay': '.fc-threeDayButton-button',
-      'timeGridDay': '.fc-dayButton-button',
-      'listWeek': '.fc-listButton-button',
-    };
-
-    // Remove active class from all view buttons
-    const allViewButtons = this.calendarEl.querySelectorAll(
-      '.fc-yearButton-button, .fc-monthButton-button, .fc-weekButton-button, .fc-threeDayButton-button, .fc-dayButton-button, .fc-listButton-button'
-    );
-    allViewButtons.forEach(btn => btn.classList.remove('fc-button-active'));
-
-    // Add active class to current view button
-    const activeSelector = viewButtonMap[viewType];
-    if (activeSelector) {
-      const activeBtn = this.calendarEl.querySelector(activeSelector);
-      activeBtn?.classList.add('fc-button-active');
+    // Month/week/day/list buttons get `is-active` from buttonClass. The year button covers two views.
+    const yearBtn = this.buttonEls.yearButton;
+    if (!yearBtn) return;
+    if (isYearView(viewType)) {
+      yearBtn.dataset.plannerActive = 'true';
+    } else {
+      delete yearBtn.dataset.plannerActive;
     }
   }
 
@@ -681,9 +548,8 @@ export class BasesCalendarView extends BasesView {
       start: startStr,
       end: endStr,
       allDay: isAllDay,
-      backgroundColor: color,
-      borderColor: color,
-      textColor: this.getContrastColor(color),
+      color,
+      contrastColor: this.getContrastColor(color),
       extendedProps: {
         entry,
       },
@@ -890,13 +756,13 @@ export class BasesCalendarView extends BasesView {
     return luminance > 0.5 ? '#000000' : '#ffffff';
   }
 
-  private async handleEventClick(info: EventClickArg): Promise<void> {
+  private async handleEventClick(info: EventClickInfo): Promise<void> {
     const entry = this.getEventEntry(info.event.extendedProps);
     if (!entry) return;
     openFileInNewTab(this.app, entry.file.path);
   }
 
-  private async handleEventDrop(info: EventDropArg): Promise<void> {
+  private async handleEventDrop(info: EventDropInfo): Promise<void> {
     const entry = this.getEventEntry(info.event.extendedProps);
     if (!entry) {
       info.revert();
@@ -927,7 +793,7 @@ export class BasesCalendarView extends BasesView {
     });
   }
 
-  private async handleEventResize(info: EventResizeArg): Promise<void> {
+  private async handleEventResize(info: EventResizeDoneInfo): Promise<void> {
     const entry = this.getEventEntry(info.event.extendedProps);
     if (!entry) {
       info.revert();
@@ -958,7 +824,7 @@ export class BasesCalendarView extends BasesView {
     });
   }
 
-  private handleDateSelect(info: DateSelectArg): void {
+  private handleDateSelect(info: DateSelectInfo): void {
     void this.createNewItem(info);
   }
 
@@ -1235,7 +1101,7 @@ export class BasesCalendarView extends BasesView {
       .replace(/ddd/g, weekdaysShort[date.getDay()] ?? '');
   }
 
-  private async createNewItem(selection: DateSelectArg): Promise<void> {
+  private async createNewItem(selection: DateSelectInfo): Promise<void> {
     if (!this.isTimeGridView(selection.view.type)) {
       this.calendar?.unselect();
       return;

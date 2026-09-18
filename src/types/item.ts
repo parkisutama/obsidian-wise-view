@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Derived from Planner (https://github.com/SawyerRensel/Planner): src/types/item.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 /**
  * Planner Item - The fundamental unit in Planner
  *

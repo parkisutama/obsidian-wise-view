@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Derived from Planner (https://github.com/SawyerRensel/Planner): src/utils/dateUtils.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 /**
  * Utility functions for handling the "ongoing" keyword in date fields.
  *

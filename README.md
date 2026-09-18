@@ -38,11 +38,11 @@ The original Planner is a full-featured planning and task management plugin. Wis
 
 The Gantt view incorporates code adapted from
 [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt) by
-[lhassa8](https://github.com/lhassa8), licensed under the **MIT License**.
+Lars Tray ([lhassa8](https://github.com/lhassa8)), licensed under the **MIT License**.
 
 The MIT License is compatible with GPL v3: MIT code may be included in a GPL v3 project, and the
 whole project is then governed by GPL v3. The original MIT copyright notice is preserved in the
-[LICENSE](LICENSE) file as required.
+[LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) files as required.
 
 ---
 
@@ -174,7 +174,9 @@ The build output is `main.js` at the project root.
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0**.
+This project is licensed under the **GNU General Public License v3.0 only** (`GPL-3.0-only`).
+The original Planner code is licensed under GPL v3 without an "or any later version" clause, so
+the combined work is distributed under that version.
 
 ```text
 Copyright (C) 2025  Sawyer Rensel  (original Planner codebase)
@@ -182,19 +184,25 @@ Copyright (C) 2026  Parkis Utama   (modifications in Wise View)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+the Free Software Foundation, version 3 of the License only.
 ```
 
 See the [LICENSE](LICENSE) file for the full license text.
 
 ### Dependency licenses
 
-| Dependency | License | Notes |
-| --- | --- | --- |
-| [FullCalendar](https://fullcalendar.io/) | MIT | Calendar view |
-| [Frappe Gantt](https://github.com/frappe/gantt) | MIT | Gantt view |
-| [Obsidian API](https://obsidian.md/) | Custom | Obsidian plugin system |
+These components are bundled into the distributed `main.js` and `styles.css`. Full license texts
+are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+| Dependency | License | Copyright | Notes |
+| --- | --- | --- | --- |
+| [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt) | MIT | Lars Tray | Adapted Gantt view code |
+| [FullCalendar](https://fullcalendar.io/) | MIT | Adam Shaw | Calendar view (`fullcalendar`, `@full-ui/headless-calendar`, `temporal-polyfill`, `temporal-utils`; JavaScript and stylesheets) |
+| [Preact](https://preactjs.com/) | MIT | Jason Miller | Rendering library used by FullCalendar |
+| [Frappe Gantt](https://github.com/frappe/gantt) | MIT | Frappe Technologies Pvt. Ltd. | Gantt view (JavaScript and modified stylesheet) |
+
+The [Obsidian API](https://obsidian.md/) is provided by the Obsidian app at runtime and is not
+bundled.
 
 ---
 

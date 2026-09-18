@@ -1,0 +1,5 @@
+# pnpm settings (pnpm >= 11 no longer reads non-auth settings from .npmrc)
+
+# esbuild runs a postinstall script that validates its platform binary.
+allowBuilds:
+  esbuild: true

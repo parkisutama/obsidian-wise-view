@@ -15,16 +15,16 @@ jobs:
     build:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
-            - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v6
               with:
                   run_install: false
 
             - name: Use Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
-                  node-version: "24.x"
+                  node-version-file: ".node-version"
                   cache: "pnpm"
 
             - name: Install dependencies
@@ -44,7 +44,7 @@ jobs:
               run: pnpm run check:ci
 
             - name: Package plugin zip
-              run: zip wise-view.zip main.js manifest.json styles.css
+              run: zip wise-view.zip main.js manifest.json styles.css LICENSE THIRD_PARTY_NOTICES.md
 
             - name: Create release
               env:
@@ -55,4 +55,4 @@ jobs:
                   gh release create "$tag" \
                     --title="$tag" \
                     --generate-notes \
-                    main.js manifest.json styles.css wise-view.zip
+                    main.js manifest.json styles.css LICENSE THIRD_PARTY_NOTICES.md wise-view.zip

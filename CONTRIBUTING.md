@@ -2,11 +2,19 @@
 
 ## Setup
 
-Use the pinned package manager from `package.json`.
+Requirements:
+
+- Node.js 24 LTS. The version is pinned in `.node-version`; with
+  [fnm](https://github.com/Schniz/fnm) run `fnm use` (or enable `--use-on-cd`).
+- pnpm 12, pinned in `package.json` (`packageManager`). Update a standalone install with
+  `pnpm self-update`.
 
 ```bash
 pnpm install --frozen-lockfile
 ```
+
+pnpm settings live in `pnpm-workspace.yaml`. pnpm refuses to resolve packages published less
+than 24 hours ago (`minimumReleaseAge`); wait a day before adopting a brand-new release.
 
 Recommended branch naming:
 
@@ -58,14 +66,35 @@ CI uses the stricter release-oriented gate:
 pnpm run check:ci
 ```
 
-That command runs `check`, creates a production build, and verifies that `main.js`, `manifest.json`, and `styles.css` exist and are non-empty.
+That command runs the same lint and typecheck steps, runs the tests with coverage thresholds (`pnpm run test:coverage`), creates a production build, and verifies that `main.js`, `manifest.json`, and `styles.css` exist, are non-empty, and start with the license banner defined in `scripts/license-banner.mjs`. The production build also fails when it bundles an npm package version that `THIRD_PARTY_NOTICES.md` does not list.
+
+## Tests
+
+Tests live in `tests/` and run with Vitest (`vitest.config.mts`).
+
+- Write the test first for new behavior and bug fixes, and see it fail before changing the code.
+- Tests that need a DOM start with `// @vitest-environment happy-dom`; other tests run in Node.
+- `obsidian` resolves to the test double in `tests/fixtures/obsidian.ts` (the real package ships
+  types only). Add to it when code under test needs more of the Obsidian API.
+- `tests/fixtures/calendar.ts` mounts the real `BasesCalendarView` with sample notes and records
+  opened files, hover previews, and frontmatter writes.
+- `tests/fixtures/css-merge/` holds small packages used by the `css-merge` build plugin tests.
+- happy-dom has no layout engine: assert behavior and classes, and check visual layout in Obsidian
+  (see the Manual QA checklist).
+- Coverage thresholds in `vitest.config.mts` are a floor. Raise them when coverage grows; never
+  lower them to make a change pass.
+
+CI (`.github/workflows/ci.yml`) runs on every branch push and on pull requests to `main`: the full
+gate on Linux, plus the tests on Windows. Make the `Lint, typecheck, test, build` and
+`Test (Windows)` checks required in the `main` branch protection rules so failing tests block merges.
 
 ## Versioning
 
-Use `pnpm version` so npm runs the `version` lifecycle script:
+Use `pnpm version` so the `version` lifecycle script runs. Pass an empty tag prefix: the
+release workflow requires the tag to equal `manifest.json.version` (`1.2.3`, not `v1.2.3`).
 
 ```bash
-pnpm version patch
+pnpm version patch --tag-version-prefix=""
 ```
 
 The version script syncs `manifest.json` to the package version and writes `versions[version] = manifest.minAppVersion` in `versions.json`.
@@ -81,7 +110,7 @@ git push origin main
 git push origin 1.2.3
 ```
 
-The GitHub release workflow installs with `pnpm install --frozen-lockfile`, runs `pnpm run check:ci`, uploads `main.js`, `manifest.json`, `styles.css`, and attaches `wise-view.zip`.
+The GitHub release workflow installs with `pnpm install --frozen-lockfile`, runs `pnpm run check:ci`, uploads `main.js`, `manifest.json`, `styles.css`, `LICENSE`, and `THIRD_PARTY_NOTICES.md`, and attaches `wise-view.zip` containing all five.
 
 ## Manual QA Checklist
 

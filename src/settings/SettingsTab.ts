@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Portions adapted from Planner (https://github.com/SawyerRensel/Planner): src/settings/SettingsTab.ts
+// Copyright (C) 2025 Sawyer Rensel
+// Modifications Copyright (C) 2026 Parkis Utama
+
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type PlannerPlugin from '../main';
 import { PlannerSettings } from '../types/settings';
@@ -105,8 +110,8 @@ export class PlannerSettingTab extends PluginSettingTab {
         .addOption('saturday', 'Saturday')
         .addOption('sunday', 'Sunday')
         .setValue(this.plugin.settings.calendarDefaults.weekStartsOn)
-        .onChange(async (value: PlannerSettings['calendarDefaults']['weekStartsOn']) => {
-          this.plugin.settings.calendarDefaults.weekStartsOn = value;
+        .onChange(async (value) => {
+          this.plugin.settings.calendarDefaults.weekStartsOn = value as PlannerSettings['calendarDefaults']['weekStartsOn'];
           await this.plugin.saveSettings();
         }));
 
@@ -154,7 +159,6 @@ export class PlannerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Dependencies field')
-      // eslint-disable-next-line obsidianmd/ui/sentence-case -- wiki-link notation
       .setDesc('Property containing dependency wiki-links, such as [[Task A]]')
       .addText(text => text
         .setPlaceholder('Depends-on')
@@ -239,7 +243,6 @@ export class PlannerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Show internal popup')
-      // eslint-disable-next-line obsidianmd/ui/sentence-case -- "Frappe Gantt" is a proper name
       .setDesc('Show the built-in Frappe Gantt popup with task detail on hover or click')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.ganttDefaults.showInternalPopup)
