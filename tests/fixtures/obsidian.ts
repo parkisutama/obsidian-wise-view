@@ -113,8 +113,16 @@ export class Menu {
 }
 
 // Bases value wrappers; the views only use them for instanceof checks and toString.
-export class Value {}
-export class NullValue extends Value {}
+export class Value {
+	isTruthy(): boolean {
+		return true;
+	}
+}
+export class NullValue extends Value {
+	override isTruthy(): boolean {
+		return false;
+	}
+}
 export class NumberValue extends Value {
 	constructor(private readonly value: number) {
 		super();
@@ -123,15 +131,64 @@ export class NumberValue extends Value {
 		return String(this.value);
 	}
 }
+/** Accepts a date-only ("2026-01-01") or datetime ("2026-01-01T10:00:00") string, like real Bases. */
 export class DateValue extends Value {
-	constructor(private readonly value: Date) {
+	constructor(private readonly value: string) {
 		super();
 	}
-	dateOnly(): this {
-		return this;
+	dateOnly(): DateValue {
+		return new DateValue(this.value.slice(0, 10));
 	}
 	toString(): string {
-		return this.value.toISOString().slice(0, 10);
+		return this.value;
+	}
+}
+export class StringValue extends Value {
+	constructor(protected readonly value: string) {
+		super();
+	}
+	toString(): string {
+		return this.value;
+	}
+	override isTruthy(): boolean {
+		return this.value.length > 0;
+	}
+}
+export class LinkValue extends StringValue {}
+export class BooleanValue extends Value {
+	constructor(private readonly value: boolean) {
+		super();
+	}
+	override isTruthy(): boolean {
+		return this.value;
+	}
+	toString(): string {
+		return String(this.value);
+	}
+}
+export class FileValue extends Value {
+	constructor(private readonly path: string) {
+		super();
+	}
+	toString(): string {
+		return this.path;
+	}
+}
+export class ListValue extends Value {
+	constructor(private readonly items: Value[]) {
+		super();
+	}
+	length(): number {
+		return this.items.length;
+	}
+	get(index: number): Value {
+		return this.items[index] ?? new NullValue();
+	}
+	override isTruthy(): boolean {
+		return this.items.length > 0;
+	}
+	toString(): string {
+		return this.items.map((item) => item.toString()).join(", ");
 	}
 }
 
