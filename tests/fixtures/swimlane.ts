@@ -46,10 +46,20 @@ export async function createSwimlaneHarness(options: SwimlaneHarnessOptions = {}
 	const byPath = new Map(notes.map((note) => [note.path, note]));
 	const files = new Set(options.existingFiles ?? ["cover.png"]);
 
-	const entries = notes.map((note) => ({
-		file: new TFile(note.path),
+	const entries = notes.map((note) => {
+		const file = new TFile(note.path) as TFile & {
+			extension: string;
+			parent: { path: string } | null;
+			stat: { ctime: number; mtime: number };
+		};
+		file.extension = "md";
+		file.parent = { path: note.path.includes("/") ? note.path.slice(0, note.path.lastIndexOf("/")) : "" };
+		file.stat = { ctime: 1, mtime: 2 };
+		return {
+		file,
 		getValue: (id: string) => note[id.replace(/^(note|file|formula)\./, "")] ?? null,
-	}));
+		};
+	});
 
 	const app = {
 		metadataCache: {

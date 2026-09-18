@@ -485,15 +485,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T026: Migrate Swimlane to shared data and interaction services
+### T026: Migrate Swimlane to shared data and interaction services — done
 
 **Description:** Replace Swimlane-local property/color/navigation/hover/render/mutation plumbing while preserving board grouping and movement behavior.
 
 **Acceptance criteria:**
 
-- [ ] Grouping and cards consume snapshots instead of retained entries.
-- [ ] Card movement writes use legacy capabilities only.
-- [ ] Color and hover implementations are removed from the view.
+- [x] Grouping and cards consume snapshots instead of retained entries.
+- [x] Card movement writes use legacy capabilities only.
+- [x] Color and hover implementations are removed from the view.
 
 **Verification:** `pnpm run test -- swimlane-view && pnpm run typecheck`
 

@@ -13,6 +13,7 @@
 export type MutationFailureReason = 'file-not-found' | 'formula-property' | 'error';
 
 export type MutationResult = { ok: true } | { ok: false; reason: MutationFailureReason; message: string };
+export type MoveMutationResult = { ok: true; path: string } | { ok: false; reason: MutationFailureReason; message: string };
 
 /** Writes a start/end date pair, e.g. from a calendar drag or a Gantt bar move/resize. */
 export interface DateMutationCapability {
@@ -22,6 +23,12 @@ export interface DateMutationCapability {
 /** Writes one arbitrary property, e.g. moving a Swimlane card to a different column. */
 export interface PropertyMutationCapability {
 	setProperty(path: string, propertyId: string, value: unknown): Promise<MutationResult>;
+	setProperties(path: string, values: Readonly<Record<string, unknown>>): Promise<MutationResult>;
+}
+
+/** Moves a note to a folder while preserving its name and avoiding path conflicts. */
+export interface MoveMutationCapability {
+	moveToFolder(path: string, targetFolder: string): Promise<MoveMutationResult>;
 }
 
 /** Writes a dependency list, e.g. after a Gantt drag re-links a dependent task's dates. */

@@ -16,11 +16,23 @@ function makeApp(options: MockAppOptions = {}) {
 	const trashed: string[] = [];
 	const created: Array<{ path: string; content: string }> = [];
 	const createdFolders: string[] = [];
+	const renamed: Array<{ from: string; to: string }> = [];
+	const makeFile = (path: string) => {
+		const file = new TFile(path) as TFile & {
+			name: string;
+			extension: string;
+			parent: { path: string } | null;
+		};
+		file.name = path.split("/").pop() ?? path;
+		file.extension = file.name.includes(".") ? file.name.split(".").pop() ?? "" : "";
+		file.parent = { path: path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "" };
+		return file;
+	};
 
 	const app = {
 		vault: {
 			getAbstractFileByPath: (path: string) => {
-				if (files.has(path)) return new TFile(path);
+				if (files.has(path)) return makeFile(path);
 				if (folders.has(path)) return { path } as never;
 				return null;
 			},
@@ -44,10 +56,15 @@ function makeApp(options: MockAppOptions = {}) {
 			trashFile: async (file: TFile) => {
 				trashed.push(file.path);
 			},
+			renameFile: async (file: TFile, path: string) => {
+				renamed.push({ from: file.path, to: path });
+				files.delete(file.path);
+				files.add(path);
+			},
 		},
 	} as unknown as App;
 
-	return { app, frontmatterWrites, trashed, created, createdFolders };
+	return { app, frontmatterWrites, trashed, created, createdFolders, renamed };
 }
 
 describe("LegacyMutationGateway.setProperty", () => {
@@ -91,6 +108,26 @@ describe("LegacyMutationGateway.updateRange", () => {
 		const result = await new LegacyMutationGateway(app).updateRange("A.md", "note.start", "2026-01-01", "formula.end", "2026-01-02");
 		expect(result.ok).toBe(false);
 		expect(frontmatterWrites).toEqual([]);
+	});
+});
+
+describe("LegacyMutationGateway Swimlane movement", () => {
+	it("writes multiple card properties atomically", async () => {
+		const { app, frontmatterWrites } = makeApp({ existingFiles: ["Tasks/A.md"] });
+		const result = await new LegacyMutationGateway(app).setProperties("Tasks/A.md", {
+			"note.status": "Done",
+			"note.priority": "High",
+		});
+		expect(result).toEqual({ ok: true });
+		expect(frontmatterWrites).toEqual([{ path: "Tasks/A.md", values: { status: "Done", priority: "High" } }]);
+	});
+
+	it("creates the target folder and returns the renamed path", async () => {
+		const { app, createdFolders, renamed } = makeApp({ existingFiles: ["Tasks/A.md"] });
+		const result = await new LegacyMutationGateway(app).moveToFolder("Tasks/A.md", "Archive");
+		expect(result).toEqual({ ok: true, path: "Archive/A.md" });
+		expect(createdFolders).toEqual(["Archive"]);
+		expect(renamed).toEqual([{ from: "Tasks/A.md", to: "Archive/A.md" }]);
 	});
 });
 

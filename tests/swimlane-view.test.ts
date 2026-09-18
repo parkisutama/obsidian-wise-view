@@ -1,11 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import type PlannerPlugin from "../src/main";
 import { createSwimlaneHarness, waitForRender, type SwimlaneHarness } from "./fixtures/swimlane";
 
 const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
+const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 let harness: SwimlaneHarness | null = null;
 const mount = async (...args: Parameters<typeof createSwimlaneHarness>) => {
@@ -124,7 +128,7 @@ describe("Swimlane view lifecycle", () => {
 		const h = await mount({ config: { plannerGroupBy: "note.status" } });
 		const card = h.host.querySelector<HTMLElement>(".planner-kanban-card");
 		expect(card).not.toBeNull();
-		const entry = { file: { path: "Tasks/Write spec.md" } };
+		const entry = { path: "Tasks/Write spec.md" };
 		internals(h).startTouchDrag(card!, entry, { touches: [{ clientX: 0, clientY: 0 }] });
 
 		expect(h.host.ownerDocument.querySelector(".planner-kanban-drag-clone")).not.toBeNull();
@@ -151,5 +155,26 @@ describe("Swimlane view lifecycle", () => {
 			h.view.onunload();
 			h.view.onunload();
 		}).not.toThrow();
+	});
+});
+
+describe("Swimlane shared platform boundaries (T026)", () => {
+	it("does not retain BasesEntry or call Obsidian mutation APIs directly", () => {
+		const source = readFileSync(path.join(repoRoot, "src", "views", "BasesSwimlaneView.ts"), "utf8");
+		expect(source).not.toContain("BasesEntry");
+		expect(source).not.toContain(".processFrontMatter(");
+		expect(source).not.toContain(".renameFile(");
+		expect(source).not.toContain(".createFolder(");
+		expect(source).toContain("createEntrySnapshot(");
+		expect(source).toContain("this.mutations.setProperties(");
+	});
+
+	it("uses shared color and hover adapters", () => {
+		const source = readFileSync(path.join(repoRoot, "src", "views", "BasesSwimlaneView.ts"), "utf8");
+		expect(source).toContain("resolveColor({");
+		expect(source).toContain("resolvePrettyPropertiesColor(");
+		expect(source).toContain("dispatchHoverPreview({");
+		expect(source).not.toContain("PrettyPropertiesApi");
+		expect(source).not.toContain("workspace.trigger('hover-link'");
 	});
 });

@@ -8,12 +8,8 @@ import {
   BasesViewRegistration,
   BasesAllOptions,
   BasesViewConfig,
-  BasesEntry,
   BasesPropertyId,
   QueryController,
-  DateValue,
-  NumberValue,
-  NullValue,
   setIcon,
   TFile,
   TFolder,
@@ -22,9 +18,16 @@ import {
 } from 'obsidian';
 import type PlannerPlugin from '../main';
 import { PropertyTypeService } from '../services/PropertyTypeService';
-import { stringToColor } from '../utils/colorUtils';
-import { openFileInNewTab, showOpenFileMenu } from '../utils/openFile';
+import { showOpenFileMenu } from '../utils/openFile';
 import { ViewRuntime } from '../platform/dom/ViewRuntime';
+import type { EntrySnapshot } from '../core/entries/EntrySnapshot';
+import type { NormalizedValue } from '../core/entries/NormalizedValue';
+import { createEntrySnapshot } from '../platform/bases/entrySnapshotAdapter';
+import { resolveColor } from '../platform/colors/ColorResolver';
+import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAdapter';
+import { openPath, triggerHoverPreview as dispatchHoverPreview } from '../platform/navigation/NavigationService';
+import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
+import { getContrastColor } from '../utils/colorUtils';
 
 
 export const BASES_SWIMLANE_VIEW_ID = 'wise-view-swimlane';
@@ -49,6 +52,7 @@ export class BasesSwimlaneView extends BasesView {
   private plugin: PlannerPlugin;
   private containerEl: HTMLElement;
   private readonly runtime: ViewRuntime;
+  private readonly mutations: LegacyMutationGateway;
   private boardEl: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
@@ -67,7 +71,7 @@ export class BasesSwimlaneView extends BasesView {
   private touchHoldTimer: number | null = null;
   private touchHoldReady: boolean = false;
   private touchHoldCard: HTMLElement | null = null;
-  private touchHoldEntry: BasesEntry | null = null;
+  private touchHoldEntry: EntrySnapshot | null = null;
   // Context menu blocker for iOS (prevents long-press menu during drag)
   private boundContextMenuBlocker = (e: Event): void => { e.preventDefault(); e.stopPropagation(); };
 
@@ -241,6 +245,7 @@ export class BasesSwimlaneView extends BasesView {
     this.plugin = plugin;
     this.containerEl = containerEl;
     this.runtime = new ViewRuntime(containerEl);
+    this.mutations = new LegacyMutationGateway(this.plugin.app);
     this.setupContainer();
     this.setupResizeObserver();
     this.setupKeyboardNavigation();
@@ -541,6 +546,7 @@ export class BasesSwimlaneView extends BasesView {
     // Build color map for colorBy field
     // Check if swimlanes are enabled
     const swimlaneBy = this.getSwimlaneBy();
+    const snapshots = this.createSnapshots();
 
     // No column property is assumed: ask for one instead of guessing (e.g. "status").
     if (!this.getGroupBy()) {
@@ -553,39 +559,46 @@ export class BasesSwimlaneView extends BasesView {
 
     if (swimlaneBy) {
       // Render with swimlanes (2D grid)
-      this.renderWithSwimlanes(swimlaneBy);
+      this.renderWithSwimlanes(swimlaneBy, snapshots);
     } else {
       // Group entries by the groupBy field
-      const groups = this.groupEntriesByField();
+      const groups = this.groupEntriesByField(snapshots);
       // Render columns
       this.renderColumns(groups);
     }
   }
 
-  private getEntryColor(entry: BasesEntry): string {
+  private createSnapshots(): EntrySnapshot[] {
+    const propertyIds = [
+      this.getGroupBy(),
+      this.getSwimlaneBy(),
+      this.getColorBy(),
+      this.getTitleBy(),
+      this.getCoverField(),
+      this.getSummaryField(),
+      this.getDateStartField(),
+      this.getDateEndField(),
+      ...this.getVisibleProperties(),
+    ].filter((id): id is BasesPropertyId => Boolean(id));
+    const uniquePropertyIds = [...new Set(propertyIds)];
+    return this.data.groupedData.flatMap(group =>
+      group.entries.map(entry => createEntrySnapshot(entry, uniquePropertyIds))
+    );
+  }
+
+  private getEntryColor(entry: EntrySnapshot): string {
     const colorByField = this.getColorBy();
     const value = this.getEntryValue(entry, colorByField);
-    if (!value) return '#6b7280';
+    if (!value) return resolveColor({ categoryValue: '' }).background;
     const strValue = this.valueToString(Array.isArray(value) ? value[0] : value);
     return this.getFieldValueColor(colorByField, strValue);
   }
 
   /**
-   * Resolve a color for a field+value using the 3-tier priority:
-   * 1. Pretty Properties plugin color (semi-transparent at 40% for backgrounds, full for solid)
-   * 2. Planner valueStyles settings
-   * 3. Deterministic stringToColor hash
+   * Resolve a field/value color through the shared color and Pretty Properties services.
    */
   private getFieldValueColor(fieldId: string, value: string, solid = false): string {
-    const propName = fieldId.split('.').pop() || fieldId;
-    const ppColor = this.getPrettyPropertiesColor(propName, value, solid);
-    if (ppColor) return ppColor;
-    return this.getValueStyleColor(fieldId, value);
-  }
-
-  /** Check settings valueStyles first, then fall back to stringToColor hash. */
-  private getValueStyleColor(field: string, value: string): string {
-    return this.plugin.settings.valueStyles[field]?.[value]?.color ?? stringToColor(value);
+    return this.resolveFieldColor(fieldId, value, solid).background;
   }
 
   /**
@@ -594,77 +607,30 @@ export class BasesSwimlaneView extends BasesView {
    * explicit color is configured via Pretty Properties or Planner valueStyles.
    */
   private getConfiguredFieldColor(fieldId: string, value: string): string | null {
+    const resolved = this.resolveFieldColor(fieldId, value, false);
+    return resolved.source === 'fallback' ? null : resolved.background;
+  }
+
+  private resolveFieldColor(fieldId: string, value: string, solid: boolean) {
     const propName = fieldId.split('.').pop() || fieldId;
-    const ppColor = this.getPrettyPropertiesColor(propName, value, false);
-    if (ppColor) return ppColor;
-    // Only return a color if the user explicitly configured one in valueStyles
-    return this.plugin.settings.valueStyles[fieldId]?.[value]?.color ?? null;
+    return resolveColor({
+      categoryValue: value,
+      resolvePrettyPropertiesColor: categoryValue => resolvePrettyPropertiesColor(
+        this.runtime.win,
+        this.runtime.doc,
+        propName,
+        categoryValue,
+        solid ? 1 : 0.4,
+      ),
+      valueStyleColor: this.plugin.settings.valueStyles[fieldId]?.[value]?.color ?? null,
+    });
   }
 
-  /**
-   * Resolve a Pretty Properties color setting to a CSS color string.
-   * Uses the global `window.PrettyPropertiesApi` exposed by the Pretty Properties plugin.
-   * Returns null if Pretty Properties is not installed, no color is assigned, or color cannot be resolved.
-   *
-   * @param solid - When true, returns full-opacity color (for dots/icons/text).
-   *                When false, returns semi-transparent color at 40% opacity (for backgrounds).
-   *
-   * Pretty Properties stores colors by VALUE (not by property name), so `propName` is only
-   * used to determine which settings dictionary to look in (multitext, tags, or text).
-   */
-  private getPrettyPropertiesColor(propName: string, propValue: string, solid: boolean): string | null {
-    /** Minimal subset of the Pretty Properties public API we actually use. */
-    interface PPColorSetting { h: number; s: number; l: number }
-    interface PrettyPropertiesApi {
-      getPropertyBackgroundColorSetting(
-        propName: string, propValue: string
-      ): string | PPColorSetting | undefined;
-    }
-    interface WindowWithPP extends Window { PrettyPropertiesApi?: PrettyPropertiesApi }
-
-    const ppApi = (window as WindowWithPP).PrettyPropertiesApi;
-    if (!ppApi) return null;
-
-    try {
-      // Returns a named color string ("red", "blue", …), an HSL object {h, s, l},
-      // "none" (transparent), or "default" (no color assigned).
-      const colorSetting = ppApi.getPropertyBackgroundColorSetting(propName, propValue);
-      if (!colorSetting || colorSetting === 'default' || colorSetting === 'none') return null;
-
-      const alpha = solid ? 1 : 0.4;
-      const namedColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'];
-
-      if (typeof colorSetting === 'string' && namedColors.includes(colorSetting)) {
-        // Resolve Obsidian theme CSS variable (e.g. --color-red-rgb) to a color
-        const rgbStr = getComputedStyle(this.runtime.doc.body)
-          .getPropertyValue(`--color-${colorSetting}-rgb`)
-          .trim();
-        if (rgbStr) {
-          const parts = rgbStr.split(/[\s,]+/).map((n: string) => parseInt(n.trim(), 10));
-          if (parts.length >= 3 && parts.every((n: number) => !isNaN(n))) {
-            const [r, g, b] = parts;
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-          }
-        }
-        return null;
-      }
-
-      if (typeof colorSetting === 'object' && colorSetting.h !== undefined) {
-        return `hsla(${colorSetting.h}, ${colorSetting.s}%, ${colorSetting.l}%, ${alpha})`;
-      }
-    } catch {
-      // Pretty Properties API error — fall through to default behavior
-    }
-
-    return null;
-  }
-
-  private groupEntriesByField(): Map<string, BasesEntry[]> {
+  private groupEntriesByField(entries: readonly EntrySnapshot[]): Map<string, EntrySnapshot[]> {
     const groupByField = this.getGroupBy();
-    const groups = new Map<string, BasesEntry[]>();
+    const groups = new Map<string, EntrySnapshot[]>();
 
-    for (const group of this.data.groupedData) {
-      for (const entry of group.entries) {
+    for (const entry of entries) {
         const value = this.getEntryValue(entry, groupByField);
         const groupKey = this.valueToString(value);
 
@@ -672,7 +638,6 @@ export class BasesSwimlaneView extends BasesView {
           groups.set(groupKey, []);
         }
         groups.get(groupKey)!.push(entry);
-      }
     }
 
     return groups;
@@ -713,91 +678,36 @@ export class BasesSwimlaneView extends BasesView {
    * Get frontmatter directly from Obsidian's metadata cache (bypasses Bases getValue)
    * This is needed because Bases getValue may not return custom frontmatter properties
    */
-  private getFrontmatter(entry: BasesEntry): Record<string, unknown> | undefined {
-    const file = entry.file;
-    const cache = this.plugin.app.metadataCache.getFileCache(file);
-    return cache?.frontmatter;
+  private getEntryValue(entry: EntrySnapshot, propId: string): unknown {
+    if (propId === 'file.folder') {
+      if (!entry.folder) return 'Root';
+      return entry.folder.split('/').pop() || 'Root';
+    }
+    if (propId === 'file.basename') return entry.basename;
+    if (propId === 'file.path') return entry.path;
+    return this.normalizedValueToPlain(entry.values.get(propId));
   }
 
-  /**
-   * Get a property value from an entry, trying Bases getValue first, then falling back to frontmatter
-   */
-  private getEntryValue(entry: BasesEntry, propId: string): unknown {
-    // Try Bases getValue first
-    const basesValue = entry.getValue(propId as BasesPropertyId);
-
-    // Formula properties are computed by Bases — extract value directly, no frontmatter fallback.
-    // Must be checked BEFORE the placeholder heuristic because Value types (DateValue, NumberValue, etc.)
-    // carry an `icon` metadata field in their prototype which the placeholder check would catch.
-    if (propId.startsWith('formula.')) {
-      return this.extractFormulaValue(basesValue);
+  private normalizedValueToPlain(value: NormalizedValue | undefined): unknown {
+    if (!value || value.kind === 'missing') return undefined;
+    switch (value.kind) {
+      case 'text':
+      case 'date': return value.value;
+      case 'number':
+      case 'boolean': return value.value;
+      case 'link': return value.display || value.target;
+      case 'file': return value.path;
+      case 'list': return value.items
+        .map(item => this.normalizedValueToPlain(item))
+        .filter(item => item !== undefined);
+      case 'unsupported': return value.raw == null ? undefined : String(value.raw);
     }
-
-    // Check for valid value - not null, undefined, empty string, or Bases placeholder object
-    // Bases returns placeholder objects like {icon: 'lucide-tags'} for missing/empty fields
-    if (basesValue !== null && basesValue !== undefined && (basesValue as unknown) !== '') {
-      if (typeof basesValue === 'object' && 'icon' in (basesValue as object)) {
-        // Bases placeholder — treat as empty, fall through to frontmatter
-      } else {
-        return basesValue;
-      }
-    }
-
-    // Fall back to reading frontmatter directly
-    const propName = propId.replace(/^(note|file)\./, '');
-
-    // Handle special file properties
-    if (propId.startsWith('file.')) {
-      if (propName === 'folder') {
-        const folderPath = entry.file.parent?.path || '/';
-        return folderPath === '/' ? 'Root' : entry.file.parent?.name || 'Root';
-      }
-      if (propName === 'basename') {
-        return entry.file.basename;
-      }
-      if (propName === 'path') {
-        return entry.file.path;
-      }
-    }
-
-    // Get from frontmatter
-    const frontmatter = this.getFrontmatter(entry);
-    if (frontmatter) {
-      return frontmatter[propName];
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Extract a usable value from a Bases formula property result.
-   *
-   * Bases `getValue()` returns typed Value objects (DateValue, NumberValue, …)
-   * which carry metadata like `icon` in their prototype.  The generic
-   * placeholder heuristic (`'icon' in obj`) would incorrectly discard them,
-   * so formula results are unwrapped here instead.
-   */
-  private extractFormulaValue(val: unknown): unknown {
-    if (val == null || val instanceof NullValue) return undefined;
-    if (val instanceof DateValue) return val.dateOnly().toString();
-    if (val instanceof NumberValue) {
-      const n = Number(val.toString());
-      return isNaN(n) ? val.toString() : n;
-    }
-    if (typeof val === 'string') return val || undefined;
-    if (typeof val === 'number' || typeof val === 'boolean') return val;
-    // Other Value subtypes or objects — try toString()
-    if (typeof val === 'object') {
-      const str = (val as { toString(): string }).toString();
-      if (str && str !== '[object Object]') return str;
-    }
-    return undefined;
   }
 
   /**
    * Get ordered column keys based on the groupBy field and custom order
    */
-  private getColumnKeys(groups: Map<string, BasesEntry[]>): string[] {
+  private getColumnKeys(groups: Map<string, EntrySnapshot[]>): string[] {
     const customOrder = this.getCustomColumnOrder();
 
     const defaultKeys: string[] = Array.from(groups.keys()).sort();
@@ -890,7 +800,7 @@ export class BasesSwimlaneView extends BasesView {
   /**
    * Render with swimlanes (2D grid layout)
    */
-  private renderWithSwimlanes(swimlaneBy: string): void {
+  private renderWithSwimlanes(swimlaneBy: string, entries: readonly EntrySnapshot[]): void {
     if (!this.boardEl) return;
 
     const columnWidth = this.getColumnWidth();
@@ -903,11 +813,10 @@ export class BasesSwimlaneView extends BasesView {
     const isVerticalSwimHeader = swimHeaderDisplay === 'vertical';
 
     // First, collect all entries and group by swimlane then by column
-    const swimlaneGroups = new Map<string, Map<string, BasesEntry[]>>();
+    const swimlaneGroups = new Map<string, Map<string, EntrySnapshot[]>>();
     const allColumnKeys = new Set<string>();
 
-    for (const group of this.data.groupedData) {
-      for (const entry of group.entries) {
+    for (const entry of entries) {
         const swimlaneValue = this.getEntryValue(entry, swimlaneBy);
         const swimlaneKey = this.valueToString(swimlaneValue);
 
@@ -925,7 +834,6 @@ export class BasesSwimlaneView extends BasesView {
           swimlane.set(columnKey, []);
         }
         swimlane.get(columnKey)!.push(entry);
-      }
     }
 
     // Get sorted column keys
@@ -1080,7 +988,7 @@ export class BasesSwimlaneView extends BasesView {
 
       // Get swimlane data, defaulting to empty Map if this swimlane key has no entries
       // (can happen with predefined priority/status values that have no data)
-      const swimlane = swimlaneGroups.get(swimlaneKey) || new Map<string, BasesEntry[]>();
+      const swimlane = swimlaneGroups.get(swimlaneKey) || new Map<string, EntrySnapshot[]>();
 
       // Render columns in this swimlane
       for (const columnKey of columnKeys) {
@@ -1107,7 +1015,7 @@ export class BasesSwimlaneView extends BasesView {
   /**
    * Create a cell for swimlane view (simplified column without header)
    */
-  private createSwimlaneCell(groupKey: string, swimlaneKey: string, entries: BasesEntry[], width: number): HTMLElement {
+  private createSwimlaneCell(groupKey: string, swimlaneKey: string, entries: EntrySnapshot[], width: number): HTMLElement {
     const cell = document.createElement('div');
     cell.className = 'planner-kanban-swimlane-cell';
     cell.setCssProps({ '--column-width': `${width}px` });
@@ -1126,7 +1034,7 @@ export class BasesSwimlaneView extends BasesView {
     return cell;
   }
 
-  private renderColumns(groups: Map<string, BasesEntry[]>): void {
+  private renderColumns(groups: Map<string, EntrySnapshot[]>): void {
     if (!this.boardEl) return;
 
     const columnWidth = this.getColumnWidth();
@@ -1207,7 +1115,7 @@ export class BasesSwimlaneView extends BasesView {
     this.boardEl.appendChild(wrapperContainer);
   }
 
-  private createColumn(groupKey: string, entries: BasesEntry[], width: number, skipHeader = false): HTMLElement {
+  private createColumn(groupKey: string, entries: EntrySnapshot[], width: number, skipHeader = false): HTMLElement {
     const column = document.createElement('div');
     column.className = 'planner-kanban-column';
     // Dynamic width from user setting requires inline style
@@ -1335,7 +1243,7 @@ export class BasesSwimlaneView extends BasesView {
 
   private reorderColumns(draggedKey: string, targetKey: string, insertBefore: boolean): void {
     // Get current column order
-    const groups = this.groupEntriesByField();
+    const groups = this.groupEntriesByField(this.createSnapshots());
     let currentOrder = this.getColumnKeys(groups);
 
     // Remove dragged column from current position
@@ -1657,14 +1565,12 @@ export class BasesSwimlaneView extends BasesView {
 
     // Collect current swimlane keys
     const swimlaneKeys: string[] = [];
-    for (const group of this.data.groupedData) {
-      for (const entry of group.entries) {
+    for (const entry of this.createSnapshots()) {
         const value = this.getEntryValue(entry, swimlaneBy);
         const key = this.valueToString(value);
         if (!swimlaneKeys.includes(key)) {
           swimlaneKeys.push(key);
         }
-      }
     }
 
     // Get current order
@@ -1687,7 +1593,7 @@ export class BasesSwimlaneView extends BasesView {
     this.render();
   }
 
-  private renderCards(container: HTMLElement, entries: BasesEntry[]): void {
+  private renderCards(container: HTMLElement, entries: EntrySnapshot[]): void {
     for (const entry of entries) {
       const card = this.createCard(entry);
       container.appendChild(card);
@@ -1704,7 +1610,7 @@ export class BasesSwimlaneView extends BasesView {
    * Render cards with virtual scrolling for performance
    * Only renders visible cards + a buffer for smooth scrolling
    */
-  private renderVirtualCards(container: HTMLElement, entries: BasesEntry[]): void {
+  private renderVirtualCards(container: HTMLElement, entries: EntrySnapshot[]): void {
     const BUFFER_SIZE = 5; // Cards to render above/below viewport
     const ESTIMATED_CARD_HEIGHT = 100; // px - used for placeholder sizing
 
@@ -1718,7 +1624,7 @@ export class BasesSwimlaneView extends BasesView {
       const placeholder = document.createElement('div');
       placeholder.className = 'planner-kanban-card-placeholder';
       placeholder.setAttribute('data-index', String(index));
-      placeholder.setAttribute('data-path', entry.file.path);
+      placeholder.setAttribute('data-path', entry.path);
       // Dynamic min-height for virtual scrolling placeholder sizing
       placeholder.setCssProps({ '--placeholder-height': `${ESTIMATED_CARD_HEIGHT}px` });
       placeholders.push(placeholder);
@@ -1786,10 +1692,10 @@ export class BasesSwimlaneView extends BasesView {
     this.renderedCardRanges.clear();
   }
 
-  private createCard(entry: BasesEntry): HTMLElement {
+  private createCard(entry: EntrySnapshot): HTMLElement {
     const card = document.createElement('div');
     card.className = 'planner-kanban-card';
-    card.setAttribute('data-path', entry.file.path);
+    card.setAttribute('data-path', entry.path);
     card.setAttribute('draggable', 'true');
 
     const color = this.getEntryColor(entry);
@@ -1830,7 +1736,7 @@ export class BasesSwimlaneView extends BasesView {
 
     // Title (CSS class handles font-weight)
     const titleField = this.getTitleBy();
-    const title = (titleField && this.getEntryValue(entry, titleField)) || entry.file.basename;
+    const title = (titleField && this.getEntryValue(entry, titleField)) || entry.basename;
     titleRow.createSpan({ cls: 'planner-kanban-card-title', text: this.valueToString(title) });
 
     // For inline placement, render badges in title row
@@ -1872,11 +1778,11 @@ export class BasesSwimlaneView extends BasesView {
     card.addEventListener('click', () => { void this.handleCardClick(entry); });
     card.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      showOpenFileMenu(this.plugin.app, entry.file.path, e);
+      showOpenFileMenu(this.plugin.app, entry.path, e);
     });
     // Page Preview: Ctrl/Cmd + hover over card shows preview popup
     card.addEventListener('mouseenter', (e) => {
-      this.triggerHoverPreview(e, entry.file.path, card);
+      this.triggerHoverPreview(e, entry.path, card);
     });
 
     return card;
@@ -1988,7 +1894,7 @@ export class BasesSwimlaneView extends BasesView {
     return null;
   }
 
-  private renderBadges(container: HTMLElement, entry: BasesEntry): void {
+  private renderBadges(container: HTMLElement, entry: EntrySnapshot): void {
     const placement = this.getBadgePlacement();
     const groupByField = this.getGroupBy();
     const groupByProp = groupByField.replace(/^(note|file|formula)\./, '');
@@ -2132,7 +2038,7 @@ export class BasesSwimlaneView extends BasesView {
     if (color) {
       badge.style.backgroundColor = color;
       if (!color.startsWith('rgba') && !color.startsWith('hsla')) {
-        badge.style.color = this.getContrastColor(color);
+        badge.style.color = getContrastColor(color);
       }
     }
     badge.createSpan({ text: value });
@@ -2179,7 +2085,7 @@ export class BasesSwimlaneView extends BasesView {
     if (color) {
       badge.style.backgroundColor = color;
       if (!color.startsWith('rgba') && !color.startsWith('hsla')) {
-        badge.style.color = this.getContrastColor(color);
+        badge.style.color = getContrastColor(color);
       }
     }
 
@@ -2238,29 +2144,14 @@ export class BasesSwimlaneView extends BasesView {
     }
   }
 
-  private getContrastColor(hexColor: string): string {
-    // Remove # if present
-    const hex = hexColor.replace('#', '');
-
-    // Parse RGB
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-
-    // Calculate luminance
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-    return luminance > 0.5 ? '#000000' : '#ffffff';
-  }
-
-  private setupCardDragHandlers(card: HTMLElement, entry: BasesEntry): void {
+  private setupCardDragHandlers(card: HTMLElement, entry: EntrySnapshot): void {
     // Desktop drag handlers
     card.addEventListener('dragstart', (e: DragEvent) => {
-      this.draggedCardPath = entry.file.path;
+      this.draggedCardPath = entry.path;
       this.draggedFromColumn = card.closest('.planner-kanban-column')?.getAttribute('data-group') ||
         card.closest('.planner-kanban-swimlane-cell')?.getAttribute('data-group') || null;
       card.classList.add('planner-kanban-card--dragging');
-      e.dataTransfer?.setData('text/plain', entry.file.path);
+      e.dataTransfer?.setData('text/plain', entry.path);
     });
 
     card.addEventListener('dragend', () => {
@@ -2381,11 +2272,11 @@ export class BasesSwimlaneView extends BasesView {
     this.touchHoldEntry = null;
   }
 
-  private startTouchDrag(card: HTMLElement, entry: BasesEntry, e: TouchEvent): void {
+  private startTouchDrag(card: HTMLElement, entry: EntrySnapshot, e: TouchEvent): void {
     const doc = this.containerEl.ownerDocument;
 
     this.touchDragCard = card;
-    this.draggedCardPath = entry.file.path;
+    this.draggedCardPath = entry.path;
     this.draggedFromColumn = card.closest('.planner-kanban-column')?.getAttribute('data-group') ||
       card.closest('.planner-kanban-swimlane-cell')?.getAttribute('data-group') || null;
 
@@ -2606,12 +2497,7 @@ export class BasesSwimlaneView extends BasesView {
   private async handleCardDrop(filePath: string, newGroupValue: string, newSwimlaneValue?: string): Promise<void> {
     try {
       const groupByField = this.getGroupBy();
-      const fieldName = groupByField.replace(/^(note|file|formula)\./, '');
       const swimlaneBy = this.getSwimlaneBy();
-      const swimlaneFieldName = swimlaneBy ? swimlaneBy.replace(/^(note|file|formula)\./, '') : null;
-
-      const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-      if (!(file instanceof TFile)) return;
 
       // Check if we need to handle folder moves
       const isFolderGroupBy = this.isFolderProperty(groupByField);
@@ -2628,25 +2514,9 @@ export class BasesSwimlaneView extends BasesView {
       // Move file if folder changed
       let newFilePath = filePath;
       if (targetFolder !== null) {
-        const currentFolder = file.parent?.path || '';
-        if (targetFolder !== currentFolder) {
-          // Ensure target folder exists
-          const normalized = normalizePath(targetFolder);
-          if (!this.plugin.app.vault.getAbstractFileByPath(normalized)) {
-            await this.plugin.app.vault.createFolder(normalized);
-          }
-          // Build new path, handling filename conflicts
-          let newPath = normalizePath(`${normalized}/${file.name}`);
-          let counter = 1;
-          while (this.plugin.app.vault.getAbstractFileByPath(newPath) && newPath !== filePath && counter < 100) {
-            newPath = normalizePath(`${normalized}/${file.basename} ${counter}.${file.extension}`);
-            counter++;
-          }
-          if (newPath !== filePath) {
-            await this.plugin.app.fileManager.renameFile(file, newPath);
-            newFilePath = newPath;
-          }
-        }
+        const moveResult = await this.mutations.moveToFolder(filePath, normalizePath(targetFolder));
+        if (!moveResult.ok) throw new Error(moveResult.message);
+        newFilePath = moveResult.path;
       }
 
       // Now update frontmatter for non-folder and non-formula properties
@@ -2656,22 +2526,18 @@ export class BasesSwimlaneView extends BasesView {
 
       const needsFrontmatterUpdate =
         (!isFolderGroupBy && !isFormulaGroup && newGroupValue !== undefined) ||
-        (!isFolderSwimlane && !isFormulaSwimlane && swimlaneFieldName && newSwimlaneValue !== undefined);
+        (!isFolderSwimlane && !isFormulaSwimlane && swimlaneBy && newSwimlaneValue !== undefined);
 
       if (needsFrontmatterUpdate) {
-        const fileToUpdate = this.plugin.app.vault.getAbstractFileByPath(newFilePath);
-        if (!(fileToUpdate instanceof TFile)) return;
-
-        await this.plugin.app.fileManager.processFrontMatter(fileToUpdate, (fm: Record<string, unknown>) => {
-          // Update groupBy field (if not folder or formula)
-          if (!isFolderGroupBy && !isFormulaGroup) {
-            fm[fieldName] = this.convertValueForField(fieldName, newGroupValue);
-          }
-          // Update swimlane field (if not folder or formula)
-          if (!isFolderSwimlane && !isFormulaSwimlane && swimlaneFieldName && newSwimlaneValue !== undefined) {
-            fm[swimlaneFieldName] = this.convertValueForField(swimlaneFieldName, newSwimlaneValue);
-          }
-        });
+        const values: Record<string, unknown> = {};
+        if (!isFolderGroupBy && !isFormulaGroup) {
+          values[groupByField] = this.convertValueForField(groupByField.replace(/^(note|file|formula)\./, ''), newGroupValue);
+        }
+        if (!isFolderSwimlane && !isFormulaSwimlane && swimlaneBy && newSwimlaneValue !== undefined) {
+          values[swimlaneBy] = this.convertValueForField(swimlaneBy.replace(/^(note|file|formula)\./, ''), newSwimlaneValue);
+        }
+        const updateResult = await this.mutations.setProperties(newFilePath, values);
+        if (!updateResult.ok) throw new Error(updateResult.message);
       }
     } catch (error) {
       console.error('Planner: Failed to update card:', error);
@@ -2734,8 +2600,8 @@ export class BasesSwimlaneView extends BasesView {
     return null;
   }
 
-  private handleCardClick(entry: BasesEntry): void {
-    openFileInNewTab(this.plugin.app, entry.file.path);
+  private handleCardClick(entry: EntrySnapshot): void {
+    openPath(this.plugin.app, entry.path, { ctrlKey: true } as MouseEvent);
   }
 
   /**
@@ -2744,13 +2610,13 @@ export class BasesSwimlaneView extends BasesView {
    * Obsidian's internal page-preview plugin handles that key check.
    */
   private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
-    this.plugin.app.workspace.trigger('hover-link', {
+    dispatchHoverPreview({
+      app: this.plugin.app,
       event,
-      source: BASES_SWIMLANE_VIEW_ID,
       hoverParent: this.plugin,
+      sourceId: BASES_SWIMLANE_VIEW_ID,
       targetEl,
-      linktext: filePath,
-      sourcePath: '/',
+      filePath,
     });
   }
 }

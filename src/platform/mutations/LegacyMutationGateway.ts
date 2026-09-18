@@ -16,6 +16,8 @@ import type {
 	DependencyMutationCapability,
 	FileCreateCapability,
 	MutationResult,
+	MoveMutationCapability,
+	MoveMutationResult,
 	NoteCreationRequest,
 	PropertyMutationCapability,
 	TrashCapability,
@@ -36,7 +38,7 @@ function errorResult(error: unknown): MutationResult {
 }
 
 export class LegacyMutationGateway
-	implements DateMutationCapability, PropertyMutationCapability, DependencyMutationCapability, FileCreateCapability, TrashCapability
+	implements DateMutationCapability, PropertyMutationCapability, DependencyMutationCapability, FileCreateCapability, TrashCapability, MoveMutationCapability
 {
 	constructor(private readonly app: App) {}
 
@@ -56,6 +58,24 @@ export class LegacyMutationGateway
 			const name = propertyName(propertyId);
 			await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
 				frontmatter[name] = value;
+			});
+			return { ok: true };
+		} catch (error) {
+			return { ok: false, reason: 'error', message: error instanceof Error ? error.message : String(error) };
+		}
+	}
+
+	async setProperties(path: string, values: Readonly<Record<string, unknown>>): Promise<MutationResult> {
+		if (Object.keys(values).some(isFormulaProperty)) {
+			return { ok: false, reason: 'formula-property', message: 'Formula properties cannot be written.' };
+		}
+		const file = this.resolveFile(path);
+		if (!file) return { ok: false, reason: 'file-not-found', message: `No file at "${path}".` };
+		try {
+			await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+				for (const [propertyId, value] of Object.entries(values)) {
+					frontmatter[propertyName(propertyId)] = value;
+				}
 			});
 			return { ok: true };
 		} catch (error) {
@@ -91,6 +111,28 @@ export class LegacyMutationGateway
 
 	async setDependencies(path: string, propertyId: string, dependencies: string): Promise<MutationResult> {
 		return this.setProperty(path, propertyId, dependencies);
+	}
+
+	async moveToFolder(path: string, targetFolder: string): Promise<MoveMutationResult> {
+		const file = this.resolveFile(path);
+		if (!file) return { ok: false, reason: 'file-not-found', message: `No file at "${path}".` };
+		try {
+			if (targetFolder && !this.app.vault.getAbstractFileByPath(targetFolder)) {
+				await this.app.vault.createFolder(targetFolder);
+			}
+			if ((file.parent?.path ?? '') === targetFolder) return { ok: true, path };
+			const prefix = targetFolder ? `${targetFolder}/` : '';
+			let nextPath = `${prefix}${file.name}`;
+			let counter = 1;
+			while (this.app.vault.getAbstractFileByPath(nextPath) && nextPath !== path && counter < 100) {
+				nextPath = `${prefix}${file.basename} ${counter}.${file.extension}`;
+				counter++;
+			}
+			if (nextPath !== path) await this.app.fileManager.renameFile(file, nextPath);
+			return { ok: true, path: nextPath };
+		} catch (error) {
+			return { ok: false, reason: 'error', message: error instanceof Error ? error.message : String(error) };
+		}
 	}
 
 	async trash(path: string): Promise<MutationResult> {
