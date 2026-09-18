@@ -24,6 +24,7 @@ import type PlannerPlugin from '../main';
 import { PropertyTypeService } from '../services/PropertyTypeService';
 import { stringToColor } from '../utils/colorUtils';
 import { openFileInNewTab, showOpenFileMenu } from '../utils/openFile';
+import { ViewRuntime } from '../platform/dom/ViewRuntime';
 
 
 export const BASES_SWIMLANE_VIEW_ID = 'wise-view-swimlane';
@@ -47,6 +48,7 @@ export class BasesSwimlaneView extends BasesView {
   type = BASES_SWIMLANE_VIEW_ID;
   private plugin: PlannerPlugin;
   private containerEl: HTMLElement;
+  private readonly runtime: ViewRuntime;
   private boardEl: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
@@ -238,9 +240,77 @@ export class BasesSwimlaneView extends BasesView {
     super(controller);
     this.plugin = plugin;
     this.containerEl = containerEl;
+    this.runtime = new ViewRuntime(containerEl);
     this.setupContainer();
     this.setupResizeObserver();
     this.setupKeyboardNavigation();
+    this.registerRuntimeCleanup();
+  }
+
+  /**
+   * Registers every teardown once; each closure reads current field state at dispose time, so
+   * it stays correct no matter how many times render()/setup has replaced that state. Covers
+   * resize/keyboard/debounce/virtual-scroll cleanup plus forcing any in-flight touch/mouse
+   * drag (card or swimlane reordering) to release its clone, timers, and interval instead of
+   * leaking them if the view unloads mid-gesture.
+   */
+  private registerRuntimeCleanup(): void {
+    this.runtime.add(() => {
+      this.resizeObserver?.disconnect();
+      this.resizeObserver = null;
+    });
+    this.runtime.add(() => {
+      if (this.renderDebounceTimer !== null) {
+        window.clearTimeout(this.renderDebounceTimer);
+        this.renderDebounceTimer = null;
+      }
+    });
+    this.runtime.add(() => this.cleanupVirtualScroll());
+    this.runtime.add(() => {
+      if (this.keyboardHandler) {
+        this.containerEl.removeEventListener('keydown', this.keyboardHandler);
+        this.keyboardHandler = null;
+      }
+      this.containerEl.removeAttribute('tabindex');
+    });
+    this.runtime.add(() => this.containerEl.removeClass('planner-bases-kanban'));
+    this.runtime.add(() => this.forceCancelTouchInteractions());
+  }
+
+  /**
+   * Unconditionally releases touch/mouse drag state (card and swimlane reordering) without
+   * attempting to find or commit a drop, unlike endTouchDrag/endSwimlaneTouchDrag. Used when
+   * the view unloads mid-gesture so no clone, context-menu blocker, hold timer, or
+   * auto-scroll interval survives.
+   */
+  private forceCancelTouchInteractions(): void {
+    const doc = this.containerEl.ownerDocument;
+
+    if (this.touchHoldTimer !== null) {
+      window.clearTimeout(this.touchHoldTimer);
+      this.touchHoldTimer = null;
+    }
+    if (this.touchSwimlaneHoldTimer !== null) {
+      window.clearTimeout(this.touchSwimlaneHoldTimer);
+      this.touchSwimlaneHoldTimer = null;
+    }
+    this.stopAutoScroll();
+    doc.removeEventListener('contextmenu', this.boundContextMenuBlocker, true);
+
+    if (this.touchDragClone) {
+      this.touchDragClone.remove();
+      this.touchDragClone = null;
+    }
+    this.touchDragCard = null;
+    this.draggedCardPath = null;
+    this.draggedFromColumn = null;
+
+    if (this.touchDragSwimlaneClone) {
+      this.touchDragSwimlaneClone.remove();
+      this.touchDragSwimlaneClone = null;
+    }
+    this.touchDragSwimlane = null;
+    this.draggedSwimlaneKey = null;
   }
 
   /**
@@ -250,8 +320,8 @@ export class BasesSwimlaneView extends BasesView {
   private setupKeyboardNavigation(): void {
     this.keyboardHandler = (e: KeyboardEvent) => {
       // Only handle if board is focused or a card is focused
-      if (!this.boardEl?.contains(document.activeElement) &&
-        document.activeElement !== this.containerEl) {
+      const active = this.runtime.doc.activeElement;
+      if (!this.boardEl?.contains(active) && active !== this.containerEl) {
         return;
       }
 
@@ -450,25 +520,10 @@ export class BasesSwimlaneView extends BasesView {
   }
 
   onunload(): void {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
-    }
-    // Clean up debounce timer
-    if (this.renderDebounceTimer !== null) {
-      window.clearTimeout(this.renderDebounceTimer);
-      this.renderDebounceTimer = null;
-    }
-    // Clean up virtual scroll observers
-    this.cleanupVirtualScroll();
-    // Clean up keyboard navigation
-    if (this.keyboardHandler) {
-      this.containerEl.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
-    this.containerEl.removeAttribute('tabindex');
-    // Clean up styles and classes added to the shared container
-    this.containerEl.removeClass('planner-bases-kanban');
+    // Resize/debounce/virtual-scroll/keyboard cleanup and forcing any in-flight drag to
+    // release its clone/timers/interval all run through the runtime's DisposableScope,
+    // registered once in the constructor; dispose() is idempotent.
+    this.runtime.dispose();
   }
 
   private render(): void {
@@ -581,7 +636,7 @@ export class BasesSwimlaneView extends BasesView {
 
       if (typeof colorSetting === 'string' && namedColors.includes(colorSetting)) {
         // Resolve Obsidian theme CSS variable (e.g. --color-red-rgb) to a color
-        const rgbStr = getComputedStyle(document.body)
+        const rgbStr = getComputedStyle(this.runtime.doc.body)
           .getPropertyValue(`--color-${colorSetting}-rgb`)
           .trim();
         if (rgbStr) {
@@ -1236,7 +1291,7 @@ export class BasesSwimlaneView extends BasesView {
       this.draggedColumnKey = null;
       this.stopAutoScroll(); // Stop any auto-scrolling
       // Remove all drop indicators
-      document.querySelectorAll('.planner-kanban-column--drop-left, .planner-kanban-column--drop-right').forEach(el => {
+      this.runtime.doc.querySelectorAll('.planner-kanban-column--drop-left, .planner-kanban-column--drop-right').forEach(el => {
         el.classList.remove('planner-kanban-column--drop-left', 'planner-kanban-column--drop-right');
       });
     });
@@ -1327,7 +1382,7 @@ export class BasesSwimlaneView extends BasesView {
       this.draggedColumnKey = null;
       this.stopAutoScroll(); // Stop any auto-scrolling
       // Remove all drop indicators
-      document.querySelectorAll('.planner-kanban-column--drop-left, .planner-kanban-column--drop-right').forEach(el => {
+      this.runtime.doc.querySelectorAll('.planner-kanban-column--drop-left, .planner-kanban-column--drop-right').forEach(el => {
         el.classList.remove('planner-kanban-column--drop-left', 'planner-kanban-column--drop-right');
       });
     });
@@ -1396,7 +1451,7 @@ export class BasesSwimlaneView extends BasesView {
       this.draggedSwimlaneKey = null;
       this.stopAutoScroll(); // Stop any auto-scrolling
       // Remove all drop indicators
-      document.querySelectorAll('.planner-kanban-swimlane--drop-above, .planner-kanban-swimlane--drop-below').forEach(el => {
+      this.runtime.doc.querySelectorAll('.planner-kanban-swimlane--drop-above, .planner-kanban-swimlane--drop-below').forEach(el => {
         el.classList.remove('planner-kanban-swimlane--drop-above', 'planner-kanban-swimlane--drop-below');
       });
     });
@@ -1508,7 +1563,7 @@ export class BasesSwimlaneView extends BasesView {
       this.touchDragSwimlaneClone = labelEl.cloneNode(true) as HTMLElement;
       this.touchDragSwimlaneClone.className = 'planner-kanban-swimlane-drag-clone';
       this.touchDragSwimlaneClone.setCssProps({ '--clone-width': `${labelEl.clientWidth}px` });
-      document.body.appendChild(this.touchDragSwimlaneClone);
+      this.runtime.doc.body.appendChild(this.touchDragSwimlaneClone);
     }
 
     swimlaneRow.classList.add('planner-kanban-swimlane--dragging');
@@ -1532,12 +1587,12 @@ export class BasesSwimlaneView extends BasesView {
 
   private highlightSwimlaneDropTarget(clientY: number): void {
     // Clear previous highlights
-    document.querySelectorAll('.planner-kanban-swimlane--drop-above, .planner-kanban-swimlane--drop-below').forEach(el => {
+    this.runtime.doc.querySelectorAll('.planner-kanban-swimlane--drop-above, .planner-kanban-swimlane--drop-below').forEach(el => {
       el.classList.remove('planner-kanban-swimlane--drop-above', 'planner-kanban-swimlane--drop-below');
     });
 
     // Find swimlane row under touch point
-    const rows = Array.from(document.querySelectorAll('.planner-kanban-swimlane-row'));
+    const rows = Array.from(this.runtime.doc.querySelectorAll('.planner-kanban-swimlane-row'));
     for (const row of rows) {
       if (row === this.touchDragSwimlane) continue;
       const rect = row.getBoundingClientRect();
@@ -1560,7 +1615,7 @@ export class BasesSwimlaneView extends BasesView {
     if (!touch) { this.cleanupSwimlaneTouchDrag(); return; }
 
     // Find drop target
-    const rows = Array.from(document.querySelectorAll('.planner-kanban-swimlane-row'));
+    const rows = Array.from(this.runtime.doc.querySelectorAll('.planner-kanban-swimlane-row'));
     for (const row of rows) {
       if (row === this.touchDragSwimlane) continue;
       const rect = row.getBoundingClientRect();
@@ -1591,7 +1646,7 @@ export class BasesSwimlaneView extends BasesView {
     this.stopAutoScroll();
 
     // Clear all drop indicators
-    document.querySelectorAll('.planner-kanban-swimlane--drop-above, .planner-kanban-swimlane--drop-below').forEach(el => {
+    this.runtime.doc.querySelectorAll('.planner-kanban-swimlane--drop-above, .planner-kanban-swimlane--drop-below').forEach(el => {
       el.classList.remove('planner-kanban-swimlane--drop-above', 'planner-kanban-swimlane--drop-below');
     });
   }

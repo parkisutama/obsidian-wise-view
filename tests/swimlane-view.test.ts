@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import type PlannerPlugin from "../src/main";
-import { createSwimlaneHarness, type SwimlaneHarness } from "./fixtures/swimlane";
+import { createSwimlaneHarness, waitForRender, type SwimlaneHarness } from "./fixtures/swimlane";
 
 const plugin = { app: {}, settings: structuredClone(DEFAULT_SETTINGS) } as unknown as PlannerPlugin;
 
@@ -92,5 +92,64 @@ describe("Swimlane view with configured properties", () => {
 		expect(texts(h, ".planner-kanban-card-title")).toContain("Spec title");
 		expect(h.host.querySelector(".planner-kanban-card-cover")).not.toBeNull();
 		expect(texts(h, ".planner-kanban-card-summary")).toContain("Spec summary");
+	});
+});
+
+// The view keeps drag internals private; tests drive them directly, as the toolbar-driven
+// calendar tests do for FullCalendar.
+type ViewInternals = {
+	startTouchDrag(card: HTMLElement, entry: unknown, e: unknown): void;
+	startSwimlaneTouchDrag(row: HTMLElement, key: string, e: unknown): void;
+};
+const internals = (h: SwimlaneHarness) => h.view as unknown as ViewInternals;
+
+describe("Swimlane view lifecycle", () => {
+	it("disconnects the previous render's virtual-scroll observers before mounting new ones", async () => {
+		const notes = Array.from({ length: 20 }, (_, i) => ({ path: `Tasks/${i}.md`, status: "Todo" }));
+		const h = await mount({ notes, config: { plannerGroupBy: "note.status" } });
+		const observers = (h.view as unknown as { virtualScrollObservers: Map<unknown, { disconnect: () => void }> })
+			.virtualScrollObservers;
+		expect(observers.size).toBeGreaterThan(0);
+		const firstRenderObservers = [...observers.values()];
+		const disconnectSpies = firstRenderObservers.map((observer) => vi.spyOn(observer, "disconnect"));
+
+		h.view.onDataUpdated();
+		await waitForRender();
+
+		for (const spy of disconnectSpies) expect(spy).toHaveBeenCalledTimes(1);
+		expect(observers.size).toBeGreaterThan(0);
+	});
+
+	it("cancels an in-flight card drag on unload, removing the clone and context-menu blocker", async () => {
+		const h = await mount({ config: { plannerGroupBy: "note.status" } });
+		const card = h.host.querySelector<HTMLElement>(".planner-kanban-card");
+		expect(card).not.toBeNull();
+		const entry = { file: { path: "Tasks/Write spec.md" } };
+		internals(h).startTouchDrag(card!, entry, { touches: [{ clientX: 0, clientY: 0 }] });
+
+		expect(h.host.ownerDocument.querySelector(".planner-kanban-drag-clone")).not.toBeNull();
+		h.view.onunload();
+		expect(h.host.ownerDocument.querySelector(".planner-kanban-drag-clone")).toBeNull();
+	});
+
+	it("cancels an in-flight swimlane drag on unload, removing its clone", async () => {
+		const h = await mount({
+			config: { plannerGroupBy: "note.status", swimlaneBy: "note.priority" },
+		});
+		const row = h.host.querySelector<HTMLElement>(".planner-kanban-swimlane-row");
+		expect(row).not.toBeNull();
+		internals(h).startSwimlaneTouchDrag(row!, "High", { touches: [{ clientX: 0, clientY: 0 }] });
+
+		expect(h.host.ownerDocument.querySelector(".planner-kanban-swimlane-drag-clone")).not.toBeNull();
+		h.view.onunload();
+		expect(h.host.ownerDocument.querySelector(".planner-kanban-swimlane-drag-clone")).toBeNull();
+	});
+
+	it("is safe to unload twice", async () => {
+		const h = await mount();
+		expect(() => {
+			h.view.onunload();
+			h.view.onunload();
+		}).not.toThrow();
 	});
 });
