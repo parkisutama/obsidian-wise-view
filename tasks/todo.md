@@ -548,15 +548,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T029: Implement temporal domains, ticks, zoom, and coordinates
+### T029: Implement temporal domains, ticks, zoom, and coordinates — done
 
 **Description:** Add pure today/domain padding, zoom specifications, tick generation, and date/pixel conversion used by Timeline and testable against Calendar/Gantt cases.
 
 **Acceptance criteria:**
 
-- [ ] Coordinate round-trips are stable within defined rounding rules.
-- [ ] Day/week/month/quarter/year scales have deterministic ticks.
-- [ ] Domain calculations handle empty and extreme ranges.
+- [x] Coordinate round-trips are stable within defined rounding rules.
+- [x] Day/week/month/quarter/year scales have deterministic ticks.
+- [x] Domain calculations handle empty and extreme ranges.
 
 **Verification:** `pnpm run test -- temporal-domain && pnpm run typecheck`
 
