@@ -9,6 +9,7 @@ import {
 import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/views/BasesCalendarView";
 import { BASES_GANTT_VIEW_ID, createGanttViewRegistration } from "../src/views/BasesGanttView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
+import { BASES_TIMELINE_VIEW_ID, createTimelineViewRegistration, getTimelineViewOptions } from "../src/views/timeline";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import WiseViewPlugin from "../src/main";
 
@@ -61,11 +62,12 @@ describe("ViewRegistry", () => {
 		expect(registry.list().map((d) => d.id)).toEqual(["wise-view-a", "wise-view-b"]);
 	});
 
-	it("expresses Calendar, Gantt, and Swimlane without view-specific registry branching", () => {
+	it("expresses Calendar, Gantt, Swimlane, and Timeline without view-specific registry branching", () => {
 		const registry = new ViewRegistry();
 		const calendar = createCalendarViewRegistration(plugin);
 		const gantt = createGanttViewRegistration(plugin);
 		const swimlane = createSwimlaneViewRegistration(plugin);
+		const timeline = createTimelineViewRegistration(plugin);
 
 		registry.register({
 			id: BASES_CALENDAR_VIEW_ID,
@@ -75,6 +77,14 @@ describe("ViewRegistry", () => {
 			options: calendar.options,
 			hover: { display: "Calendar", defaultMod: true },
 			capabilities: { legacyMutation: true },
+		});
+		registry.register({
+			id: BASES_TIMELINE_VIEW_ID,
+			name: timeline.name,
+			icon: timeline.icon,
+			factory: timeline.factory,
+			options: timeline.options,
+			hover: { display: "Timeline", defaultMod: true },
 		});
 		registry.register({
 			id: BASES_GANTT_VIEW_ID,
@@ -97,13 +107,23 @@ describe("ViewRegistry", () => {
 
 		expect(registry.list().map((d) => d.id)).toEqual([
 			BASES_CALENDAR_VIEW_ID,
+			BASES_TIMELINE_VIEW_ID,
 			BASES_GANTT_VIEW_ID,
 			BASES_SWIMLANE_VIEW_ID,
 		]);
 		for (const descriptor of registry.list()) {
-			expect(descriptor.capabilities?.legacyMutation).toBe(true);
 			expect(descriptor.hover?.display).toBeTruthy();
 		}
+		expect(registry.get(BASES_TIMELINE_VIEW_ID)?.capabilities?.legacyMutation).not.toBe(true);
+	});
+
+	it("exposes schema-agnostic Timeline property and zoom options", () => {
+		const serialized = JSON.stringify(getTimelineViewOptions());
+		for (const key of ["startDate", "endDate", "titleBy", "colorBy", "groupBy", "zoom"]) {
+			expect(serialized).toContain(`\"key\":\"${key}\"`);
+		}
+		expect(serialized).not.toContain("status");
+		expect(serialized).not.toContain("priority");
 	});
 });
 
@@ -131,9 +151,9 @@ describe("WiseViewPlugin.onload view registration", () => {
 
 		await realPlugin.onload();
 
-		expect(registeredViews).toEqual([BASES_SWIMLANE_VIEW_ID, BASES_CALENDAR_VIEW_ID, BASES_GANTT_VIEW_ID]);
+		expect(registeredViews).toEqual([BASES_SWIMLANE_VIEW_ID, BASES_CALENDAR_VIEW_ID, BASES_GANTT_VIEW_ID, BASES_TIMELINE_VIEW_ID]);
 		expect(new Set(registeredViews).size).toBe(registeredViews.length);
-		expect(registeredHovers).toEqual([BASES_SWIMLANE_VIEW_ID, BASES_CALENDAR_VIEW_ID, BASES_GANTT_VIEW_ID]);
+		expect(registeredHovers).toEqual([BASES_SWIMLANE_VIEW_ID, BASES_CALENDAR_VIEW_ID, BASES_GANTT_VIEW_ID, BASES_TIMELINE_VIEW_ID]);
 		expect(registeredCommands).toEqual([
 			"gantt-scroll-today",
 			"gantt-create-note",

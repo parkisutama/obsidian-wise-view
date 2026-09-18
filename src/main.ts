@@ -26,6 +26,11 @@ import {
   createGanttViewRegistration,
 } from './views/BasesGanttView';
 
+import {
+  BASES_TIMELINE_VIEW_ID,
+  createTimelineViewRegistration,
+} from './views/timeline';
+
 /** Command-palette commands scoped to the currently active Gantt view, if any. */
 function buildGanttCommands() {
   const activeGantt = (): BasesGanttView | null => {
@@ -96,6 +101,7 @@ export default class WiseViewPlugin extends Plugin {
     const swimlane = createSwimlaneViewRegistration(this);
     const calendar = createCalendarViewRegistration(this);
     const gantt = createGanttViewRegistration(this);
+    const timeline = createTimelineViewRegistration(this);
 
     return [
       {
@@ -125,6 +131,14 @@ export default class WiseViewPlugin extends Plugin {
         hover: { display: 'Gantt', defaultMod: true },
         commands: buildGanttCommands(),
         capabilities: { legacyMutation: true },
+      },
+      {
+        id: BASES_TIMELINE_VIEW_ID,
+        name: timeline.name,
+        icon: timeline.icon,
+        factory: timeline.factory,
+        options: timeline.options,
+        hover: { display: 'Timeline', defaultMod: true },
       },
     ];
   }
