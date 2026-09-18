@@ -26,6 +26,8 @@ describe("Swimlane view registration", () => {
 		const registration = createSwimlaneViewRegistration(plugin);
 		expect(BASES_SWIMLANE_VIEW_ID).toBe("wise-view-swimlane");
 		expect(registration.name).toBe("Swimlane");
+		// A lanes icon, distinct from Obsidian's core Kanban layout.
+		expect(registration.icon).toBe("rows-3");
 	});
 
 	it("does not preselect any property in its options", () => {

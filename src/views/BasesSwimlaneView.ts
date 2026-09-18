@@ -2706,7 +2706,7 @@ export class BasesSwimlaneView extends BasesView {
 export function createSwimlaneViewRegistration(plugin: PlannerPlugin): BasesViewRegistration {
   return {
     name: 'Swimlane',
-    icon: 'square-kanban',
+    icon: 'rows-3',
     factory: (controller: QueryController, containerEl: HTMLElement) => {
       return new BasesSwimlaneView(controller, containerEl, plugin);
     },
