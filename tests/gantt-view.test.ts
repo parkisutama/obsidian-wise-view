@@ -1,4 +1,7 @@
 // @vitest-environment happy-dom
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { BASES_GANTT_VIEW_ID, BasesGanttView } from "../src/views/BasesGanttView";
 import {
@@ -8,6 +11,8 @@ import {
 	type TaskMapperConfig,
 } from "../src/utils/ganttUtils";
 import { createGanttHarness, makeGanttEntry, type GanttHarness } from "./fixtures/gantt";
+
+const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 let harness: GanttHarness | null = null;
 const mount = (...args: Parameters<typeof createGanttHarness>) => {
@@ -102,5 +107,21 @@ describe("Gantt view registration and lifecycle", () => {
 		const h = mount();
 		expect(() => h.destroy()).not.toThrow();
 		expect(BasesGanttView.instances.has(h.view)).toBe(false);
+	});
+
+	it("is safe to unload twice", () => {
+		const h = mount();
+		expect(() => {
+			h.view.onunload();
+			h.view.onunload();
+		}).not.toThrow();
+	});
+});
+
+describe("Gantt view: no global browser API overwritten (T010)", () => {
+	it("never reassigns document.addEventListener or another global API", () => {
+		const source = readFileSync(path.join(repoRoot, "src", "views", "BasesGanttView.ts"), "utf8");
+		expect(/document\.addEventListener\s*=/.test(source)).toBe(false);
+		expect(/window\.addEventListener\s*=/.test(source)).toBe(false);
 	});
 });

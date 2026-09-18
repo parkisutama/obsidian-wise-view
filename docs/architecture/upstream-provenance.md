@@ -97,6 +97,36 @@ repository listed here beyond what its **Reuse mode** and **Excluded** rows perm
 [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) from prior work and are unaffected by
 this ledger; they remain reconciled by `pnpm run verify:artifacts`.
 
+## Known upstream library limitations
+
+Bugs in a bundled dependency that Wise View cannot fix without patching the vendored source.
+Recorded here so a later task does not rediscover the same tradeoff from scratch, and so a
+general fix (if one is ever found) gets applied everywhere it applies instead of once.
+
+### Frappe Gantt leaks a `document`-level `mouseup` listener (T010, 2026-09-18)
+
+`frappe-gantt@1.2.2`'s `Gantt` constructor attaches `document.addEventListener('mouseup', ...)`
+internally (in `bind_bar_events`) and never removes it — not from `clear()`, not from
+`destroy()`. Wise View previously captured that specific listener by temporarily replacing the
+global `document.addEventListener` for the duration of `new Gantt(...)`, then removed the
+captured listener on rebuild/unload (`BasesGanttView.ts`, before T010).
+
+The T005 architecture guard now forbids overwriting a global browser API anywhere in the
+codebase, and the spec names this exact monkey-patch as something to remove (spec §4.4). T010
+removed the capture entirely rather than keep the workaround. The residual effect: one
+`document`-level `mouseup` listener is now leaked per `new Gantt(...)` call (each Gantt config
+change or rebuild), for the life of the Obsidian window. The listener resets local drag-state
+closures and is a no-op once its `$container` is detached from the DOM — it does not throw or
+corrupt state — but it keeps the detached Gantt instance's closures reachable, which is a real
+(if bounded per rebuild, not per data update) memory cost.
+
+No public Frappe Gantt API removes this listener, and there is no way to capture a third
+party's listener reference at attachment time without intercepting `addEventListener` in some
+form. If a later view (Timeline, or a future Gantt alternative) finds a general,
+non-global-mutating interception technique — e.g. vendoring a patched build, or a documented
+Frappe Gantt option to suppress this binding — revisit this decision and consider applying it
+here too.
+
 ## How an implementation task records file-level provenance
 
 When a task copies or modifies an upstream file (rather than only reading it for design

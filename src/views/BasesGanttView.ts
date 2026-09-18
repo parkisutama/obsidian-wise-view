@@ -57,6 +57,7 @@ import {
 } from '../utils/ganttUtils';
 import { NoteTemplateService } from '../services/NoteTemplateService';
 import type { NoteTemplateDefaults } from '../types/settings';
+import { ViewRuntime } from '../platform/dom/ViewRuntime';
 
 // ── View ID ─────────────────────────────────────────────────────────────────
 
@@ -190,19 +191,19 @@ export class BasesGanttView extends BasesView {
     private preDragTaskDates: Map<string, { start: string; end: string }> = new Map();
     /** Flag to suppress on_click after a drag operation. */
     private justDragged = false;
-    /** Global mouseup handlers Frappe Gantt registers on document (for cleanup). */
-    private capturedGlobalHandlers: EventListener[] = [];
 
     // ── WBS sidebar fields ───────────────────────────────────────────────────
     private wbsEl: HTMLElement | null = null;
     private wbsBodyEl: HTMLElement | null = null;
     private resizeCleanup: (() => void) | null = null;
     private wbsSidebarActive = false;
+    private readonly runtime: ViewRuntime;
 
     constructor(controller: QueryController, containerEl: HTMLElement, plugin: PlannerPlugin) {
         super(controller);
         this.plugin = plugin;
         this.containerEl = containerEl;
+        this.runtime = new ViewRuntime(containerEl);
         // chartEl will be set in buildLayout; initialise to avoid TS strict errors
         this.chartEl = null!;
     }
@@ -224,10 +225,6 @@ export class BasesGanttView extends BasesView {
             this.gantt.$container?.remove();
             this.gantt = null;
         }
-        for (const handler of this.capturedGlobalHandlers) {
-            document.removeEventListener('mouseup', handler);
-        }
-        this.capturedGlobalHandlers = [];
         this.currentTasks = [];
         this.taskMap.clear();
         this.closeTaskPopup();
@@ -237,6 +234,7 @@ export class BasesGanttView extends BasesView {
         this.resizeCleanup = null;
         this.wbsBodyEl = null;
         this.wbsEl = null;
+        this.runtime.dispose();
     }
 
     onResize(): void {
@@ -354,7 +352,7 @@ export class BasesGanttView extends BasesView {
         return (fieldId: string, value: string): string | null => {
             // 1. Pretty Properties plugin API
             const propName = fieldId.split('.').pop() || fieldId;
-            const ppColor = getPrettyPropertiesColor(propName, value);
+            const ppColor = getPrettyPropertiesColor(propName, value, this.runtime.doc);
             if (ppColor) return ppColor;
 
             // 2. User-configured valueStyles (keyed by fieldId then value)
@@ -697,20 +695,19 @@ export class BasesGanttView extends BasesView {
         };
         options.popup = false;
 
-        // Capture global mouseup handlers Frappe Gantt registers on document
-        const captured: EventListener[] = [];
-        const origAdd = document.addEventListener.bind(document);
-        document.addEventListener = ((
-            type: string,
-            listener: EventListenerOrEventListenerObject,
-            optionsArg?: boolean | AddEventListenerOptions,
-        ) => {
-            if (type === 'mouseup') {
-                captured.push(listener as EventListener);
-            }
-            return origAdd(type, listener, optionsArg);
-        }) as typeof document.addEventListener;
-
+        // NOTE (T010, see docs/architecture/upstream-provenance.md "Known upstream library
+        // limitations"): Frappe Gantt's own constructor attaches a `document`-level "mouseup"
+        // listener that it never removes, even from clear()/destroy(). Wise View previously
+        // captured that specific listener by temporarily replacing the global
+        // `document.addEventListener` for the duration of this call, then removed it on
+        // rebuild/unload. The architecture guard now forbids overwriting a global browser API
+        // anywhere in the codebase, so that capture is removed here. The leaked listener is an
+        // upstream defect, not something this adapter introduces or can clean up without
+        // patching the vendored library; it resets local drag-state closures and is a no-op
+        // once its `$container` is detached, so it is inert rather than actively harmful, but it
+        // does keep one detached Gantt instance's closures alive per config change/rebuild for
+        // the life of the window. Revisit if a later view (Timeline) finds a general,
+        // non-global-mutating way to capture a third-party listener at attachment time.
         try {
             this.gantt = new Gantt(this.chartEl, this.getRenderableTasks(tasks), options);
         } catch (e) {
@@ -718,10 +715,7 @@ export class BasesGanttView extends BasesView {
             this.chartEl.empty();
             this.renderEmptyState(this.getTaskMapperConfig());
             return;
-        } finally {
-            document.addEventListener = origAdd;
         }
-        this.capturedGlobalHandlers = captured;
 
         // Apply milestone and parent task classes to bar wrappers
         for (const task of tasks) {
@@ -863,25 +857,29 @@ export class BasesGanttView extends BasesView {
             if (this.wbsEl) this.wbsEl.style.width = `${newWidth}px`;
         };
 
+        // Drag listeners on the owning document, not the bare global, so a popout window's own
+        // document (and its own "gantt-wbs-resizing" body class) is used during the drag.
+        const doc = this.runtime.doc;
+
         const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            document.body.removeClass('gantt-wbs-resizing');
+            doc.removeEventListener('mousemove', onMouseMove);
+            doc.removeEventListener('mouseup', onMouseUp);
+            doc.body.removeClass('gantt-wbs-resizing');
         };
 
         const onMouseDown = (e: MouseEvent) => {
             e.preventDefault();
-            document.body.addClass('gantt-wbs-resizing');
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+            doc.body.addClass('gantt-wbs-resizing');
+            doc.addEventListener('mousemove', onMouseMove);
+            doc.addEventListener('mouseup', onMouseUp);
         };
 
         handle.addEventListener('mousedown', onMouseDown);
 
         this.resizeCleanup = () => {
             handle.removeEventListener('mousedown', onMouseDown);
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+            doc.removeEventListener('mousemove', onMouseMove);
+            doc.removeEventListener('mouseup', onMouseUp);
         };
     }
 
@@ -993,11 +991,13 @@ export class BasesGanttView extends BasesView {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') this.closeTaskPopup();
         };
-        document.addEventListener('pointerdown', onPointerDown, true);
-        document.addEventListener('keydown', onKeyDown);
+        // Dismiss listeners on the popup's own owning document, for popout correctness.
+        const doc = this.runtime.doc;
+        doc.addEventListener('pointerdown', onPointerDown, true);
+        doc.addEventListener('keydown', onKeyDown);
         this.popupCleanup = () => {
-            document.removeEventListener('pointerdown', onPointerDown, true);
-            document.removeEventListener('keydown', onKeyDown);
+            doc.removeEventListener('pointerdown', onPointerDown, true);
+            doc.removeEventListener('keydown', onKeyDown);
         };
     }
 
@@ -1515,7 +1515,7 @@ export class BasesGanttView extends BasesView {
  * Try to get a solid hex/rgb color from the Pretty Properties plugin API.
  * Returns null if the plugin is not installed or no color is configured.
  */
-function getPrettyPropertiesColor(propName: string, value: string): string | null {
+function getPrettyPropertiesColor(propName: string, value: string, doc: Document = document): string | null {
     interface PPColorSetting { h: number; s: number; l: number }
     interface PrettyPropertiesApi {
         getPropertyBackgroundColorSetting(
@@ -1534,8 +1534,9 @@ function getPrettyPropertiesColor(propName: string, value: string): string | nul
         const namedColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'];
 
         if (typeof colorSetting === 'string' && namedColors.includes(colorSetting)) {
-            // Resolve Obsidian theme CSS variable to solid rgb
-            const rgbStr = getComputedStyle(document.body)
+            // Resolve Obsidian theme CSS variable to solid rgb, from this view's own owning
+            // document so a popout window resolves its own theme state.
+            const rgbStr = getComputedStyle(doc.body)
                 .getPropertyValue(`--color-${colorSetting}-rgb`)
                 .trim();
             if (rgbStr) {
