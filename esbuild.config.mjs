@@ -4,7 +4,12 @@ import process from "process";
 import { builtinModules } from 'node:module';
 import fs from "fs";
 import path from "path";
-import { BANNER_START, buildLicenseBanner } from "./scripts/license-banner.mjs";
+import {
+	BANNER_START,
+	buildLicenseBanner,
+	collectBundledPackages,
+	findUnlistedPackages,
+} from "./scripts/license-banner.mjs";
 
 const prod = (process.argv[2] === "production");
 
@@ -91,12 +96,17 @@ function scopeFrappeGanttCss(css) {
 const cssPlugin = {
 	name: "css-merge",
 	setup(build) {
-		// Collect CSS from imports
+		// Collect CSS from imports as { path, css }
 		const cssContents = [];
+
+		// Start every (re)build empty; in watch mode imports would otherwise accumulate.
+		build.onStart(() => {
+			cssContents.length = 0;
+		});
 
 		build.onLoad({ filter: /\.css$/ }, async (args) => {
 			const css = await fs.promises.readFile(args.path, "utf8");
-			cssContents.push(`${packageLicenseNotice(args.path)}\n${css}`);
+			cssContents.push({ path: args.path, css: `${packageLicenseNotice(args.path)}\n${css}` });
 			return { contents: "", loader: "js" };
 		});
 
@@ -129,20 +139,45 @@ const cssPlugin = {
 					const frappeCSS = scopeFrappeGanttCss(
 						await fs.promises.readFile(frappeGanttCssPath, "utf8"),
 					);
-					const hasIt = cssContents.some(c => c.includes("From: frappe-gantt.css"));
+					const hasIt = cssContents.some(c => c.css.includes("From: frappe-gantt.css"));
 					if (!hasIt) {
 						const notice = packageLicenseNotice(
 							frappeGanttCssPath,
 							"Modified: scoped to .bases-gantt-view and themed with Obsidian CSS variables",
 						);
-						cssContents.unshift(`${notice}\n${frappeCSS}`);
+						cssContents.unshift({ path: "", css: `${notice}\n${frappeCSS}` });
 				}
 			}
 
 			if (cssContents.length > 0) {
-				const mergedCSS = existingStyles + "\n\n" + bundleMarker + "\n" + cssContents.join("\n\n");
+				// onLoad runs concurrently, so sort by path for a deterministic stylesheet. Frappe Gantt
+				// (empty path) stays first; fullcalendar/skeleton.css sorts ahead of
+				// fullcalendar/themes/*, the order FullCalendar requires.
+				cssContents.sort((a, b) => a.path.localeCompare(b.path));
+				const mergedCSS = existingStyles + "\n\n" + bundleMarker + "\n" + cssContents.map(c => c.css).join("\n\n");
 				await fs.promises.writeFile(stylesPath, mergedCSS);
 				console.log("Merged CSS imports into styles.css");
+			}
+		});
+	},
+};
+
+// Plugin to verify that every bundled npm package is attributed in THIRD_PARTY_NOTICES.md.
+// Production builds exit non-zero on a problem; watch mode only warns.
+const licenseProblems = [];
+const licenseCheckPlugin = {
+	name: "license-check",
+	setup(build) {
+		build.onEnd((result) => {
+			licenseProblems.length = 0;
+			if (!result.metafile) return;
+			const bundled = collectBundledPackages(result.metafile, (dir) =>
+				JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")),
+			);
+			const notices = fs.readFileSync("THIRD_PARTY_NOTICES.md", "utf8");
+			licenseProblems.push(...findUnlistedPackages(bundled, notices));
+			for (const problem of licenseProblems) {
+				console.error(`✗ License notice: ${problem}`);
 			}
 		});
 	},
@@ -224,12 +259,13 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: "main.js",
 	minify: prod,
-	plugins: [htmlPlugin, cssPlugin, copyToVaultPlugin],
+	metafile: true,
+	plugins: [htmlPlugin, cssPlugin, licenseCheckPlugin, copyToVaultPlugin],
 });
 
 if (prod) {
 	await context.rebuild();
-	process.exit(0);
+	process.exit(licenseProblems.length > 0 ? 1 : 0);
 } else {
 	await context.watch();
 }

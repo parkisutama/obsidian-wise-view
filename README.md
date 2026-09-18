@@ -197,10 +197,9 @@ are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 | Dependency | License | Copyright | Notes |
 | --- | --- | --- | --- |
 | [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt) | MIT | Lars Tray | Adapted Gantt view code |
-| [FullCalendar](https://fullcalendar.io/) | MIT | Adam Shaw | Calendar view |
+| [FullCalendar](https://fullcalendar.io/) | MIT | Adam Shaw | Calendar view (`fullcalendar`, `@full-ui/headless-calendar`, `temporal-polyfill`, `temporal-utils`; JavaScript and stylesheets) |
 | [Preact](https://preactjs.com/) | MIT | Jason Miller | Rendering library used by FullCalendar |
 | [Frappe Gantt](https://github.com/frappe/gantt) | MIT | Frappe Technologies Pvt. Ltd. | Gantt view (JavaScript and modified stylesheet) |
-| [tslib](https://github.com/microsoft/tslib) | 0BSD | Microsoft Corporation | TypeScript runtime helpers |
 
 The [Obsidian API](https://obsidian.md/) is provided by the Obsidian app at runtime and is not
 bundled.
