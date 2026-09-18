@@ -5,6 +5,7 @@ import { calculateTimeDomain, rangeToDayBounds, todayPosition, type TimeDomain }
 import { dateToPixel, generateTimelineTicks, TIMELINE_ZOOM_SPECS, type TimelineZoom } from '../../core/temporal/TimelineScale';
 import type { DateOnlyValue } from '../../core/temporal/TemporalValue';
 import { VirtualLinearCollection, type VirtualRowHandle } from '../../platform/dom/VirtualLinearCollection';
+import { resolveColor, toCssVariables } from '../../platform/colors/ColorResolver';
 import { flattenTimelineRows, type TimelineItem, type TimelineModel, type TimelineVirtualRow } from './TimelineModel';
 
 export interface TimelineBarLayout {
@@ -234,6 +235,11 @@ export class TimelineRenderer {
 		barEl.type = 'button';
 		barEl.dataset.notePath = row.item.path;
 		barEl.dataset.colorValue = row.item.colorValue ?? '';
+		if (row.item.colorValue) {
+			for (const [name, value] of Object.entries(toCssVariables(resolveColor({ categoryValue: row.item.colorValue })))) {
+				barEl.style.setProperty(name, value);
+			}
+		}
 		barEl.style.setProperty('--wise-view-timeline-left', `${bar.left}px`);
 		barEl.style.setProperty('--wise-view-timeline-bar-width', `${bar.width}px`);
 	}

@@ -81,6 +81,7 @@ const FIRST_PARTY_CSS = [
 	"src/styles/views/swimlane.css",
 	"src/styles/views/calendar.css",
 	"src/styles/views/gantt.css",
+	"src/styles/views/timeline.css",
 ].map((p) => path.resolve(p));
 
 // Merge first-party sources, imported CSS, and Frappe Gantt's stylesheet (which nothing

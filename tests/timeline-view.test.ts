@@ -45,6 +45,18 @@ describe('Timeline renderer', () => {
 		expect(host.querySelector('button[data-note-path="A.md"]')).not.toBeNull();
 	});
 
+	it('applies configured category colors through the shared color resolver', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		const coloredOptions: TimelineOptions = { ...options, colorProperty: 'note.color' };
+		const model = buildTimelineModel([
+			timelineSnapshot('A.md', { 'note.start': date('2026-01-01'), 'note.color': { kind: 'text', value: 'Research' } }),
+		], coloredOptions, today);
+		new TimelineRenderer(host).render(model, today, 'day');
+		const bar = host.querySelector<HTMLElement>('.wise-view-timeline__bar[data-note-path="A.md"]')!;
+		expect(bar.style.getPropertyValue('--wise-view-color-bg')).toMatch(/^#[0-9a-f]{6}$/i);
+	});
+
 	it('uses the same virtual row identity and order for sidebar and timeline', () => {
 		const host = document.createElement('div');
 		const today = dateOnlyFromParts(2026, 1, 2)!;
