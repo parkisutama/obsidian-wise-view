@@ -2233,6 +2233,12 @@ body.gantt-wbs-resizing {
 	transition: fill 0.1s ease;
 }
 
+/*! SPDX-License-Identifier: GPL-3.0-only AND MIT
+ * Portions adapted from obsidian-project-manager styles.css
+ * Copyright (c) 2026 mmattia09. MIT License, see THIRD_PARTY_NOTICES.md
+ * Modifications Copyright (C) 2026 Parkis Utama
+ */
+
 /* ========================================================================== */
 /* Timeline view                                                              */
 /* ========================================================================== */
@@ -2258,6 +2264,9 @@ body.gantt-wbs-resizing {
 }
 
 .wise-view-timeline__toolbar button,
+.wise-view-timeline__toolbar select,
+.wise-view-timeline__expand-controls button,
+.wise-view-timeline__expand-controls select,
 .wise-view-timeline__sidebar-row button,
 .wise-view-timeline__unscheduled {
 	border: 0;
@@ -2290,6 +2299,16 @@ body.gantt-wbs-resizing {
 	overflow: hidden;
 }
 
+.wise-view-timeline__sidebar-panel {
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	border-right: 1px solid var(--background-modifier-border);
+	transition: width 0.25s ease;
+}
+
 .wise-view-timeline__sidebar,
 .wise-view-timeline__scroller {
 	min-height: 0;
@@ -2298,8 +2317,30 @@ body.gantt-wbs-resizing {
 }
 
 .wise-view-timeline__sidebar {
-	border-right: 1px solid var(--background-modifier-border);
 	background: var(--background-secondary);
+}
+
+.wise-view-timeline__expand-controls {
+	display: none;
+	position: absolute;
+	z-index: var(--layer-popover);
+	top: var(--size-4-2);
+	left: var(--size-4-2);
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.wise-view-timeline--sidebar-collapsed .wise-view-timeline__main {
+	grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.wise-view-timeline--sidebar-collapsed .wise-view-timeline__sidebar-panel {
+	width: 0;
+	border-right-color: transparent;
+}
+
+.wise-view-timeline--sidebar-collapsed .wise-view-timeline__expand-controls {
+	display: flex;
 }
 
 .wise-view-timeline__chart {
@@ -2424,7 +2465,8 @@ body.gantt-wbs-resizing {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.wise-view-timeline__bar { transition: none; }
+	.wise-view-timeline__bar,
+	.wise-view-timeline__sidebar-panel { transition: none; }
 }
 
 /* === BUNDLED CSS IMPORTS === */

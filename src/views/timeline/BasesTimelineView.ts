@@ -31,8 +31,9 @@ export class BasesTimelineView extends BasesView {
 		this.renderer = this.runtime.own(new TimelineRenderer(containerEl));
 	}
 
-	onload(): void {
+		onload(): void {
 		this.runtime.addEventListener(this.containerEl, 'click', event => this.handleClick(event));
+		this.runtime.addEventListener(this.containerEl, 'change', event => this.handleControlChange(event));
 		this.runtime.addEventListener(this.containerEl, 'contextmenu', event => this.showContextMenu(event));
 		this.runtime.addEventListener(this.containerEl, 'mouseover', event => this.showHover(event));
 		this.runtime.addEventListener(this.containerEl, 'keydown', event => {
@@ -75,8 +76,8 @@ export class BasesTimelineView extends BasesView {
 			this.renderer.scrollToToday();
 			return;
 		}
-		if (action?.dataset.action === 'zoom' && action.dataset.zoom) {
-			this.renderer.setZoom(action.dataset.zoom as Parameters<TimelineRenderer['setZoom']>[0]);
+		if (action?.dataset.action === 'toggle-sidebar') {
+			this.renderer.toggleSidebar();
 			return;
 		}
 		if (action?.dataset.action === 'toggle-group' && action.dataset.groupKey) {
@@ -84,6 +85,12 @@ export class BasesTimelineView extends BasesView {
 			return;
 		}
 		this.activate(event);
+	}
+
+	private handleControlChange(event: Event): void {
+		const select = event.target instanceof HTMLSelectElement ? event.target : null;
+		if (select?.dataset.action !== 'zoom') return;
+		this.renderer.setZoom(select.value as Parameters<TimelineRenderer['setZoom']>[0]);
 	}
 
 	private activate(event: Event): void {

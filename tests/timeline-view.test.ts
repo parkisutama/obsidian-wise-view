@@ -137,17 +137,29 @@ describe('Timeline view interactions', () => {
 
 		harness.host.querySelector<HTMLElement>('[data-action="toggle-group"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		harness.host.querySelector<HTMLElement>('[data-action="zoom"][data-zoom="day"]')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const zoom = harness.host.querySelector<HTMLSelectElement>('select[data-action="zoom"]')!;
+		zoom.value = 'day';
+		zoom.dispatchEvent(new Event('change', { bubbles: true }));
 		sidebar.scrollTop = 18;
 		sidebar.dispatchEvent(new Event('scroll'));
 		expect(timeline.scrollTop).toBe(18);
 
 		harness.view.onDataUpdated();
 		expect(harness.host.querySelector('[data-action="toggle-group"]')?.getAttribute('aria-expanded')).toBe('false');
-		expect(harness.host.querySelector('[data-action="zoom"][data-zoom="day"]')?.getAttribute('aria-pressed')).toBe('true');
+		expect(harness.host.querySelector<HTMLSelectElement>('select[data-action="zoom"]')?.value).toBe('day');
 		expect(sidebar.scrollTop).toBe(18);
 		expect(timeline.scrollTop).toBe(18);
+	});
+
+	it('uses compact zoom controls and preserves sidebar collapse state', () => {
+		harness = createTimelineHarness();
+		expect(harness.host.querySelectorAll('select[data-action="zoom"]')).toHaveLength(1);
+		expect(harness.host.querySelectorAll('[data-action="zoom"][data-zoom]')).toHaveLength(0);
+		harness.host.querySelector<HTMLElement>('[aria-label="Hide timeline sidebar"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(harness.host.classList.contains('wise-view-timeline--sidebar-collapsed')).toBe(true);
+		harness.view.onDataUpdated();
+		expect(harness.host.querySelector('[aria-label="Show timeline sidebar"]')).not.toBeNull();
 	});
 
 	it('removes delegated listeners and DOM on unload', () => {

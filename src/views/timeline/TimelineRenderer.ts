@@ -1,5 +1,7 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Parkis Utama
+// SPDX-License-Identifier: GPL-3.0-only AND MIT
+// Portions adapted from obsidian-project-manager (https://github.com/mmattia09/obsidian-project-manager): src/timeline-view.ts
+// Copyright (c) 2026 mmattia09. MIT License, see THIRD_PARTY_NOTICES.md
+// Modifications Copyright (C) 2026 Parkis Utama
 
 import { calculateTimeDomain, rangeToDayBounds, todayPosition, type TimeDomain } from '../../core/temporal/TimeDomain';
 import { dateToPixel, generateTimelineTicks, TIMELINE_ZOOM_SPECS, type TimelineZoom } from '../../core/temporal/TimelineScale';
@@ -52,6 +54,8 @@ function tickLabel(day: DateOnlyValue, zoom: TimelineZoom): string {
 
 export class TimelineRenderer {
 	private readonly toolbarEl: HTMLElement;
+	private readonly sidebarPanel: HTMLElement;
+	private readonly expandControls: HTMLElement;
 	private readonly sidebarViewport: HTMLElement;
 	private readonly timelineViewport: HTMLElement;
 	private readonly headerEl: HTMLElement;
@@ -64,14 +68,16 @@ export class TimelineRenderer {
 	private currentLayout: TimelineLayout | null = null;
 	private bars = new Map<string, TimelineBarLayout>();
 	private syncingScroll = false;
+	private sidebarCollapsed = false;
 	private readonly syncFromSidebar = (): void => this.syncScroll(this.sidebarViewport, this.timelineViewport);
 	private readonly syncFromTimeline = (): void => this.syncScroll(this.timelineViewport, this.sidebarViewport);
 
 	constructor(private readonly containerEl: HTMLElement) {
 		containerEl.classList.add('wise-view-timeline');
-		this.toolbarEl = containerEl.createDiv({ cls: 'wise-view-timeline__toolbar' });
 		const main = containerEl.createDiv({ cls: 'wise-view-timeline__main' });
-		this.sidebarViewport = main.createDiv({ cls: 'wise-view-timeline__sidebar' });
+		this.sidebarPanel = main.createDiv({ cls: 'wise-view-timeline__sidebar-panel' });
+		this.toolbarEl = this.sidebarPanel.createDiv({ cls: 'wise-view-timeline__toolbar' });
+		this.sidebarViewport = this.sidebarPanel.createDiv({ cls: 'wise-view-timeline__sidebar' });
 		const chart = main.createDiv({ cls: 'wise-view-timeline__chart' });
 		this.headerEl = chart.createDiv({ cls: 'wise-view-timeline__header' });
 		this.timelineViewport = chart.createDiv({ cls: 'wise-view-timeline__scroller' });
@@ -89,6 +95,7 @@ export class TimelineRenderer {
 		});
 		this.sidebarViewport.addEventListener('scroll', this.syncFromSidebar, { passive: true });
 		this.timelineViewport.addEventListener('scroll', this.syncFromTimeline, { passive: true });
+		this.expandControls = containerEl.createDiv({ cls: 'wise-view-timeline__expand-controls' });
 	}
 
 	render(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom): TimelineLayout {
@@ -118,6 +125,12 @@ export class TimelineRenderer {
 		if (this.collapsedGroups.has(groupKey)) this.collapsedGroups.delete(groupKey);
 		else this.collapsedGroups.add(groupKey);
 		this.render(this.currentModel, this.currentToday, this.activeZoom);
+	}
+
+	toggleSidebar(): void {
+		this.sidebarCollapsed = !this.sidebarCollapsed;
+		this.containerEl.classList.toggle('wise-view-timeline--sidebar-collapsed', this.sidebarCollapsed);
+		this.renderToolbar();
 	}
 
 	scrollToToday(): void {
@@ -152,15 +165,33 @@ export class TimelineRenderer {
 
 	private renderToolbar(): void {
 		this.toolbarEl.replaceChildren();
-		const today = this.toolbarEl.createEl('button', { text: 'Today' });
+		this.expandControls.replaceChildren();
+		this.renderControlSet(this.sidebarCollapsed ? this.expandControls : this.toolbarEl, this.sidebarCollapsed);
+	}
+
+	private renderControlSet(host: HTMLElement, expanding: boolean): void {
+		if (expanding) {
+			const expand = host.createEl('button', { text: '»' });
+			expand.type = 'button';
+			expand.dataset.action = 'toggle-sidebar';
+			expand.setAttribute('aria-label', 'Show timeline sidebar');
+		}
+		const today = host.createEl('button', { text: 'Today' });
 		today.type = 'button';
 		today.dataset.action = 'today';
+		const select = host.createEl('select', { cls: 'wise-view-timeline__zoom' });
+		select.dataset.action = 'zoom';
+		select.setAttribute('aria-label', 'Timeline zoom');
 		for (const zoom of Object.keys(TIMELINE_ZOOM_SPECS) as TimelineZoom[]) {
-			const button = this.toolbarEl.createEl('button', { text: TIMELINE_ZOOM_SPECS[zoom].label });
-			button.type = 'button';
-			button.dataset.action = 'zoom';
-			button.dataset.zoom = zoom;
-			button.setAttribute('aria-pressed', String(zoom === this.activeZoom));
+			const option = select.createEl('option', { text: TIMELINE_ZOOM_SPECS[zoom].label });
+			option.value = zoom;
+			option.selected = zoom === this.activeZoom;
+		}
+		if (!expanding) {
+			const collapse = host.createEl('button', { text: '«' });
+			collapse.type = 'button';
+			collapse.dataset.action = 'toggle-sidebar';
+			collapse.setAttribute('aria-label', 'Hide timeline sidebar');
 		}
 	}
 
