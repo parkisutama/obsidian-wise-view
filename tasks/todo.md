@@ -1,6 +1,6 @@
 # Tasks: Extensible view platform
 
-Status: Draft; do not implement before SPEC approval  
+Status: In progress; SPEC approved 2026-09-18, Phase 0 complete  
 Plan: [Implementation plan](plan.md)  
 Specification: [Extensible view platform](../docs/specs/extensible-view-platform.md)
 
@@ -8,15 +8,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ## Phase 0: Approval, provenance, and baseline
 
-### T001: Approve the architecture specification
+### T001: Approve the architecture specification — done
 
 **Description:** Review every assumption, non-goal, compatibility promise, and decision gate with the human maintainer and change the SPEC status only after explicit approval.
 
 **Acceptance criteria:**
 
-- [ ] All eight decision gates have an explicit accepted or revised outcome.
-- [ ] Unresolved choices remain marked as blockers rather than silently defaulted.
-- [ ] The SPEC status and approval date are recorded.
+- [x] All eight decision gates have an explicit accepted or revised outcome.
+- [x] Unresolved choices remain marked as blockers rather than silently defaulted.
+- [x] The SPEC status and approval date are recorded.
 
 **Verification:** Manual document review; no application code changes.
 
@@ -26,15 +26,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** XS
 
-### T002: Add the upstream provenance ledger
+### T002: Add the upstream provenance ledger — done
 
 **Description:** Record the four pinned upstream commits, assessed files, reuse mode, licenses, excluded features, and required attribution before adapting source.
 
 **Acceptance criteria:**
 
-- [ ] Every candidate repository has a commit, license, and copy/modify/reimplement classification.
-- [ ] Keep's bundle-only limitation is explicit.
-- [ ] The ledger defines how an implementation task records file-level provenance.
+- [x] Every candidate repository has a commit, license, and copy/modify/reimplement classification.
+- [x] Keep's bundle-only limitation is explicit.
+- [x] The ledger defines how an implementation task records file-level provenance.
 
 **Verification:** Cross-check hashes and license files against the SPEC source table.
 
@@ -44,15 +44,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** S
 
-### T003: Lock current-view characterization baselines
+### T003: Lock current-view characterization baselines — done
 
 **Description:** Extend fixtures and tests so the newly committed Calendar and Swimlane behavior and the current Gantt registration/data mapping are protected before extraction begins.
 
 **Acceptance criteria:**
 
-- [ ] Calendar tests cover blank title/all-day defaults and existing update behavior.
-- [ ] Swimlane tests cover its new ID/icon and no forced column property.
-- [ ] A minimal Gantt fixture protects mapping and lifecycle entry points without requiring native SVG rendering.
+- [x] Calendar tests cover blank title/all-day defaults and existing update behavior.
+- [x] Swimlane tests cover its new ID/icon and no forced column property.
+- [x] A minimal Gantt fixture protects mapping and lifecycle entry points without requiring native SVG rendering.
 
 **Verification:** `pnpm run test`
 
@@ -62,15 +62,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T004: Correct compatibility and product metadata
+### T004: Correct compatibility and product metadata — done
 
 **Description:** Set the actual Obsidian compatibility floor to 1.10.2 and replace stale public Kanban references with Swimlane without changing view IDs or settings.
 
 **Acceptance criteria:**
 
-- [ ] Manifest minimum version matches existing `createFileForView` usage.
-- [ ] Package/manifest descriptions and keywords name Swimlane.
-- [ ] Version and manifest tests protect the corrected metadata.
+- [x] Manifest minimum version matches existing `createFileForView` usage.
+- [x] Package/manifest descriptions and keywords name Swimlane.
+- [x] Version and manifest tests protect the corrected metadata.
 
 **Verification:** `pnpm run lint:obsidian && pnpm run test -- version-bump`
 
@@ -80,15 +80,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** S
 
-### T005: Add architecture guard tests
+### T005: Add architecture guard tests — done
 
 **Description:** Add static tests for stable IDs, forbidden React/Sass dependencies, core import direction, and direct mutation APIs in new-view directories.
 
 **Acceptance criteria:**
 
-- [ ] The guard permits explicitly listed legacy mutation modules only.
-- [ ] A fixture proves each forbidden pattern causes the guard to fail.
-- [ ] The guard runs under the normal test command.
+- [x] The guard permits explicitly listed legacy mutation modules only.
+- [x] A fixture proves each forbidden pattern causes the guard to fail.
+- [x] The guard runs under the normal test command.
 
 **Verification:** `pnpm run test -- architecture`
 
@@ -100,9 +100,9 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 ### Checkpoint A
 
-- [ ] `pnpm run check`
-- [ ] Baseline behavior and native-only gaps reviewed by the maintainer.
-- [ ] Human approval to start refactoring.
+- [x] `pnpm run check`
+- [x] Baseline behavior and native-only gaps reviewed by the maintainer (blanket approval given 2026-09-18; native acceptance itself remains deferred to Checkpoint J per T061).
+- [x] Human approval to start refactoring (blanket approval given 2026-09-18; flagged for re-confirmation only on new findings).
 
 ## Phase 1: Plugin shell and lifecycle foundation
 
