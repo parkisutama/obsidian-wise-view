@@ -1,0 +1,258 @@
+/* ==========================================================================
+   3. CALENDAR VIEW STYLES                          [ACTIVE]
+   ========================================================================== */
+
+/* FullCalendar 7 renders hashed utility classes (theme "classic"). Styling goes through the
+   theme's --fc-classic-* palette variables and the stable planner-fc-* classes added by the
+   render hooks in BasesCalendarView.ts. */
+
+.planner-bases-calendar {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 8px;
+}
+
+/* 3.1 — Container & palette
+   -------------------------------------------------------------------------- */
+.planner-bases-calendar .planner-calendar-container {
+	flex: 1;
+	min-height: 0;
+	font-family: var(--font-text);
+	/* The classic theme sets its own base size; inherit Obsidian's like FullCalendar 6 did. */
+	font-size: inherit;
+	line-height: inherit;
+
+	--fc-classic-button: var(--background-secondary);
+	--fc-classic-button-border: var(--background-modifier-border);
+	--fc-classic-button-strong: var(--background-modifier-hover);
+	--fc-classic-button-strong-border: var(--background-modifier-border-hover);
+	--fc-classic-button-outline: var(--background-modifier-border-focus);
+	--fc-classic-button-foreground: var(--text-normal);
+	--fc-classic-primary: var(--interactive-accent);
+	--fc-classic-primary-foreground: var(--text-on-accent);
+	--fc-classic-event: var(--interactive-accent);
+	--fc-classic-event-contrast: var(--text-on-accent);
+	--fc-classic-highlight: rgba(var(--interactive-accent-rgb, 124, 58, 237), 0.15);
+	--fc-classic-today: var(--background-primary-alt);
+	--fc-classic-now: var(--color-red);
+	--fc-classic-background: var(--background-primary);
+	--fc-classic-faint: var(--background-modifier-hover);
+	--fc-classic-muted: var(--background-modifier-hover);
+	--fc-classic-strong: var(--background-modifier-active-hover);
+	--fc-classic-foreground: var(--text-normal);
+	--fc-classic-faint-foreground: var(--text-faint);
+	--fc-classic-muted-foreground: var(--text-muted);
+	--fc-classic-border: var(--background-modifier-border);
+	--fc-classic-strong-border: var(--background-modifier-border-hover);
+}
+
+/* 3.2 — Toolbar
+   -------------------------------------------------------------------------- */
+.planner-bases-calendar .planner-fc-toolbar {
+	margin-bottom: 0.5em;
+	gap: 0.5em;
+	flex-wrap: wrap;
+}
+
+.planner-bases-calendar .planner-fc-toolbar-section {
+	display: flex;
+	align-items: center;
+	gap: 0.25em;
+}
+
+.planner-bases-calendar .planner-fc-title {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.4);
+	font-weight: 600;
+}
+
+.planner-bases-calendar .planner-fc-button {
+	padding: 0.2em 0.6em;
+	font-size: 0.9em;
+	font-weight: 500;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.planner-bases-calendar .planner-fc-button-yearButton,
+.planner-bases-calendar .planner-fc-button-dayGridMonth,
+.planner-bases-calendar .planner-fc-button-timeGridWeek,
+.planner-bases-calendar .planner-fc-button-timeGridThreeDay,
+.planner-bases-calendar .planner-fc-button-timeGridDay,
+.planner-bases-calendar .planner-fc-button-listWeek {
+	min-width: 1.6em;
+	padding: 0.15em 0.4em;
+	font-size: 0.72em;
+}
+
+.planner-bases-calendar .planner-fc-button.is-active,
+.planner-bases-calendar .planner-fc-button[data-planner-active] {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.planner-bases-calendar .planner-fc-button-prev,
+.planner-bases-calendar .planner-fc-button-next {
+	padding: 0.2em 0.4em;
+}
+
+.planner-bases-calendar .planner-fc-button-todayButton {
+	min-width: 2em;
+	padding: 0.2em 0.5em;
+}
+
+.planner-bases-calendar .planner-fc-button-refreshButton,
+.planner-bases-calendar .planner-fc-button-yearToggleButton {
+	padding: 0.2em 0.45em;
+	border-radius: 4px;
+}
+
+.planner-bases-calendar .planner-fc-button-refreshButton svg {
+	width: 14px;
+	height: 14px;
+}
+
+.planner-bases-calendar .planner-fc-button-todayButton svg,
+.planner-bases-calendar .planner-fc-button-yearToggleButton svg {
+	width: 16px;
+	height: 16px;
+}
+
+.planner-bases-calendar .planner-fc-button-yearToggleButton {
+	opacity: 0.8;
+	margin-right: 0.25em;
+}
+
+.planner-bases-calendar .planner-fc-button-yearToggleButton:hover:not([data-planner-disabled]) {
+	opacity: 1;
+}
+
+.planner-bases-calendar .planner-fc-button-yearToggleButton[data-planner-disabled] {
+	opacity: 0.3;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+@media (max-width: 768px) {
+	.planner-bases-calendar .planner-fc-toolbar {
+		justify-content: space-between;
+	}
+
+	.planner-bases-calendar .planner-fc-toolbar-section {
+		flex-wrap: wrap;
+		order: 1;
+	}
+
+	.planner-bases-calendar .planner-fc-toolbar-section:nth-child(2) {
+		order: 2;
+		width: 100%;
+		justify-content: center;
+	}
+
+	.planner-bases-calendar .planner-fc-title {
+		text-align: center;
+	}
+}
+
+/* 3.3 — Day headers, day cells & year views
+   -------------------------------------------------------------------------- */
+.planner-bases-calendar .planner-fc-day-header {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.1);
+}
+
+.planner-bases-calendar .planner-fc-day-header.is-today {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 999px;
+	padding: 2px 8px;
+}
+
+.planner-bases-calendar .planner-fc-day-number {
+	font-size: var(--planner-calendar-font-size, 10px);
+}
+
+.planner-bases-calendar .planner-fc-day-number.is-today {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 50%;
+	min-width: 1.8em;
+	height: 1.8em;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+}
+
+.planner-bases-calendar .planner-fc-view-dayGridYear .planner-fc-day-number.is-today {
+	border-radius: 999px;
+	min-width: 0;
+	height: auto;
+	padding: 2px 8px;
+}
+
+.planner-journal-dot {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-self: center;
+	width: 5px;
+	height: 5px;
+	min-width: 5px;
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+	opacity: 0.85;
+	pointer-events: none;
+}
+
+.planner-bases-calendar .planner-fc-month-title {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.3);
+	font-weight: 600;
+}
+
+/* FullCalendar 7 pins day cells to min-height: 0 and sizes the rows, so rows carry the height. */
+.planner-bases-calendar .planner-fc-view-dayGridYear .planner-fc-row {
+	min-height: var(--planner-year-continuous-row-height, 60px);
+}
+
+.planner-bases-calendar .planner-fc-view-multiMonthYear .planner-fc-row {
+	min-height: var(--planner-year-split-row-height, 60px);
+}
+
+.planner-bases-calendar .planner-fc-more-link,
+.planner-bases-calendar .planner-fc-slot-label {
+	font-size: var(--planner-calendar-font-size, 10px);
+}
+
+/* 3.4 — List view
+   -------------------------------------------------------------------------- */
+.planner-bases-calendar .planner-fc-list-day-text {
+	font-size: calc(var(--planner-calendar-font-size, 10px) * 1.1);
+}
+
+.planner-bases-calendar .planner-fc-list-day-text.is-today:last-child {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 999px;
+	padding: 2px 8px;
+}
+
+/* 3.5 — Events
+   -------------------------------------------------------------------------- */
+.planner-bases-calendar .planner-fc-event {
+	cursor: pointer;
+	border-radius: 4px;
+	font-size: var(--planner-calendar-font-size, 10px);
+	line-height: calc(var(--planner-calendar-font-size, 10px) * 1.4);
+}
+
+.planner-bases-calendar .planner-fc-event:hover {
+	opacity: 0.9;
+}
+
+.planner-event-completed {
+	opacity: 0.6;
+	text-decoration: line-through;
+}
+
+

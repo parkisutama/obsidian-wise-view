@@ -69,11 +69,27 @@ function scopeFrappeGanttCss(css) {
 	);
 }
 
-// Merge imported CSS (and Frappe Gantt's stylesheet, which nothing imports) into styles.css.
+// Explicit, non-path-sorted order for first-party CSS source modules (spec §7.17). Foundations
+// and shared components load before any view so a view's rules can override a shared default;
+// gantt.css also carries the first-party Frappe Gantt bar/WBS overrides that used to sit
+// separately from the rest of the Gantt rules in the pre-extraction styles.css — moving them
+// adjacent is safe because their selectors (.bar-*, .gantt-*, frappe-gantt classes) never
+// overlap with settings/modal or any other view's selectors.
+const FIRST_PARTY_CSS = [
+	"src/styles/foundations/common.css",
+	"src/styles/components/settings.css",
+	"src/styles/views/swimlane.css",
+	"src/styles/views/calendar.css",
+	"src/styles/views/gantt.css",
+].map((p) => path.resolve(p));
+
+// Merge first-party sources, imported CSS, and Frappe Gantt's stylesheet (which nothing
+// imports) into styles.css.
 const cssPlugin = createCssMergePlugin({
 	stylesPath: "./styles.css",
 	banner: buildLicenseBanner("styles.css"),
 	bannerStart: BANNER_START,
+	firstPartyCss: FIRST_PARTY_CSS,
 	extraCss: [
 		{
 			path: path.resolve("node_modules/frappe-gantt/dist/frappe-gantt.css"),

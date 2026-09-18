@@ -11,52 +11,6 @@
  */
 
 /* ==========================================================================
-   WISE VIEW — Plugin Stylesheet
-   ==========================================================================
-   TABLE OF CONTENTS
-   ==========================================================================
-   1. GLOBAL UTILITIES & SHARED COMPONENTS
-      1.1  Utility classes
-      1.2  Shared button base
-      1.3  Shared badge base
-      1.4  Shared progress bar
-      1.5  Empty state
-      1.6  Drag handle (shared)
-      1.7  Shared drag state utilities
-   2. KANBAN VIEW STYLES                            [ACTIVE — Phase 1]
-      2.1  Kanban container & board
-      2.2  Board scrollbar
-      2.3  Kanban columns
-      2.4  Column drag states
-      2.5  Kanban cards container
-      2.6  Kanban cards
-      2.7  Card border variants
-      2.8  Card touch & keyboard states
-      2.9  Virtual scroll placeholder
-      2.10 Kanban badges
-      2.11 Property rows (properties-section mode)
-      2.12 Kanban cover images
-      2.13 Kanban swimlanes
-      2.14 Swimlane labels
-      2.15 Swimlane counts & grab handles
-      2.16 Swimlane cells & placeholders
-      2.17 Kanban freeze-mode header
-      2.18 Kanban drag clones
-      2.19 Kanban extended & layout classes
-      2.20 Kanban dark theme
-      2.21 Kanban mobile responsive
-   3. CALENDAR VIEW STYLES                          [ACTIVE]
-   4. GANTT VIEW STYLES                             [ACTIVE]
-      4.14 WBS panel (Gantt WBS view)
-   5. SETTINGS & MODAL STYLES
-      6.1  Settings tabs
-      6.2  Calendar settings (name, folder, drag-drop)
-      6.3  Date color preview
-   6. VENDOR OVERRIDES — Frappe Gantt               [ACTIVE]
-   7. LEGACY / UNUSED STYLES                        [DISABLED — Phase 1]
-   ========================================================================== */
-
-/* ==========================================================================
    1. GLOBAL UTILITIES & SHARED COMPONENTS
    ========================================================================== */
 
@@ -182,6 +136,127 @@
 
 .planner-drag-over {
 	opacity: 0.7;
+}
+
+/* ==========================================================================
+   5. SETTINGS & MODAL STYLES
+   ========================================================================== */
+
+/* 5.1 — Settings tabs
+   -------------------------------------------------------------------------- */
+.planner-settings-tabs {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 16px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 8px;
+}
+
+.planner-settings-tab {
+	padding: 6px 12px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 4px;
+	font-size: var(--font-ui-small);
+	transition:
+		background-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.planner-settings-tab:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.planner-settings-tab.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.planner-settings-tab-content {
+	display: none;
+}
+
+.planner-settings-tab-content.is-active {
+	display: block;
+}
+
+/* 5.2 — Calendar settings (name, folder, drag-drop)
+   -------------------------------------------------------------------------- */
+.planner-calendar-name-input {
+	font-weight: 500;
+	min-width: 120px;
+}
+
+.planner-calendar-folder-input {
+	min-width: 150px;
+}
+
+.planner-calendar-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.planner-calendar-item {
+	cursor: grab;
+	transition:
+		background-color 0.15s ease,
+		opacity 0.15s ease;
+	border-radius: 4px;
+	padding-left: 0;
+}
+
+.planner-calendar-item .setting-item-control {
+	width: 100%;
+	gap: 8px;
+	padding-left: 0;
+}
+
+.planner-calendar-item .planner-calendar-folder-input {
+	margin-left: auto;
+}
+
+.planner-calendar-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.planner-calendar-item.planner-dragging {
+	opacity: 0.5;
+	cursor: grabbing;
+}
+
+.planner-calendar-item.planner-drag-over {
+	background-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 20%,
+		transparent
+	);
+}
+
+.planner-status-list,
+.planner-priority-list {
+	margin-bottom: 8px;
+}
+
+.planner-status-item .setting-item-control {
+	flex-wrap: nowrap;
+}
+
+/* 5.3 — Date color settings preview
+   -------------------------------------------------------------------------- */
+.planner-date-color-preview {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 1px 8px;
+	border-radius: 4px;
+	font-size: var(--font-ui-small);
+	font-variant-numeric: tabular-nums;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	vertical-align: middle;
 }
 
 /* ==========================================================================
@@ -1799,127 +1874,6 @@ body.gantt-wbs-resizing {
 .bases-gantt-wbs-view .gantt .bar-wrapper.wbs-highlighted .bar {
 	filter: brightness(1.15);
 	outline: 2px solid color-mix(in srgb, var(--interactive-accent) 60%, transparent);
-}
-
-/* ==========================================================================
-   5. SETTINGS & MODAL STYLES
-   ========================================================================== */
-
-/* 5.1 — Settings tabs
-   -------------------------------------------------------------------------- */
-.planner-settings-tabs {
-	display: flex;
-	gap: 4px;
-	margin-bottom: 16px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	padding-bottom: 8px;
-}
-
-.planner-settings-tab {
-	padding: 6px 12px;
-	border: none;
-	background: transparent;
-	color: var(--text-muted);
-	cursor: pointer;
-	border-radius: 4px;
-	font-size: var(--font-ui-small);
-	transition:
-		background-color 0.15s ease,
-		color 0.15s ease;
-}
-
-.planner-settings-tab:hover {
-	background: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
-
-.planner-settings-tab.is-active {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-
-.planner-settings-tab-content {
-	display: none;
-}
-
-.planner-settings-tab-content.is-active {
-	display: block;
-}
-
-/* 5.2 — Calendar settings (name, folder, drag-drop)
-   -------------------------------------------------------------------------- */
-.planner-calendar-name-input {
-	font-weight: 500;
-	min-width: 120px;
-}
-
-.planner-calendar-folder-input {
-	min-width: 150px;
-}
-
-.planner-calendar-list {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.planner-calendar-item {
-	cursor: grab;
-	transition:
-		background-color 0.15s ease,
-		opacity 0.15s ease;
-	border-radius: 4px;
-	padding-left: 0;
-}
-
-.planner-calendar-item .setting-item-control {
-	width: 100%;
-	gap: 8px;
-	padding-left: 0;
-}
-
-.planner-calendar-item .planner-calendar-folder-input {
-	margin-left: auto;
-}
-
-.planner-calendar-item:hover {
-	background-color: var(--background-modifier-hover);
-}
-
-.planner-calendar-item.planner-dragging {
-	opacity: 0.5;
-	cursor: grabbing;
-}
-
-.planner-calendar-item.planner-drag-over {
-	background-color: color-mix(
-		in srgb,
-		var(--interactive-accent) 20%,
-		transparent
-	);
-}
-
-.planner-status-list,
-.planner-priority-list {
-	margin-bottom: 8px;
-}
-
-.planner-status-item .setting-item-control {
-	flex-wrap: nowrap;
-}
-
-/* 5.3 — Date color settings preview
-   -------------------------------------------------------------------------- */
-.planner-date-color-preview {
-	display: inline-block;
-	margin-left: 8px;
-	padding: 1px 8px;
-	border-radius: 4px;
-	font-size: var(--font-ui-small);
-	font-variant-numeric: tabular-nums;
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	vertical-align: middle;
 }
 
 /* ==========================================================================
