@@ -10,20 +10,18 @@
  * dependency sorting so both BasesGanttView and BasesGanttWbsView stay DRY.
  */
 
-import {
-    BasesEntry,
-    BasesPropertyId,
-    DateValue,
-    NullValue,
-    Value,
-} from 'obsidian';
+import { BasesPropertyId, DateValue, NullValue, Value } from 'obsidian';
 import type { FrappeTask } from 'frappe-gantt';
+import type { EntrySnapshot } from '../core/entries/EntrySnapshot';
+import type { NormalizedValue } from '../core/entries/NormalizedValue';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** Extended task type carrying file path, optional WBS hierarchy, and color. */
 export interface GanttTask extends FrappeTask {
     filePath: string;
+    /** Plain dependency value captured in the render snapshot for legacy edits. */
+    rawDependencies?: string | string[];
     isMilestone?: boolean;
     /** Parent file path resolved from a parent wiki-link (WBS only). */
     parentPath?: string | null;
@@ -132,6 +130,46 @@ export function extractRawValue(val: Value | null | undefined): string | null {
     return val.toString();
 }
 
+/** Convert a normalized snapshot value into the text Frappe's adapter expects. */
+export function normalizedValueToText(value: NormalizedValue | undefined): string | null {
+    if (!value || value.kind === 'missing') return null;
+    switch (value.kind) {
+        case 'text':
+        case 'date':
+            return value.value;
+        case 'number':
+        case 'boolean':
+            return String(value.value);
+        case 'link':
+            return value.target;
+        case 'file':
+            return value.path;
+        case 'list': {
+            const items = value.items
+                .map(item => normalizedValueToText(item))
+                .filter((item): item is string => item != null);
+            return items.join(', ');
+        }
+        case 'unsupported':
+            return value.raw == null ? null : String(value.raw);
+    }
+}
+
+function normalizedDependencyValue(value: NormalizedValue | undefined): string | string[] | undefined {
+    if (!value || value.kind === 'missing') return undefined;
+    if (value.kind === 'list') {
+        return value.items
+            .map(item => item.kind === 'link' && !item.external
+                ? `[[${item.target}${item.display ? `|${item.display}` : ''}]]`
+                : normalizedValueToText(item))
+            .filter((item): item is string => item != null);
+    }
+    if (value.kind === 'link' && !value.external) {
+        return `[[${value.target}${value.display ? `|${value.display}` : ''}]]`;
+    }
+    return normalizedValueToText(value) ?? undefined;
+}
+
 // ── Task ID ───────────────────────────────────────────────────────────────────
 
 /**
@@ -184,7 +222,7 @@ export function createGroupHeaderTask(
 export type ColorResolver = (fieldId: string, value: string) => string | null;
 
 /**
- * Map an array of BasesEntry objects to GanttTask objects for Frappe Gantt.
+ * Map immutable entry snapshots to GanttTask objects for Frappe Gantt.
  *
  * @param entries       The entries from Bases data
  * @param config        Property mappings and display config
@@ -192,7 +230,7 @@ export type ColorResolver = (fieldId: string, value: string) => string | null;
  * @param colorResolver Optional callback to resolve bar color from field/value
  */
 export function mapEntriesToTasks(
-    entries: BasesEntry[],
+    entries: readonly EntrySnapshot[],
     config: TaskMapperConfig,
     taskIdPrefix = 'task',
     colorResolver?: ColorResolver,
@@ -203,19 +241,19 @@ export function mapEntriesToTasks(
     const nameToId = new Map<string, string>();
     const nameToPath = new Map<string, string>();
     for (const entry of entries) {
-        const id = makeTaskId(entry.file.path, taskIdPrefix);
-        nameToId.set(entry.file.basename, id);
-        nameToPath.set(entry.file.basename, entry.file.path);
-        const pathNoExt = entry.file.path.replace(/\.[^.]+$/, '');
+        const id = makeTaskId(entry.path, taskIdPrefix);
+        nameToId.set(entry.basename, id);
+        nameToPath.set(entry.basename, entry.path);
+        const pathNoExt = entry.path.replace(/\.[^.]+$/, '');
         nameToId.set(pathNoExt, id);
-        nameToPath.set(pathNoExt, entry.file.path);
+        nameToPath.set(pathNoExt, entry.path);
     }
 
     // Collect unique values for CSS class color fallback
     const colorValues = new Map<string, number>();
     if (config.colorByProperty) {
         for (const entry of entries) {
-            const raw = extractRawValue(entry.getValue(config.colorByProperty));
+            const raw = normalizedValueToText(entry.values.get(config.colorByProperty));
             if (raw != null && !colorValues.has(raw)) {
                 colorValues.set(raw, colorValues.size % COLOR_CLASS_COUNT);
             }
@@ -225,13 +263,13 @@ export function mapEntriesToTasks(
     const tasks: GanttTask[] = [];
 
     for (const entry of entries) {
-        const rawStart = extractRawValue(entry.getValue(config.startProperty));
+        const rawStart = normalizedValueToText(entry.values.get(config.startProperty));
         const startDate = parseObsidianDate(rawStart);
         if (!startDate) continue;
 
         let endDate: Date | null = null;
         if (config.endProperty) {
-            endDate = parseObsidianDate(extractRawValue(entry.getValue(config.endProperty)));
+            endDate = parseObsidianDate(normalizedValueToText(entry.values.get(config.endProperty)));
         }
         if (!endDate) {
             endDate = new Date(startDate);
@@ -243,9 +281,9 @@ export function mapEntriesToTasks(
         }
 
         // Label
-        let name = entry.file.basename;
+        let name = entry.basename;
         if (config.labelProperty) {
-            const raw = extractRawValue(entry.getValue(config.labelProperty));
+            const raw = normalizedValueToText(entry.values.get(config.labelProperty));
             if (raw?.trim()) name = raw;
         }
 
@@ -253,7 +291,7 @@ export function mapEntriesToTasks(
         let actualProgressValue = 0;
         let progress = 0;
         if (config.showProgress && config.progressProperty) {
-            const raw = extractRawValue(entry.getValue(config.progressProperty));
+            const raw = normalizedValueToText(entry.values.get(config.progressProperty));
             if (raw != null) {
                 const num = parseFloat(raw);
                 if (!isNaN(num)) actualProgressValue = Math.max(0, num);
@@ -264,7 +302,7 @@ export function mapEntriesToTasks(
         let expectedProgress: number | undefined;
         let expectedProgressValue: number | undefined;
         if (config.showProgress && config.expectedProgressProperty) {
-            const rawExp = extractRawValue(entry.getValue(config.expectedProgressProperty));
+            const rawExp = normalizedValueToText(entry.values.get(config.expectedProgressProperty));
             if (rawExp != null) {
                 const num = parseFloat(rawExp);
                 if (!isNaN(num)) expectedProgressValue = Math.max(0, num);
@@ -282,8 +320,11 @@ export function mapEntriesToTasks(
 
         // Dependencies (wiki-links or plain names)
         let dependencies = '';
+        let rawDependencies: string | string[] | undefined;
         if (config.dependenciesProperty) {
-            const raw = extractRawValue(entry.getValue(config.dependenciesProperty));
+            const normalized = entry.values.get(config.dependenciesProperty);
+            rawDependencies = normalizedDependencyValue(normalized);
+            const raw = normalizedValueToText(normalized);
             if (raw != null) {
                 const wikiLinkRe = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
                 const depIds: string[] = [];
@@ -306,7 +347,7 @@ export function mapEntriesToTasks(
         let custom_class = '';
         let resolvedColor: string | null = null;
         if (config.colorByProperty) {
-            const raw = extractRawValue(entry.getValue(config.colorByProperty));
+            const raw = normalizedValueToText(entry.values.get(config.colorByProperty));
             if (raw != null) {
                 // Try the color resolver (Pretty Properties / valueStyles / hash)
                 if (colorResolver) {
@@ -332,7 +373,7 @@ export function mapEntriesToTasks(
         // Parent path for WBS hierarchy
         let parentPath: string | null = null;
         if (config.parentProperty) {
-            const raw = extractRawValue(entry.getValue(config.parentProperty));
+            const raw = normalizedValueToText(entry.values.get(config.parentProperty));
             if (raw) {
                 const wikiMatch = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/.exec(raw);
                 const parentName = wikiMatch ? wikiMatch[1]!.trim() : raw.trim();
@@ -341,14 +382,15 @@ export function mapEntriesToTasks(
         }
 
         tasks.push({
-            id: makeTaskId(entry.file.path, taskIdPrefix),
+            id: makeTaskId(entry.path, taskIdPrefix),
             name,
             start: formatDateForGantt(startDate),
             end: formatDateForGantt(endDate),
             progress,
             dependencies,
             custom_class,
-            filePath: entry.file.path,
+            filePath: entry.path,
+            rawDependencies,
             isMilestone,
             parentPath,
             resolvedColor,

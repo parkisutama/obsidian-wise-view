@@ -10,7 +10,7 @@ import {
 	sortByDependencies,
 	type TaskMapperConfig,
 } from "../src/utils/ganttUtils";
-import { createGanttHarness, makeGanttEntry, type GanttHarness } from "./fixtures/gantt";
+import { createGanttHarness, makeGanttSnapshot, type GanttHarness } from "./fixtures/gantt";
 
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -38,26 +38,26 @@ const baseConfig: TaskMapperConfig = {
 describe("Gantt task mapping", () => {
 	it("maps entries with valid start dates to tasks", () => {
 		const entries = [
-			makeGanttEntry({ path: "Tasks/A.md", start: "2026-01-01", end: "2026-01-03" }),
-			makeGanttEntry({ path: "Tasks/B.md", start: "not-a-date" }),
+			makeGanttSnapshot({ path: "Tasks/A.md", start: "2026-01-01", end: "2026-01-03" }),
+			makeGanttSnapshot({ path: "Tasks/B.md", start: "not-a-date" }),
 		];
-		const tasks = mapEntriesToTasks(entries as never, baseConfig);
+		const tasks = mapEntriesToTasks(entries, baseConfig);
 		expect(tasks).toHaveLength(1);
 		expect(tasks[0]).toMatchObject({ filePath: "Tasks/A.md", name: "A", start: "2026-01-01", end: "2026-01-03" });
 	});
 
 	it("defaults a missing end date to one day after start", () => {
-		const entries = [makeGanttEntry({ path: "Tasks/A.md", start: "2026-01-01" })];
-		const tasks = mapEntriesToTasks(entries as never, baseConfig);
+		const entries = [makeGanttSnapshot({ path: "Tasks/A.md", start: "2026-01-01" })];
+		const tasks = mapEntriesToTasks(entries, baseConfig);
 		expect(tasks[0]).toMatchObject({ start: "2026-01-01", end: "2026-01-02" });
 	});
 
 	it("resolves wiki-link dependencies to task ids", () => {
 		const entries = [
-			makeGanttEntry({ path: "Tasks/A.md", start: "2026-01-01" }),
-			makeGanttEntry({ path: "Tasks/B.md", start: "2026-01-02", depends_on: "[[A]]" }),
+			makeGanttSnapshot({ path: "Tasks/A.md", start: "2026-01-01" }),
+			makeGanttSnapshot({ path: "Tasks/B.md", start: "2026-01-02", depends_on: "[[A]]" }),
 		];
-		const tasks = mapEntriesToTasks(entries as never, baseConfig);
+		const tasks = mapEntriesToTasks(entries, baseConfig);
 		const taskA = tasks.find((t) => t.filePath === "Tasks/A.md");
 		const taskB = tasks.find((t) => t.filePath === "Tasks/B.md");
 		expect(taskB?.dependencies).toBe(taskA?.id);
@@ -65,19 +65,19 @@ describe("Gantt task mapping", () => {
 
 	it("sorts tasks so dependencies come before dependents", () => {
 		const entries = [
-			makeGanttEntry({ path: "Tasks/B.md", start: "2026-01-02", depends_on: "[[A]]" }),
-			makeGanttEntry({ path: "Tasks/A.md", start: "2026-01-01" }),
+			makeGanttSnapshot({ path: "Tasks/B.md", start: "2026-01-02", depends_on: "[[A]]" }),
+			makeGanttSnapshot({ path: "Tasks/A.md", start: "2026-01-01" }),
 		];
-		const tasks = sortByDependencies(mapEntriesToTasks(entries as never, baseConfig));
+		const tasks = sortByDependencies(mapEntriesToTasks(entries, baseConfig));
 		expect(tasks.map((t) => t.filePath)).toEqual(["Tasks/A.md", "Tasks/B.md"]);
 	});
 
 	it("creates a group header task spanning its group's date range", () => {
 		const entries = [
-			makeGanttEntry({ path: "Tasks/A.md", start: "2026-01-01", end: "2026-01-02" }),
-			makeGanttEntry({ path: "Tasks/B.md", start: "2026-01-05", end: "2026-01-06" }),
+			makeGanttSnapshot({ path: "Tasks/A.md", start: "2026-01-01", end: "2026-01-02" }),
+			makeGanttSnapshot({ path: "Tasks/B.md", start: "2026-01-05", end: "2026-01-06" }),
 		];
-		const tasks = mapEntriesToTasks(entries as never, baseConfig);
+		const tasks = mapEntriesToTasks(entries, baseConfig);
 		const header = createGroupHeaderTask("Group 1", 0, tasks);
 		expect(header).toMatchObject({ name: "Group 1", start: "2026-01-01", end: "2026-01-06" });
 	});
@@ -123,5 +123,13 @@ describe("Gantt view: no global browser API overwritten (T010)", () => {
 		const source = readFileSync(path.join(repoRoot, "src", "views", "BasesGanttView.ts"), "utf8");
 		expect(/document\.addEventListener\s*=/.test(source)).toBe(false);
 		expect(/window\.addEventListener\s*=/.test(source)).toBe(false);
+	});
+
+	it("routes writes through the legacy mutation gateway", () => {
+		const source = readFileSync(path.join(repoRoot, "src", "views", "BasesGanttView.ts"), "utf8");
+		expect(source).not.toContain(".processFrontMatter(");
+		expect(source).not.toContain(".trashFile(");
+		expect(source).toContain("this.mutations.updateRange(");
+		expect(source).toContain("this.mutations.setProperty(");
 	});
 });

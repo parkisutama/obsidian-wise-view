@@ -3,7 +3,8 @@
 
 // Import the test double directly so this file type-checks against it; at runtime "obsidian"
 // resolves to the same module through the vitest alias.
-import { TFile } from "./obsidian";
+import { DateValue, NumberValue, StringValue, TFile } from "./obsidian";
+import { createEntrySnapshot } from "../../src/platform/bases/entrySnapshotAdapter";
 import { BasesGanttView } from "../../src/views/BasesGanttView";
 import { DEFAULT_SETTINGS } from "../../src/types/settings";
 import type PlannerPlugin from "../../src/main";
@@ -16,10 +17,34 @@ export interface GanttNoteFixture {
 
 /** A minimal `BasesEntry`-like object for exercising `mapEntriesToTasks` directly. */
 export function makeGanttEntry(note: GanttNoteFixture) {
-	return {
-		file: new TFile(note.path),
-		getValue: (id: string) => note[id.replace(/^(note|file|formula)\./, "")] ?? null,
+	const file = new TFile(note.path) as TFile & {
+		extension: string;
+		parent: { path: string } | null;
+		stat: { ctime: number; mtime: number };
 	};
+	file.extension = "md";
+	file.parent = { path: note.path.includes("/") ? note.path.slice(0, note.path.lastIndexOf("/")) : "" };
+	file.stat = { ctime: 1, mtime: 2 };
+	return {
+		file,
+		getValue: (id: string) => {
+			const key = id.replace(/^(note|file|formula)\./, "");
+			const value = note[key];
+			if (value == null) return null;
+			if (/start|end|date|due/i.test(key)) return new DateValue(value);
+			if (/progress|percent/i.test(key)) return new NumberValue(Number(value));
+			return new StringValue(value);
+		},
+	};
+}
+
+export function makeGanttSnapshot(note: GanttNoteFixture) {
+	return createEntrySnapshot(makeGanttEntry(note) as never, [
+		"note.start",
+		"note.end",
+		"note.depends_on",
+		"note.progress",
+	]);
 }
 
 export interface GanttHarnessOptions {
@@ -51,7 +76,10 @@ export function createGanttHarness(options: GanttHarnessOptions = {}): GanttHarn
 	const entries = notes.map((note) => makeGanttEntry(note));
 
 	const app = {
-		vault: { getFileByPath: (path: string) => new TFile(path) },
+		vault: {
+			getFileByPath: (path: string) => new TFile(path),
+			getAbstractFileByPath: (path: string) => new TFile(path),
+		},
 		workspace: {
 			openLinkText: async (path: string) => {
 				opened.push(path);

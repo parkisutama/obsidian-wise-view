@@ -449,15 +449,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T024: Migrate Calendar to shared data and interaction services
+### T024: Migrate Calendar to shared data and interaction services — done
 
 **Description:** Replace Calendar-local property, color, navigation, hover, render-staleness, and direct mutation plumbing with the shared services while preserving behavior.
 
 **Acceptance criteria:**
 
-- [ ] Calendar engine models contain path metadata rather than stored `BasesEntry`.
-- [ ] Date writes/create/delete flow through declared legacy capabilities.
-- [ ] Existing and new characterization tests pass.
+- [x] Calendar engine models contain path metadata rather than stored `BasesEntry`.
+- [x] Date writes/create/delete flow through declared legacy capabilities.
+- [x] Existing and new characterization tests pass.
 
 **Verification:** `pnpm run test -- calendar-view && pnpm run typecheck`
 
@@ -467,15 +467,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T025: Migrate Gantt to shared data and interaction services
+### T025: Migrate Gantt to shared data and interaction services — done
 
 **Description:** Replace Gantt-local property/color/navigation/hover/render/mutation plumbing with the shared services while retaining Frappe-specific mapping.
 
 **Acceptance criteria:**
 
-- [ ] Gantt tasks use path identity and normalized dates/progress/dependencies.
-- [ ] Date/progress/dependency writes use legacy capabilities only.
-- [ ] Frappe adapter remains isolated from pure temporal/data modules.
+- [x] Gantt tasks use path identity and normalized dates/progress/dependencies.
+- [x] Date/progress/dependency writes use legacy capabilities only.
+- [x] Frappe adapter remains isolated from pure temporal/data modules.
 
 **Verification:** `pnpm run test -- gantt-view && pnpm run typecheck`
 

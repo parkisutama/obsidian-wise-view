@@ -53,11 +53,20 @@ import {
     createGroupHeaderTask,
     applyResolvedColors,
     applyExpectedProgress,
+    normalizedValueToText,
     type ColorResolver,
 } from '../utils/ganttUtils';
 import { NoteTemplateService } from '../services/NoteTemplateService';
 import type { NoteTemplateDefaults } from '../types/settings';
 import { ViewRuntime } from '../platform/dom/ViewRuntime';
+import { resolveColor as resolveSharedColor } from '../platform/colors/ColorResolver';
+import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAdapter';
+import { triggerHoverPreview as dispatchHoverPreview, openPath } from '../platform/navigation/NavigationService';
+import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
+import {
+    createEntrySnapshot,
+    createEntrySnapshotGroup,
+} from '../platform/bases/entrySnapshotAdapter';
 
 // ── View ID ─────────────────────────────────────────────────────────────────
 
@@ -198,12 +207,14 @@ export class BasesGanttView extends BasesView {
     private resizeCleanup: (() => void) | null = null;
     private wbsSidebarActive = false;
     private readonly runtime: ViewRuntime;
+    private readonly mutations: LegacyMutationGateway;
 
     constructor(controller: QueryController, containerEl: HTMLElement, plugin: PlannerPlugin) {
         super(controller);
         this.plugin = plugin;
         this.containerEl = containerEl;
         this.runtime = new ViewRuntime(containerEl);
+        this.mutations = new LegacyMutationGateway(this.app);
         // chartEl will be set in buildLayout; initialise to avoid TS strict errors
         this.chartEl = null!;
     }
@@ -346,21 +357,23 @@ export class BasesGanttView extends BasesView {
 
     // ── Color resolver ────────────────────────────────────────────────────────
 
-    /** Build a ColorResolver from the current plugin settings. */
+    /**
+     * Build a ColorResolver from the shared color service (spec §7.8). Gantt has no
+     * "explicit color property" tier and, when neither Pretty Properties nor valueStyles
+     * resolve, relies on its own CSS class rotation (`gantt-color-N`) rather than the shared
+     * service's hash-color fallback — so a 'fallback' result is treated as "no resolver hit"
+     * here, same as the previous Gantt-local implementation.
+     */
     private buildColorResolver(): ColorResolver | undefined {
         const settings = this.plugin.settings;
         return (fieldId: string, value: string): string | null => {
-            // 1. Pretty Properties plugin API
             const propName = fieldId.split('.').pop() || fieldId;
-            const ppColor = getPrettyPropertiesColor(propName, value, this.runtime.doc);
-            if (ppColor) return ppColor;
-
-            // 2. User-configured valueStyles (keyed by fieldId then value)
-            const color = settings.valueStyles[fieldId]?.[value]?.color;
-            if (color) return color;
-
-            // 3. No resolver hit — let CSS class fallback handle it
-            return null;
+            const resolved = resolveSharedColor({
+                categoryValue: value,
+                resolvePrettyPropertiesColor: (v) => resolvePrettyPropertiesColor(this.runtime.win, this.runtime.doc, propName, v),
+                valueStyleColor: settings.valueStyles[fieldId]?.[value]?.color ?? null,
+            });
+            return resolved.source === 'fallback' ? null : resolved.background;
         };
     }
 
@@ -376,6 +389,16 @@ export class BasesGanttView extends BasesView {
         }
 
         const config = this.getTaskMapperConfig();
+        const propertyIds = [
+            config.startProperty,
+            config.endProperty,
+            config.labelProperty,
+            config.dependenciesProperty,
+            config.colorByProperty,
+            config.progressProperty,
+            config.expectedProgressProperty,
+            config.parentProperty,
+        ].filter((id): id is BasesPropertyId => id != null);
         const newSnapshot = JSON.stringify(config) + '|' + this.getDisplayConfigSnapshot();
         const colorResolver = this.buildColorResolver();
 
@@ -387,15 +410,19 @@ export class BasesGanttView extends BasesView {
             rawTasks = [];
             for (let i = 0; i < groups.length; i++) {
                 const group = groups[i]!;
-                const groupTasks = mapEntriesToTasks(group.entries, config, 'task', colorResolver);
+                const snapshotGroup = createEntrySnapshotGroup(group, propertyIds);
+                const groupTasks = mapEntriesToTasks(snapshotGroup.entries, config, 'task', colorResolver);
                 if (groupTasks.length === 0) continue;
-                const label = group.hasKey() ? String(group.key) : 'Ungrouped';
+                const label = group.hasKey()
+                    ? normalizedValueToText(snapshotGroup.key) ?? 'Ungrouped'
+                    : 'Ungrouped';
                 const header = createGroupHeaderTask(label, i, groupTasks);
                 if (header) rawTasks.push(header);
                 rawTasks.push(...groupTasks);
             }
         } else {
-            rawTasks = mapEntriesToTasks(this.data.data, config, 'task', colorResolver);
+            const snapshots = this.data.data.map(entry => createEntrySnapshot(entry, propertyIds));
+            rawTasks = mapEntriesToTasks(snapshots, config, 'task', colorResolver);
         }
 
         // Sort: WBS hierarchy order if sidebar + parentProp configured, else dependency topo sort
@@ -638,7 +665,7 @@ export class BasesGanttView extends BasesView {
                 if (task.id.startsWith(GROUP_HEADER_PREFIX)) return;
                 const ganttTask = this.findTask(task.id);
                 if (ganttTask) {
-                    void this.app.workspace.openLinkText(ganttTask.filePath, '', false);
+                    openPath(this.app, ganttTask.filePath);
                 }
             },
 
@@ -654,19 +681,17 @@ export class BasesGanttView extends BasesView {
                 if (ganttTask.isParent) return;
 
                 const mapperConfig = this.getTaskMapperConfig();
-                const updates: Record<string, string> = {};
-
                 if (mapperConfig.startProperty && !mapperConfig.startProperty.startsWith('formula.')) {
-                    const propName = this.extractPropertyName(mapperConfig.startProperty);
-                    updates[propName] = formatDateForFrontmatter(start);
-                }
-                if (mapperConfig.endProperty && !mapperConfig.endProperty.startsWith('formula.')) {
-                    const propName = this.extractPropertyName(mapperConfig.endProperty);
-                    updates[propName] = formatDateForFrontmatter(end);
-                }
-
-                if (Object.keys(updates).length > 0) {
-                    void this.writeFrontmatter(ganttTask.filePath, updates);
+                    const endProperty = mapperConfig.endProperty?.startsWith('formula.')
+                        ? null
+                        : mapperConfig.endProperty;
+                    void this.mutations.updateRange(
+                        ganttTask.filePath,
+                        mapperConfig.startProperty,
+                        formatDateForFrontmatter(start),
+                        endProperty,
+                        endProperty ? formatDateForFrontmatter(end) : null,
+                    );
                 }
                 if (persistDependencyDateChanges) {
                     void this.persistMovedDependencyDates(task.id);
@@ -686,10 +711,11 @@ export class BasesGanttView extends BasesView {
 
                 const mapperConfig = this.getTaskMapperConfig();
                 if (mapperConfig.progressProperty && !mapperConfig.progressProperty.startsWith('formula.')) {
-                    const propName = this.extractPropertyName(mapperConfig.progressProperty);
-                    void this.writeFrontmatter(ganttTask.filePath, {
-                        [propName]: Math.round(ganttTask.actualProgressValue ?? 0),
-                    });
+                    void this.mutations.setProperty(
+                        ganttTask.filePath,
+                        mapperConfig.progressProperty,
+                        Math.round(ganttTask.actualProgressValue ?? 0),
+                    );
                 }
             },
         };
@@ -968,7 +994,7 @@ export class BasesGanttView extends BasesView {
         setIcon(openButton, 'file-text');
         openButton.addEventListener('click', () => {
             this.closeTaskPopup();
-            void this.app.workspace.openLinkText(task.filePath, '', false);
+            openPath(this.app, task.filePath);
         });
 
         const closeButton = actions.createEl('button', {
@@ -1085,11 +1111,6 @@ export class BasesGanttView extends BasesView {
             return;
         }
 
-        const startPropName = this.extractPropertyName(mapperConfig.startProperty);
-        const endPropName = mapperConfig.endProperty
-            ? this.extractPropertyName(mapperConfig.endProperty)
-            : null;
-
         for (const frappeTask of this.gantt.tasks) {
             if (frappeTask.id === directTaskId || frappeTask.id.startsWith(GROUP_HEADER_PREFIX)) continue;
             const ganttTask = this.findTask(frappeTask.id);
@@ -1102,11 +1123,7 @@ export class BasesGanttView extends BasesView {
 
             ganttTask.start = after.start;
             ganttTask.end = after.end;
-            const updates: Record<string, string> = {
-                [startPropName]: after.start,
-            };
-            if (endPropName) updates[endPropName] = after.end;
-            await this.writeFrontmatter(ganttTask.filePath, updates);
+            await this.mutations.updateRange(ganttTask.filePath, mapperConfig.startProperty, after.start, mapperConfig.endProperty, after.end);
         }
     }
 
@@ -1124,13 +1141,13 @@ export class BasesGanttView extends BasesView {
     }
 
     private triggerHoverPreview(event: MouseEvent, filePath: string, targetEl: HTMLElement): void {
-        this.app.workspace.trigger('hover-link', {
+        dispatchHoverPreview({
+            app: this.app,
             event,
-            source: BASES_GANTT_VIEW_ID,
-            hoverParent: this.getHoverParent(),
+            hoverParent: this.plugin,
+            sourceId: BASES_GANTT_VIEW_ID,
             targetEl,
-            linktext: filePath,
-            sourcePath: '/',
+            filePath,
         });
     }
 
@@ -1139,7 +1156,7 @@ export class BasesGanttView extends BasesView {
         const syntheticEvent = new MouseEvent(event.type, {
             bubbles: true,
             cancelable: true,
-            view: window,
+            view: this.runtime.win,
             detail: event.detail,
             screenX: event.screenX,
             screenY: event.screenY,
@@ -1166,12 +1183,6 @@ export class BasesGanttView extends BasesView {
         this.hoverPreviewAnchorEl.style.left = `${event.clientX - containerRect.left}px`;
         this.hoverPreviewAnchorEl.style.top = `${event.clientY - containerRect.top}px`;
         return this.hoverPreviewAnchorEl;
-    }
-
-    private getHoverParent(): { hoverPopover: unknown } {
-        const leaf = this.app.workspace.getLeaf(false);
-        if ('hoverPopover' in leaf) return leaf as unknown as { hoverPopover: unknown };
-        return { hoverPopover: null };
     }
 
     // ── Right-click context menus ─────────────────────────────────────────────
@@ -1252,20 +1263,6 @@ export class BasesGanttView extends BasesView {
     private extractPropertyName(propertyId: BasesPropertyId): string {
         const dotIndex = propertyId.indexOf('.');
         return dotIndex >= 0 ? propertyId.slice(dotIndex + 1) : propertyId;
-    }
-
-    private async writeFrontmatter(
-        filePath: string,
-        updates: Record<string, string | number>,
-    ): Promise<void> {
-        const file = this.app.vault.getFileByPath(filePath);
-        if (!file) return;
-
-        await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
-            for (const [key, value] of Object.entries(updates)) {
-                frontmatter[key] = value;
-            }
-        });
     }
 
     // ── Unified task context menu ──────────────────────────────────────────
@@ -1410,20 +1407,15 @@ export class BasesGanttView extends BasesView {
             return false;
         }
 
-        const file = this.app.vault.getFileByPath(task.filePath);
-        if (!file) return false;
-
-        const propName = this.extractPropertyName(dependencyProperty);
-        let changed = false;
-        await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
-            const current = frontmatter[propName];
-            const next = update(current);
-            if (JSON.stringify(current ?? '') === JSON.stringify(next ?? '')) return;
-            frontmatter[propName] = next;
-            changed = true;
-        });
-
-        return changed;
+        const current = task.rawDependencies;
+        const next = update(current);
+        if (JSON.stringify(current ?? '') === JSON.stringify(next ?? '')) return false;
+        const result = await this.mutations.setProperty(task.filePath, dependencyProperty, next);
+        if (!result.ok) return false;
+        task.rawDependencies = typeof next === 'string' || Array.isArray(next)
+            ? next as string | string[]
+            : undefined;
+        return true;
     }
 
     private refreshGanttData(): void {
@@ -1507,55 +1499,6 @@ export class BasesGanttView extends BasesView {
             });
         }
     }
-}
-
-// ── Pretty Properties helper (module-level) ──────────────────────────────────
-
-/**
- * Try to get a solid hex/rgb color from the Pretty Properties plugin API.
- * Returns null if the plugin is not installed or no color is configured.
- */
-function getPrettyPropertiesColor(propName: string, value: string, doc: Document = document): string | null {
-    interface PPColorSetting { h: number; s: number; l: number }
-    interface PrettyPropertiesApi {
-        getPropertyBackgroundColorSetting(
-            propName: string, propValue: string
-        ): string | PPColorSetting | undefined;
-    }
-    interface WindowWithPP extends Window { PrettyPropertiesApi?: PrettyPropertiesApi }
-
-    const ppApi = (window as WindowWithPP).PrettyPropertiesApi;
-    if (!ppApi) return null;
-
-    try {
-        const colorSetting = ppApi.getPropertyBackgroundColorSetting(propName, value);
-        if (!colorSetting || colorSetting === 'default' || colorSetting === 'none') return null;
-
-        const namedColors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink'];
-
-        if (typeof colorSetting === 'string' && namedColors.includes(colorSetting)) {
-            // Resolve Obsidian theme CSS variable to solid rgb, from this view's own owning
-            // document so a popout window resolves its own theme state.
-            const rgbStr = getComputedStyle(doc.body)
-                .getPropertyValue(`--color-${colorSetting}-rgb`)
-                .trim();
-            if (rgbStr) {
-                const parts = rgbStr.split(/[\s,]+/).map((n: string) => parseInt(n.trim(), 10));
-                if (parts.length >= 3 && parts.every((n: number) => !isNaN(n))) {
-                    const [r, g, b] = parts;
-                    return `rgb(${r}, ${g}, ${b})`;
-                }
-            }
-            return null;
-        }
-
-        if (typeof colorSetting === 'object' && colorSetting.h !== undefined) {
-            return `hsl(${colorSetting.h}, ${colorSetting.s}%, ${colorSetting.l}%)`;
-        }
-    } catch {
-        // Pretty Properties API not available
-    }
-    return null;
 }
 
 // ── View registration ────────────────────────────────────────────────────────
