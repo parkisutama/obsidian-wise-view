@@ -96,6 +96,19 @@ export class Notice {
 	}
 }
 
+/** Mirrors the real Keymap.isModEvent convention documented in obsidian.d.ts. */
+export class Keymap {
+	static isModEvent(evt?: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; shiftKey?: boolean; button?: number } | null): "tab" | "split" | "window" | boolean {
+		if (!evt) return false;
+		if ("button" in evt && evt.button === 1) return "tab";
+		const mod = Boolean(evt.ctrlKey || evt.metaKey);
+		if (!mod) return false;
+		if (evt.altKey && evt.shiftKey) return "window";
+		if (evt.altKey) return "split";
+		return "tab";
+	}
+}
+
 export class Menu {
 	addItem(callback: (item: unknown) => void): this {
 		const item = {
