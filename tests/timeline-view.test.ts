@@ -42,14 +42,41 @@ describe('Timeline renderer', () => {
 		expect(host.querySelector('.wise-view-timeline__tick')).not.toBeNull();
 		expect(host.querySelector('.wise-view-timeline__row')).not.toBeNull();
 		expect(host.querySelector('.wise-view-timeline__today')).not.toBeNull();
-		expect(host.querySelector('button[data-path="A.md"]')).not.toBeNull();
+		expect(host.querySelector('button[data-note-path="A.md"]')).not.toBeNull();
+	});
+
+	it('uses the same virtual row identity and order for sidebar and timeline', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		const model = buildTimelineModel([
+			timelineSnapshot('A.md', { 'note.start': date('2026-01-01') }),
+			timelineSnapshot('Missing.md', {}),
+		], options, today);
+		const renderer = new TimelineRenderer(host);
+		const sidebar = host.querySelector<HTMLElement>('.wise-view-timeline__sidebar')!;
+		const timeline = host.querySelector<HTMLElement>('.wise-view-timeline__scroller')!;
+		Object.defineProperty(sidebar, 'clientHeight', { configurable: true, value: 200 });
+		Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 200 });
+		renderer.render(model, today, 'month');
+		const paths = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>('.wise-view-virtual-linear-content > [data-path]')]
+			.map(element => element.dataset.path);
+		expect(paths(sidebar)).toEqual(paths(timeline));
+		expect(paths(sidebar)).toEqual([
+			'wise-view-timeline-group:Ungrouped', 'A.md', 'wise-view-timeline-group:Unscheduled', 'Missing.md',
+		]);
+		sidebar.scrollTop = 36;
+		timeline.scrollTop = 36;
+		renderer.setNarrow(true);
+		expect(host.classList.contains('wise-view-timeline--narrow')).toBe(true);
+		expect([sidebar.scrollTop, timeline.scrollTop]).toEqual([36, 36]);
+		renderer.dispose();
 	});
 });
 
 describe('Timeline view interactions', () => {
 	it('routes click, keyboard activation, hover, and context menu through shared behavior', () => {
 		harness = createTimelineHarness();
-		const bar = harness.host.querySelector<HTMLElement>('[data-path="Notes/Alpha.md"]')!;
+		const bar = harness.host.querySelector<HTMLElement>('[data-note-path="Notes/Alpha.md"]')!;
 		bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		bar.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 		bar.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
@@ -62,16 +89,39 @@ describe('Timeline view interactions', () => {
 
 	it('has no pointer gesture that writes dates or properties', () => {
 		harness = createTimelineHarness();
-		const bar = harness.host.querySelector<HTMLElement>('[data-path="Notes/Alpha.md"]')!;
+		const bar = harness.host.querySelector<HTMLElement>('[data-note-path="Notes/Alpha.md"]')!;
 		bar.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
 		bar.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
 		bar.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
 		expect(harness.frontmatterWrites).toBe(0);
 	});
 
+	it('preserves collapse, zoom, and synchronized scroll across data rerenders and narrow mode', () => {
+		harness = createTimelineHarness();
+		const sidebar = harness.host.querySelector<HTMLElement>('.wise-view-timeline__sidebar')!;
+		const timeline = harness.host.querySelector<HTMLElement>('.wise-view-timeline__scroller')!;
+		Object.defineProperty(sidebar, 'clientHeight', { configurable: true, value: 200 });
+		Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 200 });
+		harness.view.onDataUpdated();
+
+		harness.host.querySelector<HTMLElement>('[data-action="toggle-group"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		harness.host.querySelector<HTMLElement>('[data-action="zoom"][data-zoom="day"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		sidebar.scrollTop = 18;
+		sidebar.dispatchEvent(new Event('scroll'));
+		expect(timeline.scrollTop).toBe(18);
+
+		harness.view.onDataUpdated();
+		expect(harness.host.querySelector('[data-action="toggle-group"]')?.getAttribute('aria-expanded')).toBe('false');
+		expect(harness.host.querySelector('[data-action="zoom"][data-zoom="day"]')?.getAttribute('aria-pressed')).toBe('true');
+		expect(sidebar.scrollTop).toBe(18);
+		expect(timeline.scrollTop).toBe(18);
+	});
+
 	it('removes delegated listeners and DOM on unload', () => {
 		harness = createTimelineHarness();
-		const bar = harness.host.querySelector<HTMLElement>('[data-path="Notes/Alpha.md"]')!;
+		const bar = harness.host.querySelector<HTMLElement>('[data-note-path="Notes/Alpha.md"]')!;
 		harness.view.onunload();
 		bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		expect(harness.opened).toEqual([]);

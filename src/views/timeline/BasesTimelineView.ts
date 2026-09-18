@@ -28,16 +28,26 @@ export class BasesTimelineView extends BasesView {
 	constructor(controller: QueryController, private readonly containerEl: HTMLElement, private readonly plugin: WiseViewPlugin) {
 		super(controller);
 		this.runtime = new ViewRuntime(containerEl);
-		this.renderer = new TimelineRenderer(containerEl);
+		this.renderer = this.runtime.own(new TimelineRenderer(containerEl));
 	}
 
 	onload(): void {
-		this.runtime.addEventListener(this.containerEl, 'click', event => this.activate(event));
+		this.runtime.addEventListener(this.containerEl, 'click', event => this.handleClick(event));
 		this.runtime.addEventListener(this.containerEl, 'contextmenu', event => this.showContextMenu(event));
 		this.runtime.addEventListener(this.containerEl, 'mouseover', event => this.showHover(event));
 		this.runtime.addEventListener(this.containerEl, 'keydown', event => {
 			if (event instanceof KeyboardEvent && isActivationKey(event)) this.activate(event);
 		});
+		const ResizeObserverCtor = (this.runtime.win as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+		if (ResizeObserverCtor) {
+			const observer = new ResizeObserverCtor(entries => {
+				const width = entries[0]?.contentRect.width ?? this.containerEl.clientWidth;
+				this.renderer.setNarrow(width < 600);
+				this.renderer.refreshViewport();
+			});
+			observer.observe(this.containerEl);
+			this.runtime.observe(observer);
+		}
 	}
 
 	onDataUpdated(): void {
@@ -55,8 +65,25 @@ export class BasesTimelineView extends BasesView {
 	}
 
 	private pathFromEvent(event: Event): string | null {
-		const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-path]') : null;
-		return target?.dataset.path ?? null;
+		const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-note-path]') : null;
+		return target?.dataset.notePath ?? null;
+	}
+
+	private handleClick(event: Event): void {
+		const action = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-action]') : null;
+		if (action?.dataset.action === 'today') {
+			this.renderer.scrollToToday();
+			return;
+		}
+		if (action?.dataset.action === 'zoom' && action.dataset.zoom) {
+			this.renderer.setZoom(action.dataset.zoom as Parameters<TimelineRenderer['setZoom']>[0]);
+			return;
+		}
+		if (action?.dataset.action === 'toggle-group' && action.dataset.groupKey) {
+			this.renderer.toggleGroup(action.dataset.groupKey);
+			return;
+		}
+		this.activate(event);
 	}
 
 	private activate(event: Event): void {
@@ -74,8 +101,8 @@ export class BasesTimelineView extends BasesView {
 
 	private showHover(event: Event): void {
 		if (!(event instanceof MouseEvent) || !(event.target instanceof HTMLElement)) return;
-		const targetEl = event.target.closest<HTMLElement>('[data-path]');
-		const filePath = targetEl?.dataset.path;
+		const targetEl = event.target.closest<HTMLElement>('[data-note-path]');
+		const filePath = targetEl?.dataset.notePath;
 		if (!targetEl || !filePath) return;
 		triggerHoverPreview({
 			app: this.app,

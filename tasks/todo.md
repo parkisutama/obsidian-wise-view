@@ -620,17 +620,17 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T033: Add Timeline grouping, sidebar, virtualization, and responsive state
+### T033: Add Timeline grouping, sidebar, virtualization, and responsive state — done (automated portion)
 
 **Description:** Add grouped/collapsible rows, synchronized sidebar scrolling, unscheduled listing, zoom/today state, and mobile list/timeline transitions.
 
 **Acceptance criteria:**
 
-- [ ] Both timeline and sidebar use the same virtual row identity/order.
-- [ ] Scroll/zoom state survives a data rerender.
-- [ ] Narrow mode does not leak observers or lose the active anchor.
+- [x] Both timeline and sidebar use the same virtual row identity/order.
+- [x] Scroll/zoom state survives a data rerender.
+- [x] Narrow mode does not leak observers or lose the active anchor.
 
-**Verification:** `pnpm run test -- timeline-view`; native responsive smoke.
+**Verification:** `pnpm run test -- timeline-view` and `pnpm run check` passed. Native responsive smoke deferred to the maintainer and final acceptance matrix (T061).
 
 **Dependencies:** T030, T032.
 

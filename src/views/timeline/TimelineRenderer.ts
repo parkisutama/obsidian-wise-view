@@ -4,7 +4,8 @@
 import { calculateTimeDomain, rangeToDayBounds, todayPosition, type TimeDomain } from '../../core/temporal/TimeDomain';
 import { dateToPixel, generateTimelineTicks, TIMELINE_ZOOM_SPECS, type TimelineZoom } from '../../core/temporal/TimelineScale';
 import type { DateOnlyValue } from '../../core/temporal/TemporalValue';
-import type { TimelineItem, TimelineModel } from './TimelineModel';
+import { VirtualLinearCollection, type VirtualRowHandle } from '../../platform/dom/VirtualLinearCollection';
+import { flattenTimelineRows, type TimelineItem, type TimelineModel, type TimelineVirtualRow } from './TimelineModel';
 
 export interface TimelineBarLayout {
 	item: TimelineItem;
@@ -49,43 +50,132 @@ function tickLabel(day: DateOnlyValue, zoom: TimelineZoom): string {
 }
 
 export class TimelineRenderer {
-	constructor(private readonly containerEl: HTMLElement) {}
+	private readonly toolbarEl: HTMLElement;
+	private readonly sidebarViewport: HTMLElement;
+	private readonly timelineViewport: HTMLElement;
+	private readonly headerEl: HTMLElement;
+	private readonly sidebarRows: VirtualLinearCollection<TimelineVirtualRow>;
+	private readonly timelineRows: VirtualLinearCollection<TimelineVirtualRow>;
+	private readonly collapsedGroups = new Set<string>();
+	private currentModel: TimelineModel | null = null;
+	private currentToday: DateOnlyValue | null = null;
+	private activeZoom: TimelineZoom | null = null;
+	private currentLayout: TimelineLayout | null = null;
+	private bars = new Map<string, TimelineBarLayout>();
+	private syncingScroll = false;
+	private readonly syncFromSidebar = (): void => this.syncScroll(this.sidebarViewport, this.timelineViewport);
+	private readonly syncFromTimeline = (): void => this.syncScroll(this.timelineViewport, this.sidebarViewport);
+
+	constructor(private readonly containerEl: HTMLElement) {
+		containerEl.classList.add('wise-view-timeline');
+		this.toolbarEl = containerEl.createDiv({ cls: 'wise-view-timeline__toolbar' });
+		const main = containerEl.createDiv({ cls: 'wise-view-timeline__main' });
+		this.sidebarViewport = main.createDiv({ cls: 'wise-view-timeline__sidebar' });
+		const chart = main.createDiv({ cls: 'wise-view-timeline__chart' });
+		this.headerEl = chart.createDiv({ cls: 'wise-view-timeline__header' });
+		this.timelineViewport = chart.createDiv({ cls: 'wise-view-timeline__scroller' });
+		this.sidebarRows = new VirtualLinearCollection(this.sidebarViewport, {
+			rowHeight: 36,
+			overscan: 5,
+			renderRow: row => this.renderSidebarRow(row),
+			updateRow: (handle, row) => this.updateSidebarRow(handle, row),
+		});
+		this.timelineRows = new VirtualLinearCollection(this.timelineViewport, {
+			rowHeight: 36,
+			overscan: 5,
+			renderRow: row => this.renderTimelineRow(row),
+			updateRow: (handle, row) => this.updateTimelineRow(handle, row),
+		});
+		this.sidebarViewport.addEventListener('scroll', this.syncFromSidebar, { passive: true });
+		this.timelineViewport.addEventListener('scroll', this.syncFromTimeline, { passive: true });
+	}
 
 	render(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom): TimelineLayout {
-		this.containerEl.replaceChildren();
-		this.containerEl.classList.add('wise-view-timeline');
-		const layout = createTimelineLayout(model, today, zoom);
-		const scroller = this.containerEl.createDiv({ cls: 'wise-view-timeline__scroller' });
-		const surface = scroller.createDiv({ cls: 'wise-view-timeline__surface' });
-		surface.style.setProperty('--wise-view-timeline-width', `${layout.width}px`);
+		this.currentModel = model;
+		this.currentToday = today;
+		this.activeZoom ??= zoom;
+		const layout = createTimelineLayout(model, today, this.activeZoom);
+		this.currentLayout = layout;
+		this.bars = new Map(layout.bars.map(bar => [bar.item.path, bar]));
+		this.renderToolbar();
+		this.renderHeader(layout, this.activeZoom);
+		const rows = flattenTimelineRows(model, this.collapsedGroups);
+		this.sidebarRows.updateItems(rows);
+		this.timelineRows.updateItems(rows);
+		this.renderToday(layout);
+		return layout;
+	}
 
-		const header = surface.createDiv({ cls: 'wise-view-timeline__header' });
+	setZoom(zoom: TimelineZoom): void {
+		if (this.activeZoom === zoom || !this.currentModel || !this.currentToday) return;
+		this.activeZoom = zoom;
+		this.render(this.currentModel, this.currentToday, zoom);
+	}
+
+	toggleGroup(groupKey: string): void {
+		if (!this.currentModel || !this.currentToday || !this.activeZoom) return;
+		if (this.collapsedGroups.has(groupKey)) this.collapsedGroups.delete(groupKey);
+		else this.collapsedGroups.add(groupKey);
+		this.render(this.currentModel, this.currentToday, this.activeZoom);
+	}
+
+	scrollToToday(): void {
+		if (!this.currentLayout) return;
+		this.timelineViewport.scrollLeft = Math.max(0, this.currentLayout.todayLeft - this.timelineViewport.clientWidth / 2);
+	}
+
+	setNarrow(narrow: boolean): void {
+		this.containerEl.classList.toggle('wise-view-timeline--narrow', narrow);
+	}
+
+	refreshViewport(): void {
+		this.sidebarRows.refresh();
+		this.timelineRows.refresh();
+	}
+
+	dispose(): void {
+		this.sidebarViewport.removeEventListener('scroll', this.syncFromSidebar);
+		this.timelineViewport.removeEventListener('scroll', this.syncFromTimeline);
+		this.sidebarRows.destroy();
+		this.timelineRows.destroy();
+	}
+
+	private syncScroll(source: HTMLElement, destination: HTMLElement): void {
+		if (this.syncingScroll || destination.scrollTop === source.scrollTop) return;
+		this.syncingScroll = true;
+		destination.scrollTop = source.scrollTop;
+		this.sidebarRows.refresh();
+		this.timelineRows.refresh();
+		this.syncingScroll = false;
+	}
+
+	private renderToolbar(): void {
+		this.toolbarEl.replaceChildren();
+		const today = this.toolbarEl.createEl('button', { text: 'Today' });
+		today.type = 'button';
+		today.dataset.action = 'today';
+		for (const zoom of Object.keys(TIMELINE_ZOOM_SPECS) as TimelineZoom[]) {
+			const button = this.toolbarEl.createEl('button', { text: TIMELINE_ZOOM_SPECS[zoom].label });
+			button.type = 'button';
+			button.dataset.action = 'zoom';
+			button.dataset.zoom = zoom;
+			button.setAttribute('aria-pressed', String(zoom === this.activeZoom));
+		}
+	}
+
+	private renderHeader(layout: TimelineLayout, zoom: TimelineZoom): void {
+		this.headerEl.replaceChildren();
+		this.headerEl.style.setProperty('--wise-view-timeline-width', `${layout.width}px`);
 		for (const tick of generateTimelineTicks(layout.domain, zoom)) {
-			const tickEl = header.createDiv({ cls: 'wise-view-timeline__tick', text: tickLabel(tick.day, zoom) });
+			const tickEl = this.headerEl.createDiv({ cls: 'wise-view-timeline__tick', text: tickLabel(tick.day, zoom) });
 			tickEl.style.setProperty('--wise-view-timeline-left', `${dateToPixel(tick.day.dayIndex, layout.domain, zoom)}px`);
 		}
+	}
 
-		const rows = surface.createDiv({ cls: 'wise-view-timeline__rows' });
-		const bars = new Map(layout.bars.map(bar => [bar.item.path, bar]));
-		for (const group of model.groups) {
-			const groupEl = rows.createDiv({ cls: 'wise-view-timeline__group' });
-			groupEl.createDiv({ cls: 'wise-view-timeline__group-label', text: group.key });
-			for (const item of group.items) {
-				const bar = bars.get(item.path);
-				if (!bar) continue;
-				const row = groupEl.createDiv({ cls: 'wise-view-timeline__row' });
-				row.dataset.path = item.path;
-				const barEl = row.createEl('button', { cls: 'wise-view-timeline__bar', text: item.title });
-				barEl.type = 'button';
-				barEl.dataset.path = item.path;
-				barEl.dataset.colorValue = item.colorValue ?? '';
-				barEl.style.setProperty('--wise-view-timeline-left', `${bar.left}px`);
-				barEl.style.setProperty('--wise-view-timeline-bar-width', `${bar.width}px`);
-			}
-		}
-
+	private renderToday(layout: TimelineLayout): void {
+		this.containerEl.querySelectorAll('.wise-view-timeline__today, .wise-view-timeline__edge').forEach(el => el.remove());
 		if (layout.todayEdge === 'inside') {
-			const marker = surface.createDiv({ cls: 'wise-view-timeline__today' });
+			const marker = this.headerEl.createDiv({ cls: 'wise-view-timeline__today' });
 			marker.setAttribute('aria-label', 'Today');
 			marker.style.setProperty('--wise-view-timeline-left', `${layout.todayLeft}px`);
 		} else {
@@ -93,15 +183,58 @@ export class TimelineRenderer {
 			edge.dataset.edge = layout.todayEdge;
 			edge.setText(layout.todayEdge === 'before' ? 'Today is earlier' : 'Today is later');
 		}
+	}
 
-		if (model.groups.length === 0) {
-			this.containerEl.createDiv({
-				cls: 'wise-view-timeline__empty',
-				text: model.unscheduled.length > 0
-					? 'No notes with valid configured dates.'
-					: 'Configure a start date property to display the timeline.',
-			});
+	private renderSidebarRow(row: TimelineVirtualRow): VirtualRowHandle {
+		const element = this.containerEl.ownerDocument.createElement('div');
+		const handle = { element, dispose() {} };
+		this.updateSidebarRow(handle, row);
+		return handle;
+	}
+
+	private updateSidebarRow(handle: VirtualRowHandle, row: TimelineVirtualRow): void {
+		handle.element.replaceChildren();
+		handle.element.className = `wise-view-timeline__sidebar-row wise-view-timeline__sidebar-row--${row.kind}`;
+		if (row.kind === 'group') {
+			const button = handle.element.createEl('button', { text: `${row.label} (${row.count})` });
+			button.type = 'button';
+			button.dataset.action = 'toggle-group';
+			button.dataset.groupKey = row.groupKey;
+			button.setAttribute('aria-expanded', String(!this.collapsedGroups.has(row.groupKey)));
+		} else {
+			const button = handle.element.createEl('button', { text: row.item.title });
+			button.type = 'button';
+			button.dataset.notePath = row.item.path;
 		}
-		return layout;
+	}
+
+	private renderTimelineRow(row: TimelineVirtualRow): VirtualRowHandle {
+		const element = this.containerEl.ownerDocument.createElement('div');
+		const handle = { element, dispose() {} };
+		this.updateTimelineRow(handle, row);
+		return handle;
+	}
+
+	private updateTimelineRow(handle: VirtualRowHandle, row: TimelineVirtualRow): void {
+		handle.element.replaceChildren();
+		handle.element.className = `wise-view-timeline__row wise-view-timeline__row--${row.kind}`;
+		handle.element.style.setProperty('--wise-view-timeline-width', `${this.currentLayout?.width ?? 0}px`);
+		if (row.kind === 'group') {
+			handle.element.createSpan({ cls: 'wise-view-timeline__group-label', text: row.label });
+			return;
+		}
+		const bar = this.bars.get(row.item.path);
+		if (!bar) {
+			const unscheduled = handle.element.createEl('button', { cls: 'wise-view-timeline__unscheduled', text: 'Unscheduled' });
+			unscheduled.type = 'button';
+			unscheduled.dataset.notePath = row.item.path;
+			return;
+		}
+		const barEl = handle.element.createEl('button', { cls: 'wise-view-timeline__bar', text: row.item.title });
+		barEl.type = 'button';
+		barEl.dataset.notePath = row.item.path;
+		barEl.dataset.colorValue = row.item.colorValue ?? '';
+		barEl.style.setProperty('--wise-view-timeline-left', `${bar.left}px`);
+		barEl.style.setProperty('--wise-view-timeline-bar-width', `${bar.width}px`);
 	}
 }
