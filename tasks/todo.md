@@ -584,15 +584,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T031: Implement Timeline model mapping and options
+### T031: Implement Timeline model mapping and options — done
 
 **Description:** Map snapshots and validated options into grouped scheduled/unscheduled timeline items without priority/status assumptions.
 
 **Acceptance criteria:**
 
-- [ ] Start/end/title/color/group properties are configurable.
-- [ ] Missing/invalid dates produce documented unscheduled behavior.
-- [ ] No status order or priority ranking exists in the model.
+- [x] Start/end/title/color/group properties are configurable.
+- [x] Missing/invalid dates produce documented unscheduled behavior.
+- [x] No status order or priority ranking exists in the model.
 
 **Verification:** `pnpm run test -- timeline-model && pnpm run typecheck`
 
