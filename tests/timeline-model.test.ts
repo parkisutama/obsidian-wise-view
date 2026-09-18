@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTimelineModel } from '../src/views/timeline/TimelineModel';
+import { buildTimelineModel, flattenTimelineRows } from '../src/views/timeline/TimelineModel';
 import { timelineRequestedProperties, type TimelineOptions } from '../src/views/timeline/timelineOptions';
 import { date, text, timelineSnapshot } from './fixtures/timeline';
 
@@ -67,5 +67,21 @@ describe('Timeline model', () => {
 		const model = buildTimelineModel([], options) as unknown as Record<string, unknown>;
 		expect(model).not.toHaveProperty('statusOrder');
 		expect(model).not.toHaveProperty('priorityRanking');
+	});
+
+	it('flattens groups and unscheduled items into one stable virtual-row order', () => {
+		const model = buildTimelineModel([
+			timelineSnapshot('A.md', { 'note.begins': date('2026-01-01'), 'note.owner': text('Team') }),
+			timelineSnapshot('B.md', { 'note.owner': text('Team') }),
+		], options);
+		expect(flattenTimelineRows(model).map(row => [row.kind, row.path])).toEqual([
+			['group', 'wise-view-timeline-group:Team'],
+			['item', 'A.md'],
+			['group', 'wise-view-timeline-group:Unscheduled'],
+			['item', 'B.md'],
+		]);
+		expect(flattenTimelineRows(model, new Set(['Team', 'Unscheduled'])).map(row => row.kind)).toEqual([
+			'group', 'group',
+		]);
 	});
 });

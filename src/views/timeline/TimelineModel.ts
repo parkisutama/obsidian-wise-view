@@ -29,6 +29,46 @@ export interface TimelineModel {
 	itemsByPath: ReadonlyMap<string, TimelineItem>;
 }
 
+export type TimelineVirtualRow =
+	| { path: string; kind: 'group'; groupKey: string; label: string; count: number }
+	| { path: string; kind: 'item'; groupKey: string; item: TimelineItem };
+
+const GROUP_ROW_PREFIX = 'wise-view-timeline-group:';
+export const UNSCHEDULED_GROUP_KEY = 'Unscheduled';
+
+/** Produces the single row identity/order consumed by both sidebar and timeline surfaces. */
+export function flattenTimelineRows(
+	model: TimelineModel,
+	collapsedGroups: ReadonlySet<string> = new Set(),
+): TimelineVirtualRow[] {
+	const rows: TimelineVirtualRow[] = [];
+	for (const group of model.groups) {
+		rows.push({
+			path: `${GROUP_ROW_PREFIX}${encodeURIComponent(group.key)}`,
+			kind: 'group',
+			groupKey: group.key,
+			label: group.key,
+			count: group.items.length,
+		});
+		if (!collapsedGroups.has(group.key)) {
+			rows.push(...group.items.map(item => ({ path: item.path, kind: 'item' as const, groupKey: group.key, item })));
+		}
+	}
+	if (model.unscheduled.length > 0) {
+		rows.push({
+			path: `${GROUP_ROW_PREFIX}${encodeURIComponent(UNSCHEDULED_GROUP_KEY)}`,
+			kind: 'group',
+			groupKey: UNSCHEDULED_GROUP_KEY,
+			label: UNSCHEDULED_GROUP_KEY,
+			count: model.unscheduled.length,
+		});
+		if (!collapsedGroups.has(UNSCHEDULED_GROUP_KEY)) {
+			rows.push(...model.unscheduled.map(item => ({ path: item.path, kind: 'item' as const, groupKey: UNSCHEDULED_GROUP_KEY, item })));
+		}
+	}
+	return rows;
+}
+
 function valueText(value: NormalizedValue | undefined): string | null {
 	if (!value || value.kind === 'missing') return null;
 	switch (value.kind) {
