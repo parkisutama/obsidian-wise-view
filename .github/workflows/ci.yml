@@ -1,16 +1,26 @@
 name: CI
 
 on:
+    # Every branch push is checked, not only main, so tests run before a PR exists.
+    push:
+        branches: ["**"]
     pull_request:
         branches: [main]
-    push:
-        branches: [main]
+    workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
 
 env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
     quality:
+        name: Lint, typecheck, test, build
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v7
@@ -22,5 +32,40 @@ jobs:
                   node-version-file: ".node-version"
                   cache: "pnpm"
             - run: pnpm install --frozen-lockfile
-            - name: Check
-              run: pnpm run check:ci
+
+            - name: Lint
+              run: pnpm run lint
+            - name: Obsidian lint
+              run: pnpm run lint:obsidian
+            - name: Typecheck (src and tests)
+              run: pnpm run typecheck
+            - name: Test with coverage thresholds
+              run: pnpm run test:coverage
+            - name: Upload coverage report
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v7
+              with:
+                  name: coverage
+                  path: coverage/
+                  if-no-files-found: ignore
+            - name: Build (fails on unattributed bundled packages)
+              run: pnpm run build
+            - name: Verify build artifacts and license banners
+              run: pnpm run verify:artifacts
+
+    test-windows:
+        # The test runner once failed only on Windows (pnpm is a .cmd shim there).
+        name: Test (Windows)
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v7
+            - uses: pnpm/action-setup@v6
+              with:
+                  run_install: false
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: ".node-version"
+                  cache: "pnpm"
+            - run: pnpm install --frozen-lockfile
+            - name: Test
+              run: pnpm test
