@@ -63,6 +63,42 @@ describe('Gantt floating dates (GBETA-005)', () => {
 	});
 });
 
+describe('Gantt chart output to property values', () => {
+	// The library keeps floating time in UTC and reports edits as ISO strings ending in Z.
+	it.each(['America/New_York', 'Asia/Jakarta', 'Australia/Lord_Howe', 'UTC'])(
+		'writes chart Date & time output as the same wall-clock time in %s',
+		zone => {
+			process.env.TZ = zone;
+			expect(writeGanttDate('2026-10-02T09:00:00.000Z', 'datetime', 'start')).toBe('2026-10-02T09:00');
+			expect(writeGanttDate('2026-10-02T23:59:00.000Z', 'datetime', 'end')).toBe('2026-10-02T23:59');
+			expect(writeGanttDate('2026-10-02T09:00', 'datetime', 'start')).toBe('2026-10-02T09:00');
+			process.env.TZ = 'America/New_York';
+		},
+	);
+
+	it('writes a moved Date task from the ISO strings the library emits', () => {
+		expect(writeGanttDate('2026-10-02T00:00:00.000Z', 'date', 'start')).toBe('2026-10-02');
+		expect(writeGanttDate('2026-10-05T00:00:00.000Z', 'date', 'end')).toBe('2026-10-04');
+		expect(writeGanttDate('2026-10-05', 'date', 'end')).toBe('2026-10-04');
+	});
+
+	it('counts a bar that ends after midnight as covering that day', () => {
+		expect(writeGanttDate('2026-10-05T12:00:00.000Z', 'date', 'end')).toBe('2026-10-05');
+	});
+
+	it('crosses month and year boundaries for exclusive ends', () => {
+		expect(writeGanttDate('2026-11-01T00:00:00.000Z', 'date', 'end')).toBe('2026-10-31');
+		expect(writeGanttDate('2027-01-01T00:00:00.000Z', 'date', 'end')).toBe('2026-12-31');
+		expect(writeGanttDate('2024-03-01T00:00:00.000Z', 'date', 'end')).toBe('2024-02-29');
+	});
+
+	it('rejects values that are not chart dates', () => {
+		expect(writeGanttDate(undefined, 'date', 'start')).toBeNull();
+		expect(writeGanttDate('2026-02-30T00:00:00.000Z', 'date', 'start')).toBeNull();
+		expect(writeGanttDate('soon', 'datetime', 'start')).toBeNull();
+	});
+});
+
 describe('Gantt progress conversion (GBETA-005)', () => {
 	it.each([
 		[0, 0],

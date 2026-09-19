@@ -219,6 +219,10 @@ Render read-only with the unscheduled/empty state.
 dates, progress, Parent, sparse sibling Order, and Depends on while excluding synthetic rows.
 The full quality gate passes (38 files, 376 tests).
 
+**Correction 2026-09-20:** `writeGanttDate` rejected the ISO strings the library really emits
+(Date properties silently wrote nothing) and read their `Z` as an instant (Date & time
+properties moved by the local UTC offset). Fixed with timezone regression tests.
+
 **Description:** Diff previous vs. next `Task[]` into field changes; translate changes into a
 mutation plan (date formatting per property type, progress, parent, order renumbering with gaps,
 Depends on edits), writing only changed fields of changed notes.

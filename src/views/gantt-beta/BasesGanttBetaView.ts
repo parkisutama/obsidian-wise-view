@@ -176,8 +176,7 @@ export class BasesGanttBetaView extends BasesView {
 		if (!options.start || options.start.startsWith('formula.')) throw new Error('Configure a writable Start date property first.');
 		if (!this.mutations.fileCreate) throw new Error('File creation capability is unavailable.');
 		const fieldName = (property: string) => property.replace(/^note\./, '');
-		const propertyDate = (value: string, boundary: 'start' | 'end') =>
-			writeGanttDate(dateType === 'date' ? value.slice(0, 10) : value, dateType, boundary);
+		const propertyDate = (value: string, boundary: 'start' | 'end') => writeGanttDate(value, dateType, boundary);
 		const frontmatter: Record<string, unknown> = {
 			[fieldName(options.start)]: propertyDate(draft.startDate, 'start'),
 		};

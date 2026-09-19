@@ -40,6 +40,39 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		expect(h.dependency.setDependencies).not.toHaveBeenCalled();
 	});
 
+	// The real library reports every edited date as `toISOString()`, never as the plain strings the
+	// other tests feed in. Both storage types must survive that, in any local time zone.
+	it('persists the ISO strings the library emits for a moved Date task', async () => {
+		const h = harness();
+		await h.writer.onTasksChange([
+			{ ...h.before[0]!, startDate: '2026-10-02T00:00:00.000Z', endDate: '2026-10-05T00:00:00.000Z' }, h.before[1]!,
+		]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith('Tasks/A.md', 'note.start', '2026-10-02', 'note.end', '2026-10-04');
+	});
+
+	it('persists a moved Date & time task at the same wall-clock time in a non-UTC zone', async () => {
+		const original = process.env.TZ;
+		process.env.TZ = 'Asia/Jakarta';
+		try {
+			const h = harness();
+			h.writer.replaceProperties({
+				start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'datetime' },
+			});
+			h.writer.replaceBaseline([task('Tasks/A.md', { startDate: '2026-10-01T09:00', endDate: '2026-10-01T10:30' })]);
+			await h.writer.onTasksChange([
+				task('Tasks/A.md', { startDate: '2026-10-02T09:00:00.000Z', endDate: '2026-10-02T10:30:00.000Z' }),
+			]);
+
+			expect(h.date.updateRange).toHaveBeenCalledWith(
+				'Tasks/A.md', 'note.start', '2026-10-02T09:00', 'note.end', '2026-10-02T10:30',
+			);
+		} finally {
+			if (original === undefined) delete process.env.TZ;
+			else process.env.TZ = original;
+		}
+	});
+
 	it('uses the date capability for an end-only resize and keeps the existing start', async () => {
 		const h = harness();
 		await h.writer.onTasksChange([{ ...h.before[0]!, endDate: '2026-10-06' }, h.before[1]!]);
