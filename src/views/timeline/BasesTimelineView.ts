@@ -3,7 +3,7 @@
 
 import { BasesView, Notice, type QueryController } from 'obsidian';
 import type WiseViewPlugin from '../../main';
-import { createEntrySnapshot } from '../../platform/bases/entrySnapshotAdapter';
+import { createEntrySnapshotGroups } from '../../platform/bases/entrySnapshotAdapter';
 import { ViewConfigReader } from '../../platform/bases/ViewConfigReader';
 import { ViewRuntime } from '../../platform/dom/ViewRuntime';
 import { LegacyMutationGateway } from '../../platform/mutations/LegacyMutationGateway';
@@ -77,12 +77,12 @@ export class BasesTimelineView extends BasesView {
 	}
 
 	onDataUpdated(): void {
-		if (!this.data?.data) return;
+		if (!this.data?.groupedData) return;
 		const options = readTimelineOptions(new ViewConfigReader(this.config));
 		const properties = timelineRequestedProperties(options);
-		const snapshots = this.data.data.map(entry => createEntrySnapshot(entry, properties));
+		const snapshotGroups = createEntrySnapshotGroups(this.data.groupedData, properties);
 		const today = localToday();
-		this.renderer.render(buildTimelineModel(snapshots, options, today), today, options.zoom, options.wrapTitles, true);
+		this.renderer.render(buildTimelineModel(snapshotGroups, options, today), today, options.zoom, options.wrapTitles, true);
 		this.centerOnTodayOnce();
 	}
 

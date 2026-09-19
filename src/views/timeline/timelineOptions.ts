@@ -10,7 +10,6 @@ export interface TimelineOptions {
 	endProperty: BasesPropertyId | null;
 	titleProperty: BasesPropertyId | null;
 	colorProperty: BasesPropertyId | null;
-	groupProperty: BasesPropertyId | null;
 	wrapTitles: boolean;
 	zoom: TimelineZoom;
 }
@@ -30,7 +29,6 @@ export function readTimelineOptions(config: ViewConfigReader): TimelineOptions {
 		endProperty: compatibleProperty(config, 'end', 'endDate'),
 		titleProperty: config.getPropertyId('titleBy'),
 		colorProperty: config.getPropertyId('colorBy'),
-		groupProperty: config.getPropertyId('groupProperty'),
 		wrapTitles: config.getBoolean('wrapTitles', false),
 		zoom: config.getEnum('zoom', TIMELINE_ZOOMS, 'month'),
 	};
@@ -42,6 +40,5 @@ export function timelineRequestedProperties(options: TimelineOptions): BasesProp
 		options.endProperty,
 		options.titleProperty,
 		options.colorProperty,
-		options.groupProperty,
 	].filter((property): property is BasesPropertyId => property != null))];
 }

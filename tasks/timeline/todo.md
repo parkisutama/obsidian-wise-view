@@ -13,8 +13,9 @@ no intermediate resort inside `buildTimelineModel`, `flattenTimelineRows`, or `T
 
 **Acceptance criteria:**
 
-- [ ] The test fails if any of the three functions above introduces its own sort.
-- [ ] If the test fails against current code, the violation is fixed as part of this task.
+- [x] The test fails if any of the three functions above introduces its own sort.
+- [x] If the test fails against current code, the violation is fixed as part of this task. (The
+  current implementation already preserved the contract; no production fix was needed.)
 
 **Verification:** `pnpm run test -- timeline-model && pnpm run typecheck`
 
@@ -34,9 +35,9 @@ this program already learned to avoid). Record the finding.
 
 **Acceptance criteria:**
 
-- [ ] A written finding (accessor exists and how to use it, or confirmed absent) is added to
+- [x] A written finding (accessor exists and how to use it, or confirmed absent) is added to
   `docs/specs/timeline.md` §3.
-- [ ] The maintainer has chosen a branch (migrate vs. close-as-documented) before TL-003 starts.
+- [x] The maintainer chose native-only grouping and removal of `groupProperty` on 2026-09-19.
 
 **Verification:** Documentation review; no code change required for this task itself.
 
@@ -50,17 +51,15 @@ this program already learned to avoid). Record the finding.
 
 ### TL-003: Implement the chosen grouping approach, or close the item
 
-**Description:** If TL-002 found a native-grouping accessor and the maintainer approved migrating
-to it: implement the migration with a fallback for existing `groupProperty`-configured Bases. If
-the maintainer approved closing the item: no code change, just the documented decision from
-TL-002.
+**Description:** Implement the approved native-only grouping path through `groupedData` and remove
+the plugin-specific `groupProperty` option. No compatibility fallback is retained, by explicit
+maintainer decision, to minimize plugin maintenance code.
 
 **Acceptance criteria:**
 
-- [ ] If migrating: a regression test covers both the native-grouping path and the
-  `groupProperty` fallback path.
-- [ ] If closing: `docs/specs/timeline.md` clearly states the decision and why, so it is not
-  re-investigated from scratch later.
+- [x] Regression tests cover native group ordering, row ordering, and the ungrouped path.
+- [x] `groupProperty` is absent from Timeline options, requested properties, and production code.
+- [x] `docs/specs/timeline.md` records the native-only decision and its rationale.
 
 **Verification:** `pnpm run test -- timeline-model timeline-options && pnpm run typecheck`
 

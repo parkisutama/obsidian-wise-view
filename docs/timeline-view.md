@@ -9,7 +9,8 @@ interaktif. View ini memakai properti yang Anda pilih sendiri dan tidak mengharu
 1. Buka folder sebagai Obsidian Base.
 2. Pilih tipe view **Timeline**.
 3. Buka pengaturan view dan pilih **Start date**.
-4. Opsional: pilih **End date**, **Title**, **Color by**, dan **Group by**.
+4. Opsional: pilih **End date**, **Title**, dan **Color by**. Gunakan kontrol grouping
+   bawaan Bases bila ingin membagi Timeline menjadi section.
 5. Pilih zoom Day, Week, Two weeks, Month, Quarter, Year, atau Five years.
 
 Contoh frontmatter berikut hanya contoh; nama propertinya bebas:
@@ -36,8 +37,10 @@ Timeline sengaja tidak menebak tanggal lokal seperti `tomorrow` atau `31/03/2026
 | **End date** | Tanggal selesai inklusif. Kosong berarti rentang satu unit dari tanggal mulai. |
 | **Title** | Label bar. Kosong atau tidak tersedia memakai nama file. |
 | **Color by** | Nilai kategori yang dipetakan melalui color resolver bersama. |
-| **Group by** | Membagi note menjadi section. Kosong berarti tidak ada header group buatan. |
 | **Zoom** | Tujuh skala dari Day sampai Five years. |
+
+Grouping, urutan group, dan urutan note mengikuti konfigurasi native Bases. Timeline tidak
+menyimpan opsi grouping tersendiri.
 
 Nilai akhir `ongoing` didukung dan diselesaikan terhadap tanggal hari ini untuk visualisasi.
 Rentang terbalik dinormalisasi untuk tampilan tanpa menulis perubahan ke note.

@@ -1,6 +1,6 @@
 # Implementation plan: Timeline native sort/group adoption
 
-Status: Draft; implementation requires approval
+Status: Implemented; native acceptance pending
 Specification: [../../docs/specs/timeline.md](../../docs/specs/timeline.md)
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
 Baseline: branch `dev`
@@ -36,10 +36,9 @@ call for.
 
 ## Phase 3: Implement the decision (conditional)
 
-- If the maintainer approved a migration: implement it with a regression test and a documented
-  `groupProperty` deprecation/fallback path.
-- If the maintainer approved closing the item: no code change; update `docs/specs/timeline.md` to
-  reflect the closed decision.
+- Implement the approved native-only grouping path through `BasesQueryResult.groupedData`.
+- Remove the `groupProperty` option and fallback path to keep one grouping authority and minimize
+  plugin maintenance code.
 
 ### Checkpoint C
 
@@ -62,7 +61,7 @@ call for.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | No public Bases API exposes native group state | Medium | Phase 2 is scoped to accept "no such API" as a valid, documented outcome, not a blocker |
-| A grouping migration breaks an existing Base's saved `groupProperty` configuration | High | Phase 3's migration (if approved) must handle the fallback case explicitly and get sign-off before implementation |
+| Existing Bases retain a saved `groupProperty` value | Low | The obsolete key is inert; Timeline follows native Bases grouping exclusively, as explicitly approved by the maintainer |
 
 ## Human gates
 

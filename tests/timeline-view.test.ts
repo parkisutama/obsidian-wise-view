@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest';
-import { dateOnlyFromParts } from '../src/core/temporal/TemporalValue';
-import { buildTimelineModel } from '../src/views/timeline/TimelineModel';
+import type { EntrySnapshot } from '../src/core/entries/EntrySnapshot';
+import { MISSING_VALUE } from '../src/core/entries/NormalizedValue';
+import { dateOnlyFromParts, type DateOnlyValue } from '../src/core/temporal/TemporalValue';
+import { buildTimelineModel as buildTimelineModelFromGroups } from '../src/views/timeline/TimelineModel';
 import { createTimelineLayout, TimelineRenderer } from '../src/views/timeline/TimelineRenderer';
 import type { TimelineOptions } from '../src/views/timeline/timelineOptions';
 import { createTimelineHarness, date, timelineSnapshot, type TimelineHarness } from './fixtures/timeline';
@@ -11,10 +13,13 @@ const options: TimelineOptions = {
 	endProperty: 'note.end',
 	titleProperty: null,
 	colorProperty: null,
-	groupProperty: null,
 	wrapTitles: false,
 	zoom: 'month',
 };
+
+function buildTimelineModel(entries: readonly EntrySnapshot[], timelineOptions: TimelineOptions, today?: DateOnlyValue) {
+	return buildTimelineModelFromGroups([{ key: MISSING_VALUE, entries: [...entries] }], timelineOptions, today);
+}
 
 let harness: TimelineHarness | null = null;
 afterEach(() => {

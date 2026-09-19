@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Parkis Utama
 
 import type { EntrySnapshot } from '../../core/entries/EntrySnapshot';
+import type { NormalizedValue } from '../../core/entries/NormalizedValue';
 import { valueText } from '../../core/entries/valueText';
 import { normalizeDateRange, type NormalizedDateRange } from '../../core/temporal/DateRange';
 import { parseTemporalValue, type DateOnlyValue } from '../../core/temporal/TemporalValue';
@@ -29,6 +30,11 @@ export interface TimelineModel {
 	groups: TimelineGroup[];
 	unscheduled: TimelineItem[];
 	itemsByPath: ReadonlyMap<string, TimelineItem>;
+}
+
+export interface TimelineEntryGroup {
+	key: NormalizedValue;
+	entries: readonly EntrySnapshot[];
 }
 
 export type TimelineVirtualRow =
@@ -84,36 +90,40 @@ function mapRange(
 }
 
 export function buildTimelineModel(
-	entries: readonly EntrySnapshot[],
+	entryGroups: readonly TimelineEntryGroup[],
 	options: TimelineOptions,
 	today?: DateOnlyValue,
 ): TimelineModel {
 	if (!options.startProperty) {
 		return { startConfigured: false, groups: [], unscheduled: [], itemsByPath: new Map() };
 	}
-	const groups = new Map<string, { label: string | null; items: TimelineItem[] }>();
+	const groups: TimelineGroup[] = [];
 	const unscheduled: TimelineItem[] = [];
 	const itemsByPath = new Map<string, TimelineItem>();
-	for (const entry of entries) {
-		const mappedRange = mapRange(entry, options, today);
-		const groupLabel = options.groupProperty ? valueText(entry.values.get(options.groupProperty)) ?? '—' : null;
-		const groupKey = groupLabel ?? UNGROUPED_KEY;
-		const item: TimelineItem = {
-			path: entry.path,
-			title: (options.titleProperty && valueText(entry.values.get(options.titleProperty))) || entry.basename,
-			group: groupLabel,
-			colorValue: options.colorProperty ? valueText(entry.values.get(options.colorProperty)) : null,
-			...mappedRange,
-		};
-		itemsByPath.set(item.path, item);
-		if (!item.range) unscheduled.push(item);
-		const group = groups.get(groupKey) ?? { label: groupLabel, items: [] };
-		group.items.push(item);
-		groups.set(groupKey, group);
+	const hasNativeGrouping = entryGroups.some(group => valueText(group.key) !== null);
+	for (const entryGroup of entryGroups) {
+		const keyText = valueText(entryGroup.key);
+		const groupLabel = hasNativeGrouping ? keyText ?? '—' : null;
+		const groupKey = groupLabel === null ? UNGROUPED_KEY : `${entryGroup.key.kind}:${groupLabel}`;
+		const items: TimelineItem[] = [];
+		for (const entry of entryGroup.entries) {
+			const mappedRange = mapRange(entry, options, today);
+			const item: TimelineItem = {
+				path: entry.path,
+				title: (options.titleProperty && valueText(entry.values.get(options.titleProperty))) || entry.basename,
+				group: groupLabel,
+				colorValue: options.colorProperty ? valueText(entry.values.get(options.colorProperty)) : null,
+				...mappedRange,
+			};
+			itemsByPath.set(item.path, item);
+			if (!item.range) unscheduled.push(item);
+			items.push(item);
+		}
+		groups.push({ key: groupKey, label: groupLabel, items });
 	}
 	return {
 		startConfigured: true,
-		groups: [...groups].map(([key, group]) => ({ key, label: group.label, items: group.items })),
+		groups,
 		unscheduled,
 		itemsByPath,
 	};

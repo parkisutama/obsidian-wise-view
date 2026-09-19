@@ -1,6 +1,6 @@
 # Spec: Timeline native sort/group adoption
 
-Status: Draft — awaiting maintainer review
+Status: Implemented — native acceptance pending
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
@@ -17,12 +17,9 @@ so this spec is scoped to behavior, not file reorganization.
 
 ## 2. Scope: row order tracks Bases' sort
 
-`buildTimelineModel` ([src/views/timeline/TimelineModel.ts:86](../../src/views/timeline/TimelineModel.ts))
-consumes `this.data.data` — already sorted by Bases — without an additional sort of its own, and
-groups items into a `Map` keyed by `groupProperty`, in first-seen order. This should already mean
-row order tracks Bases' sort, but that has never been asserted by a test, and Swimlane's parallel
-logic — a superficially similar `Map`-based grouping — explicitly re-sorts its group keys
-alphabetically by default. Verify this per §4.1 rather than assume it.
+`buildTimelineModel` consumes snapshot groups in the order supplied by Bases and does not apply an
+additional sort. A regression test now runs both forward and reversed Bases-provided entry orders
+through the model and `flattenTimelineRows`, proving that both preserve the input order.
 
 **Scope:** add a regression test that pins the contract — change the Bases-configured sort,
 assert Timeline's row order changes to match it, with no intermediate resort inside
@@ -31,27 +28,34 @@ fix it as part of this workstream.
 
 ## 3. Scope: investigate native Bases grouping
 
-Timeline's "Group by" is a Wise-View-specific `groupProperty` option
-([src/views/timeline/timelineOptions.ts](../../src/views/timeline/timelineOptions.ts)), chosen
-specifically to avoid the reserved `groupBy` config key (see
-`docs/architecture/upstream-provenance.md`'s history of that parse-failure bug). This means a user
-configuring grouping in Bases' own native UI and configuring Timeline's "Group by" option are two
-separate, potentially conflicting settings.
+Timeline formerly exposed a Wise-View-specific `groupProperty` option, separate from Bases' native
+grouping. Maintaining both mechanisms created conflicting configuration and unnecessary plugin
+code.
 
-**Scope:** research whether `QueryController`/`BasesViewConfig` expose a read accessor for the
-user's *native* Bases group state (not just the reserved write-key Timeline already learned to
-avoid) that a view can consume directly. Two possible outcomes, both acceptable if investigated
-and documented rather than assumed:
+**Decision (maintainer, 2026-09-19):** use native Bases grouping exclusively and remove
+`groupProperty`, without a compatibility fallback. This deliberately minimizes plugin-side
+configuration and maintenance code. Existing `.base` files containing the obsolete custom key may
+retain inert data, but Timeline neither reads nor exposes it.
 
-- **If such an accessor exists:** migrate Timeline's grouping to read Bases' native group state
-  directly, with a migration path for `groupProperty` (e.g. fall back to the custom option only
-  when Bases has no native grouping configured, or deprecate the option with a clear notice).
-- **If no such accessor exists:** close this scope item by documenting why the custom option
-  remains the only mechanism, so a future contributor does not re-investigate the same question
-  from scratch.
+### Research finding (2026-09-19)
 
-Either outcome requires the maintainer's sign-off before implementation, since the "migrate"
-branch changes user-visible configuration.
+The public Obsidian 1.12.3 API does expose native grouping results, but it does not expose the
+configured grouping property through `QueryController` or `BasesViewConfig`:
+
+- `BasesQueryResult.groupedData` returns `BasesEntryGroup[]` grouped according to the native
+  `groupBy` configuration. With no native grouping it returns one group whose key is empty.
+- Each `BasesEntryGroup` exposes the group `key`, its ordered `entries`, and `hasKey()`. This is
+  enough for Timeline to consume native group labels and native within-group row order without
+  reading the reserved config key.
+- `QueryController` has no public grouping accessor, and `BasesViewConfig` only exposes generic
+  option reads; the typed `BasesConfigFileView.groupBy` shape is intentionally opaque (`{}`). The
+  public API therefore does not reveal which property produced a group.
+
+Implementation uses `createEntrySnapshotGroups(this.data.groupedData, properties)` at the Bases
+adapter boundary. The pure Timeline model receives only normalized group keys and immutable entry
+snapshots, preserving native group and row order without retaining live `BasesEntryGroup` objects.
+When Bases has no grouping configured, its single empty-key group renders without a synthetic
+header. A missing-value group alongside keyed native groups is labelled `—`.
 
 ## 4. Non-goals
 
@@ -73,8 +77,8 @@ branch changes user-visible configuration.
 
 1. §2's row-order contract is proven by a passing regression test (fixed forward if it was
    violated).
-2. §3's research question is answered and recorded, and if a migration was approved, it is
-   implemented with a regression test and a documented option-deprecation path.
+2. §3's research question and maintainer decision are recorded; native grouping is implemented
+   with regression coverage and the removed custom option is documented.
 3. `pnpm run check` passes; no behavior regression is found in native testing of Timeline's
    existing feature set (grouping, zoom, quick scheduling, scroll-to-today).
 4. `ROADMAP.md`'s Timeline row is updated to **Done (native-accepted YYYY-MM-DD)**.
