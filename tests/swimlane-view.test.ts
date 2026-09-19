@@ -272,3 +272,20 @@ describe("Swimlane keyboard navigation (characterization)", () => {
 		expect(h.host.hasAttribute("tabindex")).toBe(false);
 	});
 });
+
+describe("Swimlane grid layout (characterization)", () => {
+	it("renders one row per swimlane value, alphabetically, each with a cell per column", async () => {
+		const h = await mount({ config: { plannerGroupBy: "note.status", swimlaneBy: "note.priority" } });
+		const rows = [...h.host.querySelectorAll<HTMLElement>(".planner-kanban-swimlane-row")];
+		expect(rows.length).toBeGreaterThanOrEqual(3);
+		expect(h.host.textContent).toContain("High");
+		expect(h.host.textContent).toContain("Low");
+		expect(h.host.querySelectorAll(".planner-kanban-card")).toHaveLength(3);
+	});
+
+	it("renders a single column from a saved order with one value", async () => {
+		const notes = [{ path: "a.md", status: "Todo" }];
+		const shown = await mount({ notes, config: { plannerGroupBy: "note.status", columnOrder: JSON.stringify(["Todo"]) } });
+		expect(texts(shown, ".planner-kanban-column-title")).toEqual(["Todo"]);
+	});
+});

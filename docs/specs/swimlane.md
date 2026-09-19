@@ -85,9 +85,7 @@ single class, in the order they appear:
   unchanged** (`orderKeys` in `src/views/swimlane/ordering.ts`, covered by
   `tests/swimlane-ordering.test.ts`). Changing it to defer to Bases' sort remains a maintainer
   decision (plan Gate 1) and was not made here.
-- **Extracted:** `options.ts`, `ordering.ts`, `values.ts`, `types.ts`, `cardRenderer.ts`,
-  `dragAndDrop.ts` under `src/views/swimlane/`. `BasesSwimlaneView.ts` went from ~2,770 to ~1,300
-  lines; column/swimlane layout rendering, keyboard navigation, and virtual scroll remain in it.
+- **Extracted:** `options.ts`, `ordering.ts`, `values.ts`, `types.ts`, `cardRenderer.ts`, `dragAndDrop.ts`, `keyboardNavigation.ts`, `boardRenderer.ts` under `src/views/swimlane/`. `BasesSwimlaneView.ts` went from ~2,770 to ~730 lines; what remains is config getters, snapshotting/grouping/color resolution, virtual-scroll card rendering, the card-drop mutation, and lifecycle.
 - **Removed:** the unused `createGenericBadge`.
 - **Known quirk kept verbatim:** `reorderKeys` with a target not in the list (or dragging a key
   onto itself) inserts at a fallback index rather than no-oping. Fix separately with a regression

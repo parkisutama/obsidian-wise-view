@@ -8,3 +8,6 @@ export type CoverDisplay = 'none' | 'banner' | 'thumbnail-left' | 'thumbnail-rig
 export type BadgePlacement = 'inline' | 'properties-section';
 export type FreezeHeaders = 'off' | 'columns' | 'swimlanes' | 'both';
 export type SwimHeaderDisplay = 'horizontal' | 'vertical';
+
+/** Virtual scrolling kicks in when a column has this many cards or more. */
+export const VIRTUAL_SCROLL_THRESHOLD = 15;
