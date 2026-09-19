@@ -30,7 +30,12 @@ export interface TimelineHarness {
 	destroy(): void;
 }
 
-export function createTimelineHarness(): TimelineHarness {
+export interface TimelineHarnessOptions {
+	/** Stubs containerEl.clientWidth, e.g. to exercise the "center on today" first-layout behavior. */
+	containerWidth?: number;
+}
+
+export function createTimelineHarness(options: TimelineHarnessOptions = {}): TimelineHarness {
 	const opened: string[] = [];
 	const hovers: Array<Record<string, unknown>> = [];
 	let frontmatterWrites = 0;
@@ -104,7 +109,14 @@ export function createTimelineHarness(): TimelineHarness {
 	const plugin = { app } as unknown as WiseViewPlugin;
 	const host = document.createElement('div');
 	document.body.appendChild(host);
+	if (options.containerWidth !== undefined) {
+		Object.defineProperty(host, 'clientWidth', { configurable: true, value: options.containerWidth });
+	}
 	const view = new BasesTimelineView(controller as never, host, plugin);
+	if (options.containerWidth !== undefined) {
+		const scroller = host.querySelector<HTMLElement>('.wise-view-timeline__scroller');
+		if (scroller) Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: options.containerWidth });
+	}
 	view.onload();
 	view.onDataUpdated();
 	return {

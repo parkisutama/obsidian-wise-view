@@ -863,6 +863,22 @@ There was no working configuration to preserve compatibility with: any `.base` f
 
 **Likely files:** `src/views/timeline/index.ts`, `src/views/timeline/timelineOptions.ts`, `tests/view-registry.test.ts`.
 
+### T034M: Center the timeline on today when the view is first created — done
+
+**Description:** The maintainer asked that Timeline scroll to today by default when first created, rather than settling wherever the domain's own left edge happens to land. Implemented as a one-time auto-center: `BasesTimelineView` now calls the same `scrollToToday()` the manual "Today" button uses, exactly once, the first time the container reports a real (non-zero) laid-out width — from `onDataUpdated` (the common case: the container is already attached and sized by the time data loads) with the `ResizeObserver` installed in `onload` as a second chance if it wasn't attached yet.
+
+**Acceptance criteria:**
+
+- [x] The timeline auto-centers on today once the container has a real width, without needing the user to click "Today".
+- [x] A later data refresh does not re-center and discard the user's own scroll position — the centering happens at most once per view instance.
+- [x] No behavior when the container is never attached/sized (e.g. `ResizeObserver` unsupported and never attached): the view falls back to its prior default position rather than guessing from a zero width.
+
+**Verification:** focused Timeline tests plus `pnpm run check` (29 files, 271 tests); production build and artifact verification passed.
+
+**Dependencies:** T034A (existing `scrollToToday`), reported against the T034L build.
+
+**Likely files:** `src/views/timeline/BasesTimelineView.ts`, `tests/fixtures/timeline.ts`, `tests/timeline-view.test.ts`.
+
 ### T034D: Design a shared centered details window — future cross-view backlog
 
 **Description:** Capture the Keep Bases View-style **Show details** context action as a reusable, optional Wise View interaction instead of duplicating modal/window behavior per view. This task is design-only until the human approves the contract and target views.

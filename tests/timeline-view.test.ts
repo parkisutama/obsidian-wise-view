@@ -367,4 +367,24 @@ describe('Timeline view interactions', () => {
 		expect(harness.opened).toEqual([]);
 		expect(harness.host.childElementCount).toBe(0);
 	});
+
+	it('centers on today once the container has a real, laid-out width', () => {
+		harness = createTimelineHarness({ containerWidth: 800 });
+		const scroller = harness.host.querySelector<HTMLElement>('.wise-view-timeline__scroller')!;
+		expect(scroller.scrollLeft).toBeGreaterThan(0);
+	});
+
+	it('does not re-center on a later data refresh once the user has scrolled elsewhere', () => {
+		harness = createTimelineHarness({ containerWidth: 800 });
+		const scroller = harness.host.querySelector<HTMLElement>('.wise-view-timeline__scroller')!;
+		scroller.scrollLeft = 3;
+		harness.view.onDataUpdated();
+		expect(scroller.scrollLeft).toBe(3);
+	});
+
+	it('never scrolls when the container has no real width (never attached/laid out)', () => {
+		harness = createTimelineHarness();
+		const scroller = harness.host.querySelector<HTMLElement>('.wise-view-timeline__scroller')!;
+		expect(scroller.scrollLeft).toBe(0);
+	});
 });

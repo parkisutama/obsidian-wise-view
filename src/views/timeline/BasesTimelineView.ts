@@ -26,6 +26,8 @@ export class BasesTimelineView extends BasesView {
 	private readonly runtime: ViewRuntime;
 	private readonly renderer: TimelineRenderer;
 	private readonly mutations: LegacyMutationGateway;
+	/** Centers the timeline on today exactly once, the first time it has a real, laid-out size. */
+	private hasCenteredOnToday = false;
 
 	constructor(controller: QueryController, private readonly containerEl: HTMLElement, private readonly plugin: WiseViewPlugin) {
 		super(controller);
@@ -52,10 +54,26 @@ export class BasesTimelineView extends BasesView {
 				const width = entries[0]?.contentRect.width ?? this.containerEl.clientWidth;
 				this.renderer.setNarrow(width < 600);
 				this.renderer.refreshViewport();
+				this.centerOnTodayOnce();
 			});
 			observer.observe(this.containerEl);
 			this.runtime.observe(observer);
 		}
+	}
+
+	/**
+	 * Centers the timeline on today exactly once, the first time the container has a real,
+	 * laid-out width — matching what clicking "Today" does, instead of settling wherever the
+	 * domain's own left edge happens to fall when the view is first created. Called from both
+	 * onDataUpdated (covers the common case where the container is already attached and sized
+	 * by the time data loads) and the ResizeObserver (covers the rest: not yet attached, or no
+	 * ResizeObserver support at all — in which case this never fires and the view falls back to
+	 * its default position, same as before this behavior existed).
+	 */
+	private centerOnTodayOnce(): void {
+		if (this.hasCenteredOnToday || this.containerEl.clientWidth <= 0) return;
+		this.hasCenteredOnToday = true;
+		this.renderer.scrollToToday();
 	}
 
 	onDataUpdated(): void {
@@ -65,6 +83,7 @@ export class BasesTimelineView extends BasesView {
 		const snapshots = this.data.data.map(entry => createEntrySnapshot(entry, properties));
 		const today = localToday();
 		this.renderer.render(buildTimelineModel(snapshots, options, today), today, options.zoom, options.wrapTitles, true);
+		this.centerOnTodayOnce();
 	}
 
 	onunload(): void {
