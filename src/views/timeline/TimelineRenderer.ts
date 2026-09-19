@@ -4,8 +4,8 @@
 // Modifications Copyright (C) 2026 Parkis Utama
 
 import { calculateTimeDomain, rangeToDayBounds, todayPosition, type TimeDomain } from '../../core/temporal/TimeDomain';
-import { dateToPixel, generateTimelineTicks, TIMELINE_ZOOM_SPECS, type TimelineZoom } from '../../core/temporal/TimelineScale';
-import type { DateOnlyValue } from '../../core/temporal/TemporalValue';
+import { dateToPixel, TIMELINE_ZOOM_SPECS, type TimelineZoom } from '../../core/temporal/TimelineScale';
+import { dateOnlyFromDayIndex, type DateOnlyValue } from '../../core/temporal/TemporalValue';
 import { VirtualLinearCollection, type VirtualRowHandle } from '../../platform/dom/VirtualLinearCollection';
 import { resolveColor, toCssVariables } from '../../platform/colors/ColorResolver';
 import { flattenTimelineRows, type TimelineItem, type TimelineModel, type TimelineVirtualRow } from './TimelineModel';
@@ -46,12 +46,6 @@ export function createTimelineLayout(model: TimelineModel, today: DateOnlyValue,
 	};
 }
 
-function tickLabel(day: DateOnlyValue, zoom: TimelineZoom): string {
-	if (zoom === 'day' || zoom === 'week') return day.iso;
-	if (zoom === 'month' || zoom === 'quarter') return `${day.year}-${String(day.month).padStart(2, '0')}`;
-	return String(day.year);
-}
-
 export class TimelineRenderer {
 	private readonly toolbarEl: HTMLElement;
 	private readonly sidebarPanel: HTMLElement;
@@ -59,6 +53,8 @@ export class TimelineRenderer {
 	private readonly sidebarViewport: HTMLElement;
 	private readonly timelineViewport: HTMLElement;
 	private readonly headerEl: HTMLElement;
+	private readonly headerCanvas: HTMLElement;
+	private readonly gridEl: HTMLElement;
 	private readonly sidebarRows: VirtualLinearCollection<TimelineVirtualRow>;
 	private readonly timelineRows: VirtualLinearCollection<TimelineVirtualRow>;
 	private readonly collapsedGroups = new Set<string>();
@@ -70,7 +66,10 @@ export class TimelineRenderer {
 	private syncingScroll = false;
 	private sidebarCollapsed = false;
 	private readonly syncFromSidebar = (): void => this.syncScroll(this.sidebarViewport, this.timelineViewport);
-	private readonly syncFromTimeline = (): void => this.syncScroll(this.timelineViewport, this.sidebarViewport);
+	private readonly syncFromTimeline = (): void => {
+		this.syncScroll(this.timelineViewport, this.sidebarViewport);
+		this.syncHorizontalHeader();
+	};
 
 	constructor(private readonly containerEl: HTMLElement) {
 		containerEl.classList.add('wise-view-timeline');
@@ -80,7 +79,9 @@ export class TimelineRenderer {
 		this.sidebarViewport = this.sidebarPanel.createDiv({ cls: 'wise-view-timeline__sidebar' });
 		const chart = main.createDiv({ cls: 'wise-view-timeline__chart' });
 		this.headerEl = chart.createDiv({ cls: 'wise-view-timeline__header' });
+		this.headerCanvas = this.headerEl.createDiv({ cls: 'wise-view-timeline__header-canvas' });
 		this.timelineViewport = chart.createDiv({ cls: 'wise-view-timeline__scroller' });
+		this.gridEl = this.timelineViewport.createDiv({ cls: 'wise-view-timeline__grid' });
 		this.sidebarRows = new VirtualLinearCollection(this.sidebarViewport, {
 			rowHeight: 36,
 			overscan: 5,
@@ -110,6 +111,7 @@ export class TimelineRenderer {
 		const rows = flattenTimelineRows(model, this.collapsedGroups);
 		this.sidebarRows.updateItems(rows);
 		this.timelineRows.updateItems(rows);
+		this.renderGrid(layout, this.activeZoom);
 		this.renderToday(layout);
 		return layout;
 	}
@@ -163,6 +165,10 @@ export class TimelineRenderer {
 		this.syncingScroll = false;
 	}
 
+	private syncHorizontalHeader(): void {
+		this.headerCanvas.style.transform = `translateX(${-this.timelineViewport.scrollLeft}px)`;
+	}
+
 	private renderToolbar(): void {
 		this.toolbarEl.replaceChildren();
 		this.expandControls.replaceChildren();
@@ -196,20 +202,84 @@ export class TimelineRenderer {
 	}
 
 	private renderHeader(layout: TimelineLayout, zoom: TimelineZoom): void {
-		this.headerEl.replaceChildren();
-		this.headerEl.style.setProperty('--wise-view-timeline-width', `${layout.width}px`);
-		for (const tick of generateTimelineTicks(layout.domain, zoom)) {
-			const tickEl = this.headerEl.createDiv({ cls: 'wise-view-timeline__tick', text: tickLabel(tick.day, zoom) });
-			tickEl.style.setProperty('--wise-view-timeline-left', `${dateToPixel(tick.day.dayIndex, layout.domain, zoom)}px`);
+		this.headerCanvas.replaceChildren();
+		this.headerCanvas.style.setProperty('--wise-view-timeline-width', `${layout.width}px`);
+		const periods = this.headerCanvas.createDiv({ cls: 'wise-view-timeline__periods' });
+		const ticks = this.headerCanvas.createDiv({ cls: 'wise-view-timeline__ticks' });
+		const useYears = zoom === 'quarter' || zoom === 'year';
+		for (let day = layout.domain.startDay; day < layout.domain.endDay;) {
+			const current = dateOnlyFromDayIndex(day);
+			const start = useYears
+				? Math.floor(Date.UTC(current.year, 0, 1) / 86_400_000)
+				: Math.floor(Date.UTC(current.year, current.month - 1, 1) / 86_400_000);
+			const next = useYears
+				? Math.floor(Date.UTC(current.year + 1, 0, 1) / 86_400_000)
+				: Math.floor(Date.UTC(current.year, current.month, 1) / 86_400_000);
+			const from = Math.max(start, layout.domain.startDay);
+			const to = Math.min(next, layout.domain.endDay);
+			const block = periods.createDiv({
+				cls: 'wise-view-timeline__period',
+				text: useYears ? String(current.year) : new Date(day * 86_400_000).toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+			});
+			block.style.setProperty('--wise-view-timeline-left', `${dateToPixel(from, layout.domain, zoom)}px`);
+			block.style.setProperty('--wise-view-timeline-period-width', `${dateToPixel(to, layout.domain, zoom) - dateToPixel(from, layout.domain, zoom)}px`);
+			day = next;
+		}
+		for (let day = layout.domain.startDay; day < layout.domain.endDay; day++) {
+			const date = new Date(day * 86_400_000);
+			const weekday = date.getUTCDay();
+			const show = zoom === 'day' || zoom === 'week'
+				|| (zoom === 'month' && weekday === 1)
+				|| (zoom === 'quarter' && date.getUTCDate() === 1)
+				|| (zoom === 'year' && date.getUTCDate() === 1 && date.getUTCMonth() % 3 === 0);
+			if (!show) continue;
+			const label = zoom === 'day' || zoom === 'week' || zoom === 'month'
+				? String(date.getUTCDate())
+				: date.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' });
+			const tickEl = ticks.createDiv({ cls: 'wise-view-timeline__tick', text: label });
+			tickEl.style.setProperty('--wise-view-timeline-left', `${dateToPixel(day, layout.domain, zoom)}px`);
+			if (zoom === 'day' || zoom === 'week') {
+				tickEl.style.setProperty('--wise-view-timeline-tick-width', `${TIMELINE_ZOOM_SPECS[zoom].pixelsPerDay}px`);
+				if (weekday === 0 || weekday === 6) tickEl.classList.add('wise-view-timeline__tick--weekend');
+			}
+		}
+		this.syncHorizontalHeader();
+	}
+
+	private renderGrid(layout: TimelineLayout, zoom: TimelineZoom): void {
+		this.gridEl.replaceChildren();
+		this.gridEl.style.setProperty('--wise-view-timeline-width', `${layout.width}px`);
+		this.gridEl.style.height = `${Math.max(this.timelineRows.currentRange.totalHeight, this.timelineViewport.clientHeight)}px`;
+		const pixelsPerDay = TIMELINE_ZOOM_SPECS[zoom].pixelsPerDay;
+		for (let day = layout.domain.startDay; day < layout.domain.endDay; day++) {
+			const date = new Date(day * 86_400_000);
+			const weekday = date.getUTCDay();
+			if (pixelsPerDay >= 10 && weekday === 6) {
+				const weekend = this.gridEl.createDiv({ cls: 'wise-view-timeline__weekend' });
+				weekend.style.setProperty('--wise-view-timeline-left', `${dateToPixel(day, layout.domain, zoom)}px`);
+				weekend.style.setProperty('--wise-view-timeline-weekend-width', `${pixelsPerDay * 2}px`);
+			}
+			const lineHere = zoom === 'day' || zoom === 'week' || zoom === 'month'
+				? weekday === 1
+				: zoom === 'quarter'
+					? date.getUTCDate() === 1
+					: date.getUTCDate() === 1 && date.getUTCMonth() % 3 === 0;
+			if (lineHere) {
+				const line = this.gridEl.createDiv({ cls: 'wise-view-timeline__gridline' });
+				line.style.setProperty('--wise-view-timeline-left', `${dateToPixel(day, layout.domain, zoom)}px`);
+			}
 		}
 	}
 
 	private renderToday(layout: TimelineLayout): void {
-		this.containerEl.querySelectorAll('.wise-view-timeline__today, .wise-view-timeline__edge').forEach(el => el.remove());
+		this.containerEl.querySelectorAll('.wise-view-timeline__today, .wise-view-timeline__today-line, .wise-view-timeline__edge').forEach(el => el.remove());
 		if (layout.todayEdge === 'inside') {
-			const marker = this.headerEl.createDiv({ cls: 'wise-view-timeline__today' });
+			const ticks = this.headerCanvas.querySelector<HTMLElement>('.wise-view-timeline__ticks') ?? this.headerCanvas;
+			const marker = ticks.createDiv({ cls: 'wise-view-timeline__today', text: String(this.currentToday?.day ?? '') });
 			marker.setAttribute('aria-label', 'Today');
 			marker.style.setProperty('--wise-view-timeline-left', `${layout.todayLeft}px`);
+			const line = this.gridEl.createDiv({ cls: 'wise-view-timeline__today-line' });
+			line.style.setProperty('--wise-view-timeline-left', `${layout.todayLeft}px`);
 		} else {
 			const edge = this.containerEl.createDiv({ cls: `wise-view-timeline__edge wise-view-timeline__edge--${layout.todayEdge}` });
 			edge.dataset.edge = layout.todayEdge;

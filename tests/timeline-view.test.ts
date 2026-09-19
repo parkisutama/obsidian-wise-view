@@ -39,10 +39,28 @@ describe('Timeline renderer', () => {
 			timelineSnapshot('A.md', { 'note.start': date('2026-01-01') }),
 		], options, today);
 		new TimelineRenderer(host).render(model, today, 'day');
+		expect(host.querySelector('.wise-view-timeline__period')).not.toBeNull();
 		expect(host.querySelector('.wise-view-timeline__tick')).not.toBeNull();
+		expect(host.querySelector('.wise-view-timeline__weekend')).not.toBeNull();
+		expect(host.querySelector('.wise-view-timeline__gridline')).not.toBeNull();
 		expect(host.querySelector('.wise-view-timeline__row')).not.toBeNull();
 		expect(host.querySelector('.wise-view-timeline__today')).not.toBeNull();
+		expect(host.querySelector('.wise-view-timeline__today-line')).not.toBeNull();
 		expect(host.querySelector('button[data-note-path="A.md"]')).not.toBeNull();
+	});
+
+	it('keeps the temporal header aligned with horizontal body scroll', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		const renderer = new TimelineRenderer(host);
+		renderer.render(buildTimelineModel([
+			timelineSnapshot('A.md', { 'note.start': date('2026-01-01') }),
+		], options, today), today, 'day');
+		const scroller = host.querySelector<HTMLElement>('.wise-view-timeline__scroller')!;
+		scroller.scrollLeft = 125;
+		scroller.dispatchEvent(new Event('scroll'));
+		expect(host.querySelector<HTMLElement>('.wise-view-timeline__header-canvas')?.style.transform).toBe('translateX(-125px)');
+		renderer.dispose();
 	});
 
 	it('applies configured category colors through the shared color resolver', () => {

@@ -656,17 +656,17 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T034A: Close Timeline header, grid, and toolbar fidelity gaps
+### T034A: Close Timeline header, grid, and toolbar fidelity gaps — done (automated portion)
 
 **Description:** Selectively adapt the pinned MIT upstream Timeline controls, temporal hierarchy, grid, today indicator, and scroll behavior identified by the 2026-09-19 native comparison, while excluding its task workflow and write paths.
 
 **Acceptance criteria:**
 
-- [ ] Toolbar uses compact Today plus one zoom selector, and the sidebar has an explicit collapse/expand control.
-- [ ] Header renders synchronized month/year bands and day ticks with weekend/tick banding plus a today badge and line spanning the row surface.
-- [ ] Horizontal header/body scrolling and vertical sidebar/body scrolling remain synchronized without breaking bounded DOM or saved anchors.
+- [x] Toolbar uses compact Today plus one zoom selector, and the sidebar has an explicit collapse/expand control.
+- [x] Header renders synchronized month/year bands and day ticks with weekend/tick banding plus a today badge and line spanning the row surface.
+- [x] Horizontal header/body scrolling and vertical sidebar/body scrolling remain synchronized without breaking bounded DOM or saved anchors.
 
-**Verification:** `pnpm run test -- timeline-view && pnpm run typecheck`; native desktop screenshot comparison against `tasks/timeline-native-acceptance.md`.
+**Verification:** `pnpm run test -- timeline-view && pnpm run typecheck` passed. Native desktop screenshot comparison remains pending under T034C.
 
 **Dependencies:** T029-T034.
 
