@@ -82,8 +82,9 @@ describe('Gantt chart output to property values', () => {
 		expect(writeGanttDate('2026-10-05', 'date', 'end')).toBe('2026-10-04');
 	});
 
-	it('counts a bar that ends after midnight as covering that day', () => {
-		expect(writeGanttDate('2026-10-05T12:00:00.000Z', 'date', 'end')).toBe('2026-10-05');
+	it('keeps the chart end exclusive even when the library emits a sub-day time', () => {
+		expect(writeGanttDate('2026-10-05T12:00:00.000Z', 'date', 'end')).toBe('2026-10-04');
+		expect(writeGanttDate('2026-10-08T06:00:00.000Z', 'date', 'end')).toBe('2026-10-07');
 	});
 
 	it('crosses month and year boundaries for exclusive ends', () => {

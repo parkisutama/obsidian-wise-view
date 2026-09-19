@@ -96,8 +96,8 @@ export function writeGanttDate(
 		return `${String(year).padStart(4, '0')}-${twoDigits(month)}-${twoDigits(day)}T${twoDigits(hour)}:${twoDigits(minute)}`;
 	}
 	const dayIndex = Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
-	// The library's end is exclusive: midnight belongs to the next day, so the inclusive last day is
-	// the previous one. A later time of day means the bar already covers that day.
-	const atMidnight = hour === 0 && minute === 0 && second === 0 && millisecond === 0;
-	return dateOnlyFromDayIndex(boundary === 'end' && atMidnight ? dayIndex - 1 : dayIndex).iso;
+	// The library's end boundary is always exclusive. At coarse zoom levels it may report that
+	// boundary with a sub-day time (for example 06:00), but a Date property still stores the
+	// inclusive final calendar day.
+	return dateOnlyFromDayIndex(boundary === 'end' ? dayIndex - 1 : dayIndex).iso;
 }

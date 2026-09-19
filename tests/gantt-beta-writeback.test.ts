@@ -115,6 +115,25 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		expect(h.dependency.setDependencies).toHaveBeenCalledWith('Tasks/B.md', 'note.depends_on', '[[Tasks/A]]');
 	});
 
+	it('preserves dependencies when a date gesture omits them from the library task array', async () => {
+		const h = harness();
+		const before = [
+			task('Tasks/A.md'),
+			task('Tasks/B.md', { sequence: '2', dependencies: [{ targetId: 'Tasks/A.md', type: 'FS' }] }),
+		];
+		h.writer.replaceBaseline(before, {
+			currentDependsOn: new Map([['Tasks/B.md', '[[Tasks/A]]']]),
+		});
+
+		await h.writer.onTasksChange([
+			{ ...before[0]!, startDate: '2026-10-02', endDate: '2026-10-04' },
+			{ ...before[1]!, dependencies: undefined },
+		]);
+
+		expect(h.dependency.setDependencies).not.toHaveBeenCalled();
+		expect(h.writer.tasks[1]?.dependencies).toEqual([{ targetId: 'Tasks/A.md', type: 'FS' }]);
+	});
+
 	it('routes dependency deletion, reparenting, and sibling ordering without unrelated writes', async () => {
 		const before = [
 			task('Tasks/A.md', { dependencies: [{ targetId: 'Tasks/B.md', type: 'FS' }], parentId: 'Phase/One.md', sequence: '1.1' }),
@@ -130,6 +149,9 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 			afterId: 'Tasks/B.md', beforeId: null,
 		};
 		expect(h.writer.onTaskMove(move)).toBe(true);
+		expect(h.writer.onDependencyDelete({
+			predecessorId: 'Tasks/B.md', successorId: 'Tasks/A.md', type: 'FS',
+		})).toBe(true);
 		await h.writer.onTasksChange([
 			before[1]!, { ...before[0]!, dependencies: [], parentId: 'Phase/Two.md', sequence: '2.2' },
 		]);

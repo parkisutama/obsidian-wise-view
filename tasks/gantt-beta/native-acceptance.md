@@ -34,7 +34,7 @@ Tema: light dan dark
 
 ## Write path
 
-Tanggal persiapan: 2026-09-20
+Tanggal uji: 2026-09-20
 
 Build yang diuji: `eb907d9` (`008b09d` untuk core cascade)
 
@@ -95,19 +95,23 @@ setiap baris agar hasil sebelumnya tidak menyamarkan hasil berikutnya.
 
 | Area | Langkah dan hasil yang diharapkan | Hasil | Catatan/bukti |
 | --- | --- | --- | --- |
-| Move | Geser Task A satu hari. Start dan End maju satu hari; durasi tetap. | Belum diuji | |
-| Resize | Tarik ujung kanan Task A satu hari. Hanya End bertambah satu hari. | Belum diuji | |
-| Progress | Tarik progress Task A. `progress` menjadi integer yang terlihat pada chart. | Belum diuji | |
-| Summary drag | Geser bar Phase A. Task A dan B ikut bergeser; tanggal Phase A tidak ditulis karena Write phase dates=off. | Belum diuji | |
-| Dependency create | Tarik dari endpoint akhir Task A ke endpoint awal Task B. Tepat satu `[[Task A]]` ditambahkan ke `depends_on` Task B dan satu garis tampil. | Belum diuji | |
+| Move | Geser Task A satu hari. Start dan End maju satu hari; durasi tetap. | Gagal, perbaikan tersedia | Move dua arah menulis tanggal, tetapi batas Date terasa tidak tepat dan End bertambah satu hari. Regresi ditutup oleh uji konversi exclusive End bertime sub-day; perlu uji ulang build terbaru. |
+| Resize | Tarik ujung kanan Task A satu hari. Hanya End bertambah satu hari. | Gagal, perbaikan tersedia | End selalu mendapat satu hari ekstra. Perbaikan memakai exclusive End chart untuk seluruh output Date; perlu uji ulang build terbaru. |
+| Progress | Tarik progress Task A. `progress` menjadi integer yang terlihat pada chart. | Lulus | Nilai dapat dinaikkan dan diturunkan secara normal. |
+| Summary drag | Geser bar Phase A. Task A dan B ikut bergeser; tanggal Phase A tidak ditulis karena Write phase dates=off. | Gagal, perbaikan tersedia | Task A dan B ikut bergeser, tetapi End mendapat satu hari ekstra. Perlu uji ulang setelah perbaikan konversi End. |
+| Dependency create | Tarik dari endpoint akhir Task A ke endpoint awal Task B. Tepat satu `[[Task A]]` ditambahkan ke `depends_on` Task B dan satu garis tampil. | Lulus dengan regresi lanjutan | Link A→B berhasil dibuat. Setelah A digeser, link sempat hilang dari `depends_on` B; perbaikan kini membatasi perubahan dependency hanya pada gesture create/delete dan perlu uji ulang. |
 | Dependency reject | Coba endpoint selain end-to-start. Gesture ditolak dan frontmatter tidak berubah. | Belum diuji | |
-| Dependency delete | Pilih/hapus garis A→B. Hanya link Task A di `depends_on` Task B yang hilang. | Belum diuji | |
+| Dependency delete | Pilih/hapus garis A→B. Hanya link Task A di `depends_on` Task B yang hilang. | Lulus | Link dapat dihapus. |
 | Reparent | Pindahkan Task B dari Phase A ke Phase B. `parent` menjadi `[[Phase B]]`. Drop ke group sintetis harus ditolak. | Belum diuji | |
-| Reorder | Tukar urutan Task A/B dalam phase. `order` sibling menjadi 10, 20; tanpa property Order gesture harus ditolak. | Belum diuji | |
-| Create | Gambar range di area create. Note baru dibuat melalui template dengan Start/End terisi; Parent memang belum diisi karena draft library tidak membawa row target. | Belum diuji | |
-| Detail edit | Ubah tanggal/progress dari panel detail bawaan. Jalur write sama seperti move/progress. | Belum diuji | |
-| Echo state | Setelah write sukses, horizontal scroll, phase collapse, selection, dan detail panel tetap pada state sebelumnya. | Belum diuji | |
-| Failure revert | Dengan target property formula/tidak writable, write menampilkan Notice dan chart kembali ke nilai sebelumnya. | Belum diuji | |
+| Reorder | Tukar urutan Task A/B dalam phase. `order` sibling menjadi 10, 20; tanpa property Order gesture harus ditolak. | Lulus | Tanpa konfigurasi Order muncul Notice. Nilai 10, 20 memang sengaja diberi jarak agar penyisipan berikutnya dapat memakai nilai di antaranya tanpa selalu menomori ulang semua sibling. |
+| Create | Gambar range di area create. Note baru dibuat melalui template dengan Start/End terisi; Parent memang belum diisi karena draft library tidak membawa row target. | Lulus dengan catatan | Gambar di area kosong terbawah membuat note `New note 2026-09-16`; penamaan/template khusus belum dikonfigurasi. |
+| Detail edit | Ubah tanggal/progress dari panel detail bawaan. Jalur write sama seperti move/progress. | Lulus | Edit tidak menambah atau mengurangi nilai lain. |
+| Echo state | Setelah write sukses, horizontal scroll, phase collapse, selection, dan detail panel tetap pada state sebelumnya. | Perlu uji ulang terarah | Cara uji belum jelas bagi penguji; gunakan langkah singkat di bawah tabel. |
+| Failure revert | Dengan target property formula/tidak writable, write menampilkan Notice dan chart kembali ke nilai sebelumnya. | Dicakup tes otomatis | Tidak dipaksakan pada vault acceptance karena membutuhkan kegagalan write yang disengaja. Uji unit memverifikasi kegagalan hasil maupun exception mengembalikan baseline dan menampilkan Notice. |
+
+Uji Echo state: scroll horizontal menjauh dari posisi awal, collapse satu phase, pilih task dan
+buka detailnya, lalu ubah progress task tersebut. Setelah save, posisi scroll, kondisi collapse,
+task terpilih, dan panel detail harus tetap sama.
 
 ### Checklist dependency schedule dan phase dates
 

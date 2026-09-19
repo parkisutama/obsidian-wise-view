@@ -56,6 +56,7 @@ export class GanttBetaWriteBack {
 	private epoch = 0;
 	private dependencyPolicy: GanttDependencyPolicy;
 	private writePhaseDates: boolean;
+	private pendingDependencyChange = false;
 
 	constructor(tasks: Task[], private readonly options: GanttBetaWriteBackOptions) {
 		this.baseline = tasks;
@@ -83,7 +84,10 @@ export class GanttBetaWriteBack {
 	}
 
 	onDependencyCreate(change: GanttDependencyChange): boolean {
-		if (change.type === 'FS' && this.properties.dependsOn && this.options.mutations.dependency) return true;
+		if (change.type === 'FS' && this.properties.dependsOn && this.options.mutations.dependency) {
+			this.pendingDependencyChange = true;
+			return true;
+		}
 		this.options.notice('Gantt Beta currently supports finish-to-start dependencies only.');
 		return false;
 	}
@@ -127,9 +131,18 @@ export class GanttBetaWriteBack {
 	 */
 	onTasksChange(nextTasks: Task[]): Promise<void> {
 		const epoch = this.epoch;
+		const allowDependencyChange = this.pendingDependencyChange;
+		this.pendingDependencyChange = false;
+		const preservedTasks = allowDependencyChange ? nextTasks : nextTasks.map(task => {
+			const previous = this.baseline.find(candidate => candidate.id === task.id);
+			if (!previous || task.dependencies === previous.dependencies) return task;
+			return { ...task, dependencies: previous.dependencies };
+		});
+		const normalizedTasks = preservedTasks.every((task, index) => task === nextTasks[index])
+			? nextTasks : preservedTasks;
 		this.options.gate?.begin();
 		const job = this.queue
-			.then(() => (epoch === this.epoch ? this.apply(nextTasks) : undefined))
+			.then(() => (epoch === this.epoch ? this.apply(normalizedTasks) : undefined))
 			.finally(() => this.options.gate?.end());
 		this.queue = job.catch(() => undefined);
 		return job;
