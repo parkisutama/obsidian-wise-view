@@ -13,6 +13,7 @@ import {
   normalizePath,
 } from 'obsidian';
 import type { NoteTemplateDefaults } from '../types/settings';
+import type { NoteCreationRequest } from '../platform/mutations/types';
 
 export interface NoteTemplateContext {
   title: string;
@@ -59,6 +60,20 @@ export class NoteTemplateService {
     }
 
     await this.applyTemplateToFile(createdFile, frontmatter, template.body);
+  }
+
+  /**
+   * Renders the same title/template contract without writing. Scoped-write views pass the
+   * result to FileCreateCapability instead of receiving direct vault access.
+   */
+  async prepareNote(context: NoteTemplateContext, fallbackFolder = ''): Promise<NoteCreationRequest> {
+    const renderedTitle = this.renderTemplate(this.settings.titleFormat || context.title, context).trim() || context.title;
+    const fileTitle = this.sanitizeFileName(renderedTitle) || 'Untitled';
+    const template = await this.readTemplate(context);
+    const frontmatter = { ...template.frontmatter, ...context.frontmatter };
+    const folder = normalizePath(this.settings.targetFolder || fallbackFolder);
+    const path = await this.getAvailablePath(folder, fileTitle);
+    return { path, frontmatter, body: template.body };
   }
 
   private async readTemplate(context: NoteTemplateContext): Promise<TemplateParts> {

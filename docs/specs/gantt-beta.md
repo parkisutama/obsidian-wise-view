@@ -98,7 +98,7 @@ and writes only changed fields of changed notes.
 | Delete a dependency | `onDependencyDelete` → `onTasksChange` | Removes `[[predecessor]]` from Depends on in the successor note. |
 | Drag row to another phase | `onTaskMove` → `onTasksChange` | Parent (link to the new parent note, or cleared at root). Dropping into a synthetic group phase is rejected with a Notice in v1. |
 | Drag row within a phase | `onTaskMove` → `onTasksChange` | Order on the moved sibling set. Rejected with a Notice when no Order property is configured. |
-| Draw a range / Add task | `onTaskCreate` | New note from the template (`NoteTemplateService`, unchanged API) with Start/End prefilled; Parent prefilled when drawn on a phase row |
+| Draw a range / Add task | `onTaskCreate` | New note from the template (`NoteTemplateService.prepareNote`, then the `fileCreate` grant) with Start/End prefilled. Parent is not prefilled: the library's draft carries only the dates, not the row it was drawn on. |
 | Detail panel field edit | `onTasksChange` or direct | Same as the equivalent gesture |
 
 Rules:
@@ -106,10 +106,18 @@ Rules:
 - **Link format.** Written links use the same wiki-link form the Frappe view already writes
   (`toWikiLink`). Existing list/comma shapes are
   preserved (append/remove within the shape the property already has).
-- **Failure.** A failed write shows a Notice and re-passes the previous array so the bar
-  reverts (library-supported optimistic-revert pattern).
-- **Batching.** One gesture may touch many notes (summary drag, cascade). Writes are issued as
-  one batch; Bases updates arriving mid-batch are coalesced (existing `RenderScheduler`).
+- **Failure.** A failed write shows a Notice and remounts the chart from the previous array. A
+  plain re-pass cannot work: the library ignores a `tasks` prop whose contents equal the last one
+  it received, and this host never passed the failed edit back in. The remount resets scroll,
+  collapse, and selection, which is paid only on failure. Gestures queued behind the failed one
+  are dropped, since their arrays still contain the failed edit. Writes for one gesture run in
+  parallel, so a partial failure can leave some notes written; the next Bases update shows the
+  true state.
+- **Batching.** One gesture may touch many notes (summary drag, cascade). Gestures are applied
+  strictly in order, each diffed against the previous result. Bases updates arriving while a
+  write is in flight, or within 350 ms after it (3 s cap), are held and replaced by a single render
+  from the latest data (`EchoGate`; `RenderScheduler` decides only skip/css-only/full and cannot
+  coalesce over time).
 - **Echo suppression.** The re-render that Bases triggers after our own write must not reset
   scroll, selection, collapse state, or the open detail panel.
 - **Order values.** Reordering renumbers the affected siblings with gaps (10, 20, 30, …) and only

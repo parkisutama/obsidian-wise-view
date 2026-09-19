@@ -109,7 +109,7 @@ export class LegacyMutationGateway
 		}
 	}
 
-	async setDependencies(path: string, propertyId: string, dependencies: string): Promise<MutationResult> {
+	async setDependencies(path: string, propertyId: string, dependencies: unknown): Promise<MutationResult> {
 		return this.setProperty(path, propertyId, dependencies);
 	}
 

@@ -91,6 +91,7 @@ function buildGanttCommands() {
 
 export default class WiseViewPlugin extends Plugin {
   settings!: WiseViewSettings;
+  private readonly viewRegistry = new ViewRegistry();
 
   async onload() {
     await this.loadSettings();
@@ -112,7 +113,8 @@ export default class WiseViewPlugin extends Plugin {
     const calendar = createCalendarViewRegistration(this);
     const gantt = createGanttViewRegistration(this);
     const timeline = createTimelineViewRegistration(this);
-    const ganttBeta = createGanttBetaViewRegistration(this);
+    const ganttBeta = createGanttBetaViewRegistration(this,
+      () => this.viewRegistry.mutationsFor(BASES_GANTT_BETA_VIEW_ID, this.app));
 
     return [
       {
@@ -166,12 +168,11 @@ export default class WiseViewPlugin extends Plugin {
 
   /** Registers every descriptor's Bases view, hover source, and commands with Obsidian. */
   private registerViewDescriptors(descriptors: ViewDescriptor[]): void {
-    const registry = new ViewRegistry();
     for (const descriptor of descriptors) {
-      registry.register(descriptor);
+      this.viewRegistry.register(descriptor);
     }
 
-    for (const descriptor of registry.list()) {
+    for (const descriptor of this.viewRegistry.list()) {
       this.registerBasesView(descriptor.id, {
         name: descriptor.name,
         icon: descriptor.icon,

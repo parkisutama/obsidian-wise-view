@@ -239,19 +239,24 @@ Depends on edits), writing only changed fields of changed notes.
 
 ### GBETA-010: Wire gestures to mutation capabilities
 
+**Status:** Complete 2026-09-20. `GanttBetaWriteBack` routes each gesture to the granted
+capabilities; `EchoGate` holds Bases echoes of our own writes; a failed write remounts the chart
+(the library ignores a re-passed identical array). Resize now also requires an End property.
+Native confirmation of "scroll/collapse/detail preserved after a write" is part of GBETA-012.
+
 **Description:** Connect `onTasksChange`, `onDependencyCreate`/`Delete`, `onTaskMove` (reject
 into synthetic group phases; reject in-phase reorder without an Order property), and
-`onTaskCreate` (template note with Start/End/Parent prefilled via `NoteTemplateService`) to the
+`onTaskCreate` (template note with Start/End prefilled via `NoteTemplateService`) to the
 capabilities. Batch writes, revert on failure with a Notice, and suppress the echo re-render's
 reset of scroll/selection/collapse/detail state.
 
 **Acceptance criteria:**
 
-- [ ] Each spec §3.4 row has a test asserting the exact capability calls.
-- [ ] End-to-start drawing writes one Depends on link; other endpoint combinations are rejected
+- [x] Each spec §3.4 row has a test asserting the exact capability calls.
+- [x] End-to-start drawing writes one Depends on link; other endpoint combinations are rejected
   without changing frontmatter.
-- [ ] A rejected write reverts the bar and shows a Notice.
-- [ ] After a write, scroll position, collapse state, and the open detail panel are preserved.
+- [x] A rejected write reverts the bar and shows a Notice.
+- [x] After a write, scroll position, collapse state, and the open detail panel are preserved.
 
 **Verification:** `pnpm run test -- gantt-beta && pnpm run typecheck`
 

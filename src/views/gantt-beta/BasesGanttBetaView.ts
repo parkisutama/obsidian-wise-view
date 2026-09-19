@@ -2,14 +2,23 @@
 // Copyright (C) 2026 Parkis Utama
 
 import { BasesView, Notice, type QueryController } from 'obsidian';
+import type { GanttTaskDraft, Task } from '@jaeungkim/gantt-chart';
 import type WiseViewPlugin from '../../main';
+import type { NormalizedValue } from '../../core/entries/NormalizedValue';
+import { writeGanttDate, type GanttPropertyDateType } from '../../core/gantt/dates';
 import { createEntrySnapshotGroups } from '../../platform/bases/entrySnapshotAdapter';
+import type { EntrySnapshotGroup } from '../../platform/bases/entrySnapshotAdapter';
 import { resolveColor } from '../../platform/colors/ColorResolver';
 import { resolvePrettyPropertiesColor } from '../../integrations/PrettyPropertiesAdapter';
 import { ViewRuntime } from '../../platform/dom/ViewRuntime';
+import type { GrantedMutations } from '../../platform/mutations/grants';
+import { NoteTemplateService } from '../../services/NoteTemplateService';
+import { EchoGate } from './echoGate';
 import { GanttBetaChartHost, type ChartRender, type GanttBetaChartModel } from './chartHost';
 import { ganttBetaRequestedProperties, readGanttBetaOptions } from './options';
+import type { GanttBetaOptions } from './options';
 import { mapSnapshotsToGanttTasks } from './taskMapping';
+import { GanttBetaWriteBack } from './writeBack';
 
 export const BASES_GANTT_BETA_VIEW_ID = 'wise-view-gantt-beta';
 
@@ -21,17 +30,36 @@ export class BasesGanttBetaView extends BasesView {
 	private lastGroups: unknown = null;
 	private lastNonCssConfig = '';
 	private lastModel: GanttBetaChartModel | null = null;
+	private writer: GanttBetaWriteBack | null = null;
+	private currentOptions: GanttBetaOptions | null = null;
+	private currentStartType: GanttPropertyDateType = 'date';
+	private creationFolder = '';
+	private readonly echoGate: EchoGate;
 
-	constructor(controller: QueryController, private readonly containerEl: HTMLElement, private readonly plugin: WiseViewPlugin, renderChart?: ChartRender) {
+	constructor(
+		controller: QueryController,
+		private readonly containerEl: HTMLElement,
+		private readonly plugin: WiseViewPlugin,
+		renderChart?: ChartRender,
+		private readonly mutations: GrantedMutations = {},
+	) {
 		super(controller);
 		this.runtime = new ViewRuntime(containerEl);
 		this.containerEl.addClass('bases-gantt-beta-view');
 		this.chart = this.runtime.own(new GanttBetaChartHost(containerEl, this.runtime, renderChart));
+		this.echoGate = new EchoGate({
+			setTimeout: (handler, ms) => this.runtime.setTimeout(handler, ms),
+			clearTimeout: id => this.runtime.win.clearTimeout(id),
+			now: () => Date.now(),
+		}, () => this.onDataUpdated());
 	}
 
 	onDataUpdated(): void {
 		if (!this.data?.groupedData) return;
+		// Bases echoes our own writes file by file; render once they have settled, from the latest data.
+		if (this.echoGate.hold()) return;
 		const options = readGanttBetaOptions(this.config);
+		this.currentOptions = options;
 		const nonCssConfig = JSON.stringify({ ...options, rowHeight: undefined });
 		if (this.lastGroups === this.data.groupedData && this.lastNonCssConfig === nonCssConfig && this.lastModel) {
 			this.lastModel = { ...this.lastModel, rowHeight: options.rowHeight };
@@ -39,6 +67,7 @@ export class BasesGanttBetaView extends BasesView {
 			return;
 		}
 		const groups = createEntrySnapshotGroups(this.data.groupedData, ganttBetaRequestedProperties(options));
+		this.creationFolder = groups.flatMap(group => group.entries)[0]?.folder ?? '';
 		const grouped = this.data.groupedData.length > 1 || Boolean(this.data.groupedData[0]?.hasKey());
 		const mapped = mapSnapshotsToGanttTasks(groups, options, {
 			resolveLink: (target, sourcePath) => {
@@ -60,22 +89,109 @@ export class BasesGanttBetaView extends BasesView {
 			freshCycles.forEach(path => this.reportedCycles.add(path));
 			new Notice(`Gantt Beta ignored cyclic parent links: ${freshCycles.join(', ')}`);
 		}
+		const mutationProperties = this.mutationProperties(groups, options);
+		this.currentStartType = mutationProperties.start?.type ?? 'date';
+		if (this.writer) {
+			this.writer.replaceProperties(mutationProperties);
+			this.writer.replaceBaseline(mapped.tasks, mutationProperties);
+		} else {
+			this.writer = new GanttBetaWriteBack(mapped.tasks, {
+				mutations: this.mutations,
+				properties: mutationProperties,
+				revertTasks: tasks => this.revertTaskArray(tasks),
+				gate: this.echoGate,
+				notice: message => new Notice(message),
+				createTask: draft => this.createTask(draft, this.currentOptions ?? options, this.currentStartType),
+			});
+		}
+		const writer = this.writer;
+		const editable = !options.readOnly;
 		const model: GanttBetaChartModel = {
 			tasks: mapped.tasks, unscheduledCount: mapped.unscheduled.length, rowHeight: options.rowHeight,
 			props: {
-				defaultScale: options.scale, readOnly: true, hierarchy: options.phases, showTaskList: options.showTaskList,
+				defaultScale: options.scale, readOnly: options.readOnly, hierarchy: options.phases, showTaskList: options.showTaskList,
 				showRowNumbers: options.showRowNumbers, showDetail: options.showDetail, showTooltip: options.showTooltip,
 				showNonWorkingDays: options.showNonWorkingDays,
 				workingWeekdays: options.workingWeekdays.split(',').map(Number).filter(day => day >= 0 && day <= 6),
 				holidays: options.holidays.split(',').map(value => value.trim()).filter(Boolean), firstDayOfWeek: options.firstDayOfWeek,
 				zoomOnWheel: options.zoomOnWheel, infiniteScroll: options.infiniteScroll,
 				...(options.scrollToToday ? { initialScrollTo: 'today' as const } : {}),
+				allowMove: editable && options.allowMove && Boolean(this.mutations.date),
+				allowResize: editable && options.allowResize && Boolean(options.end && this.mutations.date),
+				allowProgressChange: editable && options.allowProgress && Boolean(options.progress && this.mutations.property),
+				allowLinkCreate: editable && options.allowLinkCreate && Boolean(options.dependsOn && this.mutations.dependency),
+				allowLinkDelete: editable && options.allowLinkDelete && Boolean(options.dependsOn && this.mutations.dependency),
+				allowReorder: editable && options.allowReorder && Boolean((options.order || options.parent) && this.mutations.property),
+				allowTaskCreate: editable && options.allowTaskCreate && Boolean(options.start && this.mutations.fileCreate),
+				onTasksChange: tasks => void writer.onTasksChange(tasks),
+				onDependencyCreate: change => writer.onDependencyCreate(change),
+				onDependencyDelete: change => writer.onDependencyDelete(change),
+				onTaskMove: change => writer.onTaskMove(change),
+				onTaskCreate: draft => void writer.onTaskCreate(draft),
 			},
 		};
 		this.lastGroups = this.data.groupedData;
 		this.lastNonCssConfig = nonCssConfig;
 		this.lastModel = model;
 		this.chart.update(model);
+	}
+
+	private revertTaskArray(tasks: Task[]): void {
+		if (this.lastModel) this.lastModel = { ...this.lastModel, tasks };
+		this.chart.revert(tasks);
+	}
+
+	private mutationProperties(groups: readonly EntrySnapshotGroup[], options: GanttBetaOptions) {
+		const entries = groups.flatMap(group => group.entries);
+		const dateType = (property: string | null): GanttPropertyDateType => {
+			if (!property) return 'date';
+			return entries.some(entry => {
+				const value = entry.values.get(property);
+				return value?.kind === 'date' && value.hasTime;
+			}) ? 'datetime' : 'date';
+		};
+		const stored = (value: NormalizedValue | undefined): unknown => {
+			if (!value || value.kind === 'missing') return undefined;
+			if (value.kind === 'list') return value.items.map(item => stored(item)).filter(item => item !== undefined);
+			if (value.kind === 'link') return `[[${value.target}]]`;
+			if (value.kind === 'text' || value.kind === 'date' || value.kind === 'number' || value.kind === 'boolean') return value.value;
+			if (value.kind === 'file') return value.path;
+			return undefined;
+		};
+		return {
+			...(options.start ? { start: { id: options.start, type: dateType(options.start) } } : {}),
+			...(options.end ? { end: { id: options.end, type: dateType(options.end) } } : {}),
+			progress: options.progress ?? undefined, parent: options.parent ?? undefined, order: options.order ?? undefined,
+			dependsOn: options.dependsOn ?? undefined,
+			currentOrder: new Map(entries.map(entry => {
+				const value = options.order ? entry.values.get(options.order) : undefined;
+				return [entry.path, value?.kind === 'number' ? value.value : null] as const;
+			})),
+			currentDependsOn: new Map(entries.map(entry => [entry.path, stored(options.dependsOn ? entry.values.get(options.dependsOn) : undefined)])),
+			resolveLink: (target: string) => this.app.metadataCache.getFirstLinkpathDest(target, '')?.path ?? null,
+		};
+	}
+
+	private async createTask(draft: GanttTaskDraft, options: GanttBetaOptions, dateType: GanttPropertyDateType): Promise<void> {
+		if (!options.start || options.start.startsWith('formula.')) throw new Error('Configure a writable Start date property first.');
+		if (!this.mutations.fileCreate) throw new Error('File creation capability is unavailable.');
+		const fieldName = (property: string) => property.replace(/^note\./, '');
+		const propertyDate = (value: string, boundary: 'start' | 'end') =>
+			writeGanttDate(dateType === 'date' ? value.slice(0, 10) : value, dateType, boundary);
+		const frontmatter: Record<string, unknown> = {
+			[fieldName(options.start)]: propertyDate(draft.startDate, 'start'),
+		};
+		if (options.end && !options.end.startsWith('formula.')) {
+			frontmatter[fieldName(options.end)] = propertyDate(draft.endDate, 'end');
+		}
+		const parseUtc = (value: string) => new Date(`${value}${/[zZ]|[+-]\d\d:\d\d$/.test(value) ? '' : 'Z'}`);
+		const request = await new NoteTemplateService(this.app, {
+			templatePath: options.templatePath, targetFolder: options.targetFolder, titleFormat: options.titleFormat,
+		}).prepareNote({
+			title: 'New note', start: parseUtc(draft.startDate), end: parseUtc(draft.endDate), allDay: dateType === 'date', frontmatter,
+		}, this.creationFolder);
+		const result = await this.mutations.fileCreate.createNote(request);
+		if (!result.ok) throw new Error(result.message);
 	}
 
 	onunload(): void {

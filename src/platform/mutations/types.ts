@@ -33,7 +33,7 @@ export interface MoveMutationCapability {
 
 /** Writes a dependency list, e.g. after a Gantt drag re-links a dependent task's dates. */
 export interface DependencyMutationCapability {
-	setDependencies(path: string, propertyId: string, dependencies: string): Promise<MutationResult>;
+	setDependencies(path: string, propertyId: string, dependencies: unknown): Promise<MutationResult>;
 }
 
 export interface NoteCreationRequest {

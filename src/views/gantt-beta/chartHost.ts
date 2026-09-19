@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
-import { ReactGanttChart, type Task } from '@jaeungkim/gantt-chart';
+import { ReactGanttChart, type GanttProps, type Task } from '@jaeungkim/gantt-chart';
 import { h, type ComponentChild } from 'preact';
 import { render } from 'preact/compat';
 import type { ViewRuntime } from '../../platform/dom/ViewRuntime';
@@ -13,12 +13,7 @@ export interface GanttBetaChartModel {
 	tasks: Task[];
 	unscheduledCount: number;
 	rowHeight: number;
-	props: {
-		defaultScale: 'day' | 'week' | 'month' | 'quarter' | 'year'; readOnly: boolean; hierarchy: boolean;
-		showTaskList: boolean; showRowNumbers: boolean; showDetail: boolean; showTooltip: boolean;
-		showNonWorkingDays: boolean; workingWeekdays: number[]; holidays: string[]; firstDayOfWeek: number;
-		zoomOnWheel: boolean; infiniteScroll: boolean; initialScrollTo?: 'today';
-	};
+	props: GanttProps;
 }
 
 function bodyTheme(body: HTMLElement): GanttBetaTheme {
@@ -31,6 +26,7 @@ export class GanttBetaChartHost {
 	private readonly observer: MutationObserver;
 	private disposed = false;
 	private model: GanttBetaChartModel | null = null;
+	private remountKey = 0;
 
 	constructor(
 		private readonly containerEl: HTMLElement,
@@ -62,6 +58,7 @@ export class GanttBetaChartHost {
 			return;
 		}
 		this.renderChart(h(ReactGanttChart, {
+			key: this.remountKey,
 			tasks: this.model.tasks,
 			height: '100%',
 			width: '100%',
@@ -77,6 +74,19 @@ export class GanttBetaChartHost {
 			|| this.model.unscheduledCount !== model.unscheduledCount;
 		this.model = model;
 		if (repaint) this.paint();
+	}
+
+	/**
+	 * Puts the chart back on `tasks` after a failed write by remounting it. The library keeps the
+	 * last `tasks` prop it saw and ignores a re-passed array with identical contents, so a plain
+	 * update cannot undo an edit it already applied. Scroll, collapse and selection reset; that is
+	 * the price of an honest rollback, paid only on failure.
+	 */
+	revert(tasks: Task[]): void {
+		if (!this.model) return;
+		this.remountKey += 1;
+		this.model = { ...this.model, tasks };
+		this.paint();
 	}
 
 	dispose(): void {
