@@ -17,11 +17,42 @@ This amendment renumbers phases and checkpoints below (old Phase 6/Feed and Phas
 to new Phase 6/Masonry and Phase 7/Feed; old Phase 8/Keep is removed; old Phase 9/hardening
 becomes Phase 8). **Task IDs are unchanged** — T041-T045 remain Feed, T046-T050 remain Masonry,
 T051-T055 (Keep) are removed from this plan's scope — because no Feed or Masonry task had started
-and renumbering IDs would only cost churn without benefit. Function and continuous refactor
-remain the priority: where Grid, Masonry, and Swimlane's shared components turn out incompatible
-for a given piece of behavior, keep that piece per-view inside the shared component and record
-the unification opportunity as deferred work, the same way T037 handled Swimlane's cover-image
-resolution versus its full card rendering.
+and renumbering IDs would only cost churn without benefit.
+
+### Shared-DOM/CSS amendment (2026-09-19, superseding part of the note above)
+
+Native testing of Grid (screenshots showing broken card layout) showed that our own from-scratch
+CSS/DOM guesses for card presentation were less reliable than directly adopting Dynamic Views'
+own proven technique. The maintainer decided: **do not force Grid, Masonry, and Swimlane onto one
+shared DOM/CSS card renderer.** Full, faithful adoption of each upstream project's own rendering
+approach is the priority right now; premature unification is what produced the T037 risk and the
+Grid layout bugs. Concretely:
+
+- `CardItem`/`CardMapper` (the pure, Obsidian-free data model mapping an `EntrySnapshot` to
+  title/subtitle/cover/tags/properties) stays shared — it has no DOM or CSS in it, so there is
+  nothing here to clash.
+- The DOM structure and CSS technique used to *render* a card (class names, cover sizing
+  strategy, header/body layout) may diverge per view, adopted directly and fully from that view's
+  own upstream reference (e.g. Grid/Masonry from Dynamic Views), rather than forced through one
+  `CardRenderer`. `src/platform/dom/CardRenderer.ts` remains Swimlane's proven implementation;
+  Grid and Masonry are free to have their own renderer module if adopting upstream's structure
+  faithfully requires it.
+- License is not the blocker here — Dynamic Views is GPL-3.0-or-later and Wise View already
+  selects GPL v3 for combined distribution (spec §5.2). The actual constraint is tooling: Dynamic
+  Views authors CSS as Sass (`.scss`, with `@use`, mixins, `color-mix`); Wise View authors plain
+  CSS only (architecture decision 5, ADR-linked in the spec). Adopting a Dynamic Views stylesheet
+  means manually translating its Sass to equivalent plain CSS, not `@use`-ing or copying `.scss`
+  files verbatim — and trimming out its Style Settings/shadow-preset framework, which stays
+  excluded per the provenance ledger regardless of adaptation depth.
+- Every genuine per-file adoption still gets a `docs/architecture/upstream-provenance.md`
+  file-level provenance row, an SPDX/copyright header on the resulting Wise View file, and a
+  `THIRD_PARTY_NOTICES.md` entry — full adoption changes how much source may be adapted, not
+  whether it is attributed.
+- Where a view's own rendering diverges from another view's for a shared concern (e.g. Grid's
+  cover-sizing CSS technique differs from Swimlane's), record that divergence as a deferred
+  unification finding (`tasks/todo.md` or the provenance ledger) rather than silently drifting —
+  the goal is still eventual convergence once every view's behavior is individually solid, just
+  not forced now.
 
 ## Overview
 
