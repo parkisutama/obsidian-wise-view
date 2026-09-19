@@ -40,6 +40,7 @@ const ALLOWED_MUTATION_PATHS = [
 /** Directories where write access must never appear once files land there. */
 const GUARDED_MUTATION_DIRS = [
 	"src/views/timeline/",
+	"src/views/swimlane/",
 	"src/views/grid/",
 	"src/views/masonry/",
 	"src/views/feed/",

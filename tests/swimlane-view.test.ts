@@ -105,7 +105,7 @@ type ViewInternals = {
 	startTouchDrag(card: HTMLElement, entry: unknown, e: unknown): void;
 	startSwimlaneTouchDrag(row: HTMLElement, key: string, e: unknown): void;
 };
-const internals = (h: SwimlaneHarness) => h.view as unknown as ViewInternals;
+const internals = (h: SwimlaneHarness) => (h.view as unknown as { drag: ViewInternals }).drag;
 
 describe("Swimlane view lifecycle", () => {
 	it("disconnects the previous render's virtual-scroll observers before mounting new ones", async () => {
