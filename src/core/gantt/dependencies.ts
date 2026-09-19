@@ -68,6 +68,11 @@ function removeFromValue(value: unknown, targetPath: string, resolve: LinkResolv
 	return parts(value).filter(keep).join(separator);
 }
 
+/** Removes one resolved dependency while preserving array, comma, or newline storage shape. */
+export function removeGanttDependency(value: unknown, targetPath: string, resolve: LinkResolver): unknown {
+	return removeFromValue(value, targetPath, resolve);
+}
+
 /** Removes the target pair from every dependency-type property, as required by the library. */
 export function removeGanttDependencyFromAllTypes(
 	values: DependencyValues,
