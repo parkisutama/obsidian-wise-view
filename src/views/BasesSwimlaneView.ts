@@ -16,7 +16,9 @@ import {
   normalizePath,
 } from 'obsidian';
 import type WiseViewPlugin from '../main';
-import { PropertyTypeService } from '../services/PropertyTypeService';
+import { formatDate, getEntryValue, looksLikeDateString, valueToString } from './swimlane/values';
+import { createSwimlaneOptions } from './swimlane/options';
+import { COLUMN_ORDER_KEY, SWIMLANE_ORDER_KEY, orderKeys, parseCustomOrder, reorderKeys } from './swimlane/ordering';
 import { showOpenFileMenu } from '../utils/openFile';
 import { ViewRuntime } from '../platform/dom/ViewRuntime';
 import type { EntrySnapshot } from '../core/entries/EntrySnapshot';
@@ -191,33 +193,19 @@ export class BasesSwimlaneView extends BasesView {
   }
 
   private getCustomColumnOrder(): string[] {
-    const value = this.config.get('columnOrder') as string | undefined;
-    if (!value) return [];
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
-    } catch {
-      return [];
-    }
+    return parseCustomOrder(this.config.get(COLUMN_ORDER_KEY));
   }
 
   private setCustomColumnOrder(order: string[]): void {
-    this.config.set('columnOrder', JSON.stringify(order));
+    this.config.set(COLUMN_ORDER_KEY, JSON.stringify(order));
   }
 
   private getCustomSwimlaneOrder(): string[] {
-    const value = this.config.get('swimlaneOrder') as string | undefined;
-    if (!value) return [];
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
-    } catch {
-      return [];
-    }
+    return parseCustomOrder(this.config.get(SWIMLANE_ORDER_KEY));
   }
 
   private setCustomSwimlaneOrder(order: string[]): void {
-    this.config.set('swimlaneOrder', JSON.stringify(order));
+    this.config.set(SWIMLANE_ORDER_KEY, JSON.stringify(order));
   }
 
   private getCoverHeight(): number {
@@ -588,9 +576,9 @@ export class BasesSwimlaneView extends BasesView {
 
   private getEntryColor(entry: EntrySnapshot): string {
     const colorByField = this.getColorBy();
-    const value = this.getEntryValue(entry, colorByField);
+    const value = getEntryValue(entry, colorByField);
     if (!value) return resolveColor({ categoryValue: '' }).background;
-    const strValue = this.valueToString(Array.isArray(value) ? value[0] : value);
+    const strValue = valueToString(Array.isArray(value) ? value[0] : value);
     return this.getFieldValueColor(colorByField, strValue);
   }
 
@@ -631,8 +619,8 @@ export class BasesSwimlaneView extends BasesView {
     const groups = new Map<string, EntrySnapshot[]>();
 
     for (const entry of entries) {
-        const value = this.getEntryValue(entry, groupByField);
-        const groupKey = this.valueToString(value);
+        const value = getEntryValue(entry, groupByField);
+        const groupKey = valueToString(value);
 
         if (!groups.has(groupKey)) {
           groups.set(groupKey, []);
@@ -644,122 +632,17 @@ export class BasesSwimlaneView extends BasesView {
   }
 
   /**
-   * Convert any value to a string for grouping/display
-   * Uses type assertions to satisfy ESLint no-base-to-string rule
-   */
-  private valueToString(value: unknown): string {
-    if (value === null || value === undefined) return 'None';
-    if (Array.isArray(value)) {
-      const filtered = value.filter(v => v !== null && v !== undefined && v !== '' && v !== 'null');
-      if (filtered.length === 0) return 'None';
-      return filtered.join(', ');
-    }
-    // Handle primitives directly
-    if (typeof value === 'string') return value || 'None';
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-    // Handle objects - try toString() for objects that implement it meaningfully
-    if (typeof value === 'object') {
-      const objStr = (value as { toString(): string }).toString();
-      // Check for meaningful toString result
-      if (objStr && objStr !== '[object Object]') return objStr || 'None';
-      // Fall back to JSON for plain objects
-      try {
-        const json = JSON.stringify(value);
-        return json || 'None';
-      } catch {
-        return 'None';
-      }
-    }
-    // For remaining types (symbol, bigint, function), use String with type assertion
-    return String(value as string | number | boolean | bigint) || 'None';
-  }
-
-  /**
-   * Get frontmatter directly from Obsidian's metadata cache (bypasses Bases getValue)
-   * This is needed because Bases getValue may not return custom frontmatter properties
-   */
-  private getEntryValue(entry: EntrySnapshot, propId: string): unknown {
-    if (propId === 'file.folder') {
-      if (!entry.folder) return 'Root';
-      return entry.folder.split('/').pop() || 'Root';
-    }
-    if (propId === 'file.basename') return entry.basename;
-    if (propId === 'file.path') return entry.path;
-    return this.normalizedValueToPlain(entry.values.get(propId));
-  }
-
-  private normalizedValueToPlain(value: NormalizedValue | undefined): unknown {
-    if (!value || value.kind === 'missing') return undefined;
-    switch (value.kind) {
-      case 'text':
-      case 'date': return value.value;
-      case 'number':
-      case 'boolean': return value.value;
-      case 'link': return value.display || value.target;
-      case 'file': return value.path;
-      case 'list': return value.items
-        .map(item => this.normalizedValueToPlain(item))
-        .filter(item => item !== undefined);
-      case 'unsupported': return value.raw == null ? undefined : String(value.raw);
-    }
-  }
-
-  /**
    * Get ordered column keys based on the groupBy field and custom order
    */
   private getColumnKeys(groups: Map<string, EntrySnapshot[]>): string[] {
-    const customOrder = this.getCustomColumnOrder();
-
-    const defaultKeys: string[] = Array.from(groups.keys()).sort();
-
-    // If we have a custom order, use it (but include any new keys that weren't in the saved order)
-    if (customOrder.length > 0) {
-      const orderedKeys: string[] = [];
-      // First, add keys in custom order that still exist
-      for (const key of customOrder) {
-        if (defaultKeys.includes(key)) {
-          orderedKeys.push(key);
-        }
-      }
-      // Then add any new keys that weren't in custom order
-      for (const key of defaultKeys) {
-        if (!orderedKeys.includes(key)) {
-          orderedKeys.push(key);
-        }
-      }
-      return orderedKeys;
-    }
-
-    return defaultKeys;
+    return orderKeys(groups.keys(), this.getCustomColumnOrder());
   }
 
   /**
    * Get ordered swimlane keys based on the swimlaneBy field and custom order
    */
   private getOrderedSwimlaneKeys(swimlaneKeys: string[], _swimlaneBy: string): string[] {
-    const customOrder = this.getCustomSwimlaneOrder();
-
-    const defaultKeys: string[] = [...swimlaneKeys].sort();
-
-    // If we have a custom order, use it (but include any new keys that weren't in the saved order)
-    if (customOrder.length > 0) {
-      const orderedKeys: string[] = [];
-      // First, add keys in custom order that still exist
-      for (const key of customOrder) {
-        if (defaultKeys.includes(key)) {
-          orderedKeys.push(key);
-        }
-      }
-      // Then add any new keys that weren't in custom order
-      for (const key of defaultKeys) {
-        if (!orderedKeys.includes(key)) {
-          orderedKeys.push(key);
-        }
-      }
-      return orderedKeys;
-    }
-
-    return defaultKeys;
+    return orderKeys(swimlaneKeys, this.getCustomSwimlaneOrder());
   }
 
   /**
@@ -817,11 +700,11 @@ export class BasesSwimlaneView extends BasesView {
     const allColumnKeys = new Set<string>();
 
     for (const entry of entries) {
-        const swimlaneValue = this.getEntryValue(entry, swimlaneBy);
-        const swimlaneKey = this.valueToString(swimlaneValue);
+        const swimlaneValue = getEntryValue(entry, swimlaneBy);
+        const swimlaneKey = valueToString(swimlaneValue);
 
-        const columnValue = this.getEntryValue(entry, groupByField);
-        const columnKey = this.valueToString(columnValue);
+        const columnValue = getEntryValue(entry, groupByField);
+        const columnKey = valueToString(columnValue);
 
         allColumnKeys.add(columnKey);
 
@@ -1242,22 +1125,9 @@ export class BasesSwimlaneView extends BasesView {
   }
 
   private reorderColumns(draggedKey: string, targetKey: string, insertBefore: boolean): void {
-    // Get current column order
     const groups = this.groupEntriesByField(this.createSnapshots());
-    let currentOrder = this.getColumnKeys(groups);
-
-    // Remove dragged column from current position
-    currentOrder = currentOrder.filter(k => k !== draggedKey);
-
-    // Find target position
-    const targetIndex = currentOrder.indexOf(targetKey);
-    const insertIndex = insertBefore ? targetIndex : targetIndex + 1;
-
-    // Insert at new position
-    currentOrder.splice(insertIndex, 0, draggedKey);
-
-    // Save custom order
-    this.setCustomColumnOrder(currentOrder);
+    const currentOrder = this.getColumnKeys(groups);
+    this.setCustomColumnOrder(reorderKeys(currentOrder, draggedKey, targetKey, insertBefore));
 
     // Re-render
     this.render();
@@ -1566,28 +1436,15 @@ export class BasesSwimlaneView extends BasesView {
     // Collect current swimlane keys
     const swimlaneKeys: string[] = [];
     for (const entry of this.createSnapshots()) {
-        const value = this.getEntryValue(entry, swimlaneBy);
-        const key = this.valueToString(value);
+        const value = getEntryValue(entry, swimlaneBy);
+        const key = valueToString(value);
         if (!swimlaneKeys.includes(key)) {
           swimlaneKeys.push(key);
         }
     }
 
-    // Get current order
-    let currentOrder = this.getOrderedSwimlaneKeys(swimlaneKeys, swimlaneBy);
-
-    // Remove dragged swimlane from current position
-    currentOrder = currentOrder.filter(k => k !== draggedKey);
-
-    // Find target position
-    const targetIndex = currentOrder.indexOf(targetKey);
-    const insertIndex = insertBefore ? targetIndex : targetIndex + 1;
-
-    // Insert at new position
-    currentOrder.splice(insertIndex, 0, draggedKey);
-
-    // Save custom order
-    this.setCustomSwimlaneOrder(currentOrder);
+    const currentOrder = this.getOrderedSwimlaneKeys(swimlaneKeys, swimlaneBy);
+    this.setCustomSwimlaneOrder(reorderKeys(currentOrder, draggedKey, targetKey, insertBefore));
 
     // Re-render
     this.render();
@@ -1717,9 +1574,9 @@ export class BasesSwimlaneView extends BasesView {
     const coverField = this.getCoverField();
     const coverDisplay = this.getCoverDisplay();
     if (coverField && coverDisplay !== 'none') {
-      const coverValue = this.getEntryValue(entry, coverField);
+      const coverValue = getEntryValue(entry, coverField);
       if (coverValue) {
-        this.renderCover(card, this.valueToString(coverValue), coverDisplay);
+        this.renderCover(card, valueToString(coverValue), coverDisplay);
       }
     }
 
@@ -1736,8 +1593,8 @@ export class BasesSwimlaneView extends BasesView {
 
     // Title (CSS class handles font-weight)
     const titleField = this.getTitleBy();
-    const title = (titleField && this.getEntryValue(entry, titleField)) || entry.basename;
-    titleRow.createSpan({ cls: 'planner-kanban-card-title', text: this.valueToString(title) });
+    const title = (titleField && getEntryValue(entry, titleField)) || entry.basename;
+    titleRow.createSpan({ cls: 'planner-kanban-card-title', text: valueToString(title) });
 
     // For inline placement, render badges in title row
     if (placement === 'inline') {
@@ -1755,12 +1612,12 @@ export class BasesSwimlaneView extends BasesView {
     );
 
     if (summaryField && isSummaryVisible) {
-      const summary = this.getEntryValue(entry, summaryField);
+      const summary = getEntryValue(entry, summaryField);
       if (summary && summary !== 'null' && summary !== null) {
-        const summaryStr = this.valueToString(summary);
+        const summaryStr = valueToString(summary);
         // Auto-format if the summary field points to a date/datetime property
-        const displayText = this.looksLikeDateString(summaryStr)
-          ? (this.formatDate(summaryStr, this.getDateFormat()) ?? summaryStr)
+        const displayText = looksLikeDateString(summaryStr)
+          ? (formatDate(summaryStr, this.getDateFormat()) ?? summaryStr)
           : summaryStr;
         content.createDiv({ cls: 'planner-kanban-card-summary', text: displayText });
       }
@@ -1892,22 +1749,22 @@ export class BasesSwimlaneView extends BasesView {
     const endVisible = isVisible(dateEndProp);
 
     if (startVisible && endVisible) {
-      const startVal = this.getEntryValue(entry, dateStartField);
-      const endVal = this.getEntryValue(entry, dateEndField);
+      const startVal = getEntryValue(entry, dateStartField);
+      const endVal = getEntryValue(entry, dateEndField);
       if (startVal || endVal) {
         const row = makePropContainer('date', 'calendar-range');
         this.createDateRangeBadge(row, startVal, endVal);
       }
     } else {
       if (startVisible) {
-        const startVal = this.getEntryValue(entry, dateStartField);
+        const startVal = getEntryValue(entry, dateStartField);
         if (startVal) {
           const row = makePropContainer('start', 'play');
           this.createDateBadge(row, startVal, 'play');
         }
       }
       if (endVisible) {
-        const endVal = this.getEntryValue(entry, dateEndField);
+        const endVal = getEntryValue(entry, dateEndField);
         if (endVal) {
           const row = makePropContainer('end', 'flag');
           this.createDateBadge(row, endVal, 'flag');
@@ -1938,19 +1795,19 @@ export class BasesSwimlaneView extends BasesView {
       // Skip: date fields (already rendered above as date/range badges)
       if (propName === dateStartProp || propName === dateEndProp) continue;
 
-      const value = this.getEntryValue(entry, propId);
+      const value = getEntryValue(entry, propId);
       // Skip null, undefined, empty, and "null" string values
       if (value === null || value === undefined || value === '' || value === 'null') continue;
 
       const rawValues = Array.isArray(value)
-        ? value.filter(v => v && v !== 'null').map(v => this.valueToString(v))
-        : [this.valueToString(value)];
+        ? value.filter(v => v && v !== 'null').map(v => valueToString(v))
+        : [valueToString(value)];
 
       // Auto-format values that look like ISO date/datetime strings
       const fmt = this.getDateFormat();
       const formattedValues = rawValues.map(v => {
-        if (this.looksLikeDateString(v)) {
-          return this.formatDate(v, fmt) ?? v;
+        if (looksLikeDateString(v)) {
+          return formatDate(v, fmt) ?? v;
         }
         return v;
       });
@@ -1993,7 +1850,7 @@ export class BasesSwimlaneView extends BasesView {
   }
 
   private createDateBadge(container: HTMLElement, value: unknown, icon: string): void {
-    const dateStr = this.formatDate(value, this.getDateFormat());
+    const dateStr = formatDate(value, this.getDateFormat());
     if (!dateStr) return;
 
     // CSS class handles all styles for date badge
@@ -2008,8 +1865,8 @@ export class BasesSwimlaneView extends BasesView {
 
   private createDateRangeBadge(container: HTMLElement, startValue: unknown, endValue: unknown): void {
     const fmt = this.getDateFormat();
-    const startStr = this.formatDate(startValue, fmt);
-    const endStr = this.formatDate(endValue, fmt);
+    const startStr = formatDate(startValue, fmt);
+    const endStr = formatDate(endValue, fmt);
     if (!startStr && !endStr) return;
 
     const badge = container.createSpan({ cls: 'planner-badge planner-kanban-badge planner-kanban-badge-date' });
@@ -2041,54 +1898,6 @@ export class BasesSwimlaneView extends BasesView {
     }
     badge.createSpan({ text: value });
     badge.setAttribute('title', `${label}: ${value}`);
-  }
-
-  /** Returns true when a string value looks like an ISO 8601 date or datetime. */
-  private looksLikeDateString(value: string): boolean {
-    // Matches: 2026-02-22, 2026-02-22T17:35:12, 2026-02-22T17:35:12+07:00, ...Z
-    return /^\d{4}-\d{2}-\d{2}(T[\d:.]+([+-]\d{2}:?\d{2}|Z)?)?$/.test(value.trim());
-  }
-
-  private formatDate(value: unknown, format = 'date-short'): string | null {
-    if (!value) return null;
-    if (typeof value !== 'string' && typeof value !== 'number' && !(value instanceof Date)) return null;
-
-    try {
-      // For ISO strings with timezone offset, normalize to local time via Date constructor.
-      // JS handles '2026-02-22T17:35:12+07:00' correctly.
-      const date = value instanceof Date ? value : new Date(value);
-      if (isNaN(date.getTime())) return null;
-
-      switch (format) {
-        case 'date-short':
-          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        case 'date-medium':
-          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-        case 'date-long':
-          return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-        case 'date-numeric':
-          return date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: 'numeric' });
-        case 'datetime-short':
-          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-            + ' ' + date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        case 'datetime-medium':
-          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-            + ' ' + date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        case 'relative': {
-          const diffMs = date.getTime() - Date.now();
-          const diffDays = Math.round(diffMs / 86400000);
-          if (diffDays === 0) return 'Today';
-          if (diffDays === 1) return 'Tomorrow';
-          if (diffDays === -1) return 'Yesterday';
-          if (diffDays > 0) return `in ${diffDays}d`;
-          return `${Math.abs(diffDays)}d ago`;
-        }
-        default:
-          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      }
-    } catch {
-      return null;
-    }
   }
 
   private setupCardDragHandlers(card: HTMLElement, entry: EntrySnapshot): void {
@@ -2578,197 +2387,6 @@ export function createSwimlaneViewRegistration(plugin: WiseViewPlugin): BasesVie
     factory: (controller: QueryController, containerEl: HTMLElement) => {
       return new BasesSwimlaneView(controller, containerEl, plugin);
     },
-    options: (_config: BasesViewConfig): BasesAllOptions[] => [
-      {
-        type: 'property',
-        key: 'plannerGroupBy',
-        displayName: 'Columns by',
-        default: '',
-        placeholder: 'Select property',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isCategoricalProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'swimlaneBy',
-        displayName: 'Swimlanes by',
-        default: '',
-        placeholder: 'None',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isCategoricalProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'colorBy',
-        displayName: 'Color by',
-        default: '',
-        placeholder: 'None',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isCategoricalProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'titleBy',
-        displayName: 'Title by',
-        default: '',
-        placeholder: 'File name',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isTextProperty(propId, plugin.app),
-      },
-      {
-        type: 'dropdown',
-        key: 'borderStyle',
-        displayName: 'Border style',
-        default: 'left-accent',
-        options: {
-          'none': 'None',
-          'left-accent': 'Left accent',
-          'full-border': 'Full border',
-        },
-      },
-      {
-        type: 'property',
-        key: 'coverField',
-        displayName: 'Cover field',
-        default: '',
-        placeholder: 'None',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isTextProperty(propId, plugin.app),
-      },
-      {
-        type: 'dropdown',
-        key: 'coverDisplay',
-        displayName: 'Cover display',
-        default: 'banner',
-        options: {
-          'none': 'None',
-          'banner': 'Banner (top)',
-          'thumbnail-left': 'Thumbnail (left)',
-          'thumbnail-right': 'Thumbnail (right)',
-          'background': 'Background',
-        },
-      },
-      {
-        type: 'dropdown',
-        key: 'coverHeight',
-        displayName: 'Cover height (banner)',
-        default: '100',
-        options: {
-          '60': 'Extra small (60px)',
-          '80': 'Small (80px)',
-          '100': 'Medium-small (100px)',
-          '120': 'Medium (120px)',
-          '150': 'Medium-large (150px)',
-          '180': 'Large (180px)',
-          '200': 'Extra large (200px)',
-        },
-      },
-      {
-        type: 'property',
-        key: 'summaryField',
-        displayName: 'Summary field',
-        default: '',
-        placeholder: 'None',
-      },
-      {
-        type: 'property',
-        key: 'dateStartField',
-        displayName: 'Date start field',
-        default: '',
-        placeholder: 'Select property',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isDateProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'dateEndField',
-        displayName: 'Date end field',
-        default: '',
-        placeholder: 'Select property',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isDateProperty(propId, plugin.app),
-      },
-      {
-        type: 'dropdown',
-        key: 'dateFormat',
-        displayName: 'Date format',
-        default: 'date-short',
-        options: {
-          'date-short': 'Short (Jan 15)',
-          'date-medium': 'Medium (Jan 15, 2026)',
-          'date-long': 'Long (January 15, 2026)',
-          'date-numeric': 'Numeric (1/15/2026)',
-          'datetime-short': 'Date + time (Jan 15 10:30)',
-          'datetime-medium': 'Date + time, year (Jan 15, 2026 10:30)',
-          'relative': 'Relative (2d ago / in 3d)',
-        },
-      },
-      {
-        type: 'dropdown',
-        key: 'badgePlacement',
-        displayName: 'Badge placement',
-        default: 'properties-section',
-        options: {
-          'inline': 'Inline',
-          'properties-section': 'Properties section',
-        },
-      },
-      {
-        type: 'dropdown',
-        key: 'columnWidth',
-        displayName: 'Column width',
-        default: '280',
-        options: {
-          '200': 'Narrow (200px)',
-          '240': 'Medium-narrow (240px)',
-          '280': 'Medium (280px)',
-          '320': 'Medium-wide (320px)',
-          '360': 'Wide (360px)',
-          '400': 'Extra wide (400px)',
-        },
-      },
-      {
-        type: 'dropdown',
-        key: 'hideEmptyColumns',
-        displayName: 'Hide empty columns',
-        default: 'false',
-        options: {
-          'false': 'No',
-          'true': 'Yes',
-        },
-      },
-      {
-        type: 'dropdown',
-        key: 'freezeHeaders',
-        displayName: 'Freeze headers',
-        default: 'both',
-        options: {
-          'off': 'Off',
-          'columns': 'Columns',
-          'swimlanes': 'Swimlanes',
-          'both': 'Both',
-        },
-      },
-      {
-        type: 'dropdown',
-        key: 'swimHeaderDisplay',
-        displayName: 'Swimlane header display',
-        default: 'vertical',
-        options: {
-          'horizontal': 'Horizontal',
-          'vertical': 'Vertical',
-        },
-      },
-      {
-        type: 'dropdown',
-        key: 'showPropertyLabels',
-        displayName: 'Show property labels in badges',
-        default: 'true',
-        options: {
-          'true': 'Show',
-          'false': 'Hide',
-        },
-      },
-    ],
+    options: (_config: BasesViewConfig): BasesAllOptions[] => createSwimlaneOptions(plugin.app),
   };
 }
