@@ -830,6 +830,21 @@ Because Timeline is currently the only production consumer of `entrySnapshotAdap
 
 **Likely files:** `src/views/timeline/TimelineRenderer.ts`, `src/styles/views/timeline.css`, `tests/timeline-view.test.ts`.
 
+### T034K: Restyle Timeline bars as bordered pills and tone down group rows — done
+
+**Description:** The maintainer asked for scheduled bars to look like a bordered pill on a plain background (matching the pinned reference design) instead of a solid `--interactive-accent`-filled block, with the border picking up the configured color-by value when one resolves. Group header rows should read as a section break via a translucent wash plus a border, not the previous solid `--background-secondary-alt` fill, so they don't dominate the bars underneath.
+
+**Acceptance criteria:**
+
+- [x] `.wise-view-timeline__bar` background and text stay neutral (`--background-primary`/`--text-normal`) regardless of whether a color-by value resolves; only the border reflects `--wise-view-color-bg` when set, falling back to the default border token when not configured.
+- [x] `.wise-view-timeline__sidebar-row--group`/`.wise-view-timeline__row--group` use a translucent hover-token wash plus top/bottom borders instead of a solid fill.
+
+**Verification:** `pnpm run check` (29 files, 267 tests); production build and artifact verification passed. No automated test asserts computed CSS (that requires the maintainer's native check).
+
+**Dependencies:** T034A/T034B (existing bar/group styles), reported against the T034J build.
+
+**Likely files:** `src/styles/views/timeline.css`.
+
 ### T034D: Design a shared centered details window — future cross-view backlog
 
 **Description:** Capture the Keep Bases View-style **Show details** context action as a reusable, optional Wise View interaction instead of duplicating modal/window behavior per view. This task is design-only until the human approves the contract and target views.

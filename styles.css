@@ -2515,7 +2515,11 @@ body.gantt-wbs-resizing {
 
 .wise-view-timeline__sidebar-row--group,
 .wise-view-timeline__row--group {
-	background: var(--background-secondary-alt);
+	/* A translucent wash plus a border reads as a section break without the heavier solid
+	   fill dominating the row of card-like bars underneath it. */
+	background: var(--background-modifier-hover);
+	border-top: 1px solid var(--background-modifier-border);
+	border-bottom: 1px solid var(--background-modifier-border);
 	font-weight: var(--font-semibold);
 }
 
@@ -2534,10 +2538,13 @@ body.gantt-wbs-resizing {
 	max-width: none;
 	box-sizing: border-box;
 	padding: 0 var(--size-4-2);
-	border: 1px solid var(--wise-view-color-bg, var(--interactive-accent));
+	/* Bordered pill on a plain background by default; the border picks up the configured
+	   color-by value when one resolves, but the fill and text stay neutral either way so a
+	   bar never looks like a solid accent-colored block. */
+	border: 1px solid var(--wise-view-color-bg, var(--background-modifier-border));
 	border-radius: var(--radius-s);
-	color: var(--wise-view-color-fg, var(--text-on-accent));
-	background: var(--wise-view-color-bg, var(--interactive-accent));
+	color: var(--text-normal);
+	background: var(--background-primary);
 	overflow: visible;
 	text-align: left;
 	white-space: nowrap;
