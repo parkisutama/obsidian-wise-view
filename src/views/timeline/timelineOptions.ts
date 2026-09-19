@@ -14,7 +14,7 @@ export interface TimelineOptions {
 	zoom: TimelineZoom;
 }
 
-export const TIMELINE_ZOOMS: readonly TimelineZoom[] = ['day', 'week', 'month', 'quarter', 'year'];
+export const TIMELINE_ZOOMS: readonly TimelineZoom[] = ['day', 'week', 'biweek', 'month', 'quarter', 'year', 'fiveyear'];
 
 /** Reads only explicit Bases view options; no workflow property is guessed or defaulted. */
 export function readTimelineOptions(config: ViewConfigReader): TimelineOptions {

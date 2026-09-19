@@ -43,6 +43,7 @@
 
 .wise-view-timeline__row--unscheduled {
 	background: var(--background-primary);
+	cursor: crosshair;
 }
 
 .wise-view-timeline__row--item:hover {
@@ -280,6 +281,27 @@
 
 .wise-view-timeline__bar:hover {
 	filter: brightness(1.08);
+}
+
+.wise-view-timeline__ghost {
+	position: absolute;
+	left: var(--wise-view-timeline-left);
+	width: var(--wise-view-timeline-bar-width);
+	max-width: none;
+	padding: var(--size-4-1) var(--size-4-2);
+	border: 1px dashed var(--interactive-accent);
+	border-radius: var(--radius-s);
+	color: var(--text-normal);
+	background: var(--background-primary-alt);
+	box-shadow: var(--shadow-s);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.wise-view-timeline__ghost:hover {
+	background: var(--background-modifier-hover);
 }
 
 .wise-view-timeline__today {

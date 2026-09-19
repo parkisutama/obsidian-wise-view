@@ -10,6 +10,28 @@ import { VirtualLinearCollection, type VirtualRowHandle } from '../../platform/d
 import { resolveColor, toCssVariables } from '../../platform/colors/ColorResolver';
 import { flattenTimelineRows, type TimelineItem, type TimelineModel, type TimelineVirtualRow } from './TimelineModel';
 
+const ZOOM_ORDER: readonly TimelineZoom[] = ['fiveyear', 'year', 'quarter', 'month', 'biweek', 'week', 'day'];
+const DEFAULT_SPAN: Readonly<Record<TimelineZoom, number>> = {
+	day: 1,
+	week: 3,
+	biweek: 5,
+	month: 7,
+	quarter: 14,
+	year: 30,
+	fiveyear: 90,
+};
+
+function touchDistance(event: TouchEvent): number {
+	const first = event.touches[0];
+	const second = event.touches[1];
+	return first && second ? Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY) : 0;
+}
+
+export interface TimelineRendererActions {
+	onQuickSchedule?(path: string, startDay: number, endDay: number): void;
+	onZoomChange?(zoom: TimelineZoom): void;
+}
+
 export interface TimelineBarLayout {
 	item: TimelineItem;
 	left: number;
@@ -25,11 +47,18 @@ export interface TimelineLayout {
 }
 
 /** All horizontal geometry is derived exclusively through Temporal Core. */
-export function createTimelineLayout(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom): TimelineLayout {
+export function createTimelineLayout(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom, viewportWidth = 500): TimelineLayout {
 	const scheduled = model.groups.flatMap(group => group.items).filter(item => item.range != null);
 	const bounds = scheduled.map(item => rangeToDayBounds(item.range!));
-	const domain = calculateTimeDomain(bounds, { today, paddingDays: 7, minimumSpanDays: 14 });
 	const pixelsPerDay = TIMELINE_ZOOM_SPECS[zoom].pixelsPerDay;
+	const paddingDays = Math.max(14, Math.ceil(Math.max(1, viewportWidth) / pixelsPerDay));
+	const rawDomain = calculateTimeDomain(bounds, { today, paddingDays, minimumSpanDays: paddingDays * 2, includeToday: true });
+	const weekday = new Date(rawDomain.startDay * 86_400_000).getUTCDay();
+	const domain = {
+		...rawDomain,
+		startDay: rawDomain.startDay - ((weekday + 6) % 7),
+	};
+	domain.spanDays = domain.endDay - domain.startDay;
 	return {
 		domain,
 		width: dateToPixel(domain.endDay, domain, zoom),
@@ -66,13 +95,53 @@ export class TimelineRenderer {
 	private bars = new Map<string, TimelineBarLayout>();
 	private syncingScroll = false;
 	private sidebarCollapsed = false;
+	private pinchAccum = 0;
+	private pinchDistance: number | null = null;
+	private quickScheduleGhost: HTMLElement | null = null;
+	private quickScheduleStart = 0;
+	private quickScheduleEnd = 0;
 	private readonly syncFromSidebar = (): void => this.syncScroll(this.sidebarViewport, this.timelineViewport);
 	private readonly syncFromTimeline = (): void => {
 		this.syncScroll(this.timelineViewport, this.sidebarViewport);
 		this.syncHorizontalHeader();
 	};
+	private readonly handleWheel = (event: WheelEvent): void => {
+		if (!event.ctrlKey && !event.metaKey) return;
+		event.preventDefault();
+		if (this.pinchAccum !== 0 && Math.sign(event.deltaY) !== Math.sign(this.pinchAccum)) this.pinchAccum = 0;
+		this.pinchAccum += event.deltaY;
+		if (Math.abs(this.pinchAccum) < 24) return;
+		const direction = this.pinchAccum < 0 ? 1 : -1;
+		this.pinchAccum = 0;
+		this.stepZoom(direction, event.clientX);
+	};
+	private readonly handlePointerMove = (event: PointerEvent): void => this.previewQuickSchedule(event);
+	private readonly handlePointerLeave = (): void => this.clearQuickSchedule();
+	private readonly handleTouchStart = (event: TouchEvent): void => {
+		this.pinchDistance = event.touches.length === 2 ? touchDistance(event) : null;
+	};
+	private readonly handleTouchMove = (event: TouchEvent): void => {
+		if (event.touches.length !== 2 || this.pinchDistance === null) return;
+		event.preventDefault();
+		const distance = touchDistance(event);
+		const ratio = distance / this.pinchDistance;
+		if (ratio <= 1.35 && ratio >= 0.75) return;
+		this.pinchDistance = distance;
+		const first = event.touches[0];
+		const second = event.touches[1];
+		if (first && second) this.stepZoom(ratio > 1 ? 1 : -1, (first.clientX + second.clientX) / 2);
+	};
+	private readonly handleTouchEnd = (): void => { this.pinchDistance = null; };
+	private readonly handleQuickScheduleClick = (event: MouseEvent): void => {
+		const ghost = event.target instanceof Element ? event.target.closest<HTMLElement>('.wise-view-timeline__ghost') : null;
+		const path = ghost?.dataset.notePath;
+		if (!path || !this.quickScheduleGhost) return;
+		event.preventDefault();
+		event.stopPropagation();
+		this.actions.onQuickSchedule?.(path, this.quickScheduleStart, this.quickScheduleEnd);
+	};
 
-	constructor(private readonly containerEl: HTMLElement) {
+	constructor(private readonly containerEl: HTMLElement, private readonly actions: TimelineRendererActions = {}) {
 		containerEl.classList.add('wise-view-timeline');
 		const main = containerEl.createDiv({ cls: 'wise-view-timeline__main' });
 		this.sidebarPanel = main.createDiv({ cls: 'wise-view-timeline__sidebar-panel' });
@@ -97,6 +166,13 @@ export class TimelineRenderer {
 		});
 		this.sidebarViewport.addEventListener('scroll', this.syncFromSidebar, { passive: true });
 		this.timelineViewport.addEventListener('scroll', this.syncFromTimeline, { passive: true });
+		this.timelineViewport.addEventListener('wheel', this.handleWheel, { passive: false });
+		this.timelineViewport.addEventListener('pointermove', this.handlePointerMove, { passive: true });
+		this.timelineViewport.addEventListener('pointerleave', this.handlePointerLeave, { passive: true });
+		this.timelineViewport.addEventListener('click', this.handleQuickScheduleClick);
+		this.timelineViewport.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+		this.timelineViewport.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+		this.timelineViewport.addEventListener('touchend', this.handleTouchEnd, { passive: true });
 		this.expandControls = containerEl.createDiv({ cls: 'wise-view-timeline__expand-controls' });
 		this.emptyEl = containerEl.createDiv({ cls: 'wise-view-timeline__empty' });
 	}
@@ -105,7 +181,7 @@ export class TimelineRenderer {
 		this.currentModel = model;
 		this.currentToday = today;
 		this.activeZoom ??= zoom;
-		const layout = createTimelineLayout(model, today, this.activeZoom);
+		const layout = createTimelineLayout(model, today, this.activeZoom, this.timelineViewport.clientWidth || 500);
 		this.currentLayout = layout;
 		this.bars = new Map(layout.bars.map(bar => [bar.item.path, bar]));
 		this.renderToolbar();
@@ -123,6 +199,7 @@ export class TimelineRenderer {
 		if (this.activeZoom === zoom || !this.currentModel || !this.currentToday) return;
 		this.activeZoom = zoom;
 		this.render(this.currentModel, this.currentToday, zoom);
+		this.actions.onZoomChange?.(zoom);
 	}
 
 	toggleGroup(groupKey: string): void {
@@ -155,8 +232,67 @@ export class TimelineRenderer {
 	dispose(): void {
 		this.sidebarViewport.removeEventListener('scroll', this.syncFromSidebar);
 		this.timelineViewport.removeEventListener('scroll', this.syncFromTimeline);
+		this.timelineViewport.removeEventListener('wheel', this.handleWheel);
+		this.timelineViewport.removeEventListener('pointermove', this.handlePointerMove);
+		this.timelineViewport.removeEventListener('pointerleave', this.handlePointerLeave);
+		this.timelineViewport.removeEventListener('click', this.handleQuickScheduleClick);
+		this.timelineViewport.removeEventListener('touchstart', this.handleTouchStart);
+		this.timelineViewport.removeEventListener('touchmove', this.handleTouchMove);
+		this.timelineViewport.removeEventListener('touchend', this.handleTouchEnd);
+		this.clearQuickSchedule();
 		this.sidebarRows.destroy();
 		this.timelineRows.destroy();
+	}
+
+	private stepZoom(direction: 1 | -1, clientX: number): void {
+		if (!this.activeZoom || !this.currentLayout || !this.currentModel || !this.currentToday) return;
+		const current = ZOOM_ORDER.indexOf(this.activeZoom);
+		const next = Math.min(Math.max(current + direction, 0), ZOOM_ORDER.length - 1);
+		if (next === current) return;
+		const rect = this.timelineViewport.getBoundingClientRect();
+		const offsetX = Math.max(0, clientX - rect.left);
+		const oldPixels = TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay;
+		const dayUnderPointer = this.currentLayout.domain.startDay + (this.timelineViewport.scrollLeft + offsetX) / oldPixels;
+		const nextZoom = ZOOM_ORDER[next]!;
+		this.activeZoom = nextZoom;
+		this.render(this.currentModel, this.currentToday, nextZoom);
+		this.timelineViewport.scrollLeft = Math.max(0, (dayUnderPointer - this.currentLayout.domain.startDay)
+			* TIMELINE_ZOOM_SPECS[nextZoom].pixelsPerDay - offsetX);
+		this.syncHorizontalHeader();
+		this.actions.onZoomChange?.(nextZoom);
+	}
+
+	private previewQuickSchedule(event: PointerEvent): void {
+		if (!this.currentLayout || !this.activeZoom) return;
+		const row = event.target instanceof Element
+			? event.target.closest<HTMLElement>('.wise-view-timeline__row--unscheduled[data-note-path]')
+			: null;
+		const path = row?.dataset.notePath;
+		if (!row || !path) {
+			this.clearQuickSchedule();
+			return;
+		}
+		const rect = this.timelineViewport.getBoundingClientRect();
+		const contentX = this.timelineViewport.scrollLeft + event.clientX - rect.left;
+		this.quickScheduleStart = this.currentLayout.domain.startDay
+			+ Math.floor(contentX / TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay);
+		this.quickScheduleEnd = this.quickScheduleStart + DEFAULT_SPAN[this.activeZoom] - 1;
+		if (!this.quickScheduleGhost || this.quickScheduleGhost.parentElement !== row) {
+			this.clearQuickSchedule();
+			this.quickScheduleGhost = row.createEl('button', { cls: 'wise-view-timeline__ghost', attr: { type: 'button' } });
+			this.quickScheduleGhost.dataset.notePath = path;
+		}
+		const item = this.currentModel?.itemsByPath.get(path);
+		this.quickScheduleGhost.setText(item?.title ?? path);
+		this.quickScheduleGhost.title = `${dateOnlyFromDayIndex(this.quickScheduleStart).iso} – ${dateOnlyFromDayIndex(this.quickScheduleEnd).iso}`;
+		this.quickScheduleGhost.style.setProperty('--wise-view-timeline-left', `${dateToPixel(this.quickScheduleStart, this.currentLayout.domain, this.activeZoom)}px`);
+		this.quickScheduleGhost.style.setProperty('--wise-view-timeline-bar-width', `${Math.max(8, DEFAULT_SPAN[this.activeZoom]
+			* TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay - 2)}px`);
+	}
+
+	private clearQuickSchedule(): void {
+		this.quickScheduleGhost?.remove();
+		this.quickScheduleGhost = null;
 	}
 
 	private syncScroll(source: HTMLElement, destination: HTMLElement): void {
@@ -209,7 +345,7 @@ export class TimelineRenderer {
 		this.headerCanvas.style.setProperty('--wise-view-timeline-width', `${layout.width}px`);
 		const periods = this.headerCanvas.createDiv({ cls: 'wise-view-timeline__periods' });
 		const ticks = this.headerCanvas.createDiv({ cls: 'wise-view-timeline__ticks' });
-		const useYears = zoom === 'quarter' || zoom === 'year';
+		const useYears = zoom === 'quarter' || zoom === 'year' || zoom === 'fiveyear';
 		for (let day = layout.domain.startDay; day < layout.domain.endDay;) {
 			const current = dateOnlyFromDayIndex(day);
 			const start = useYears
@@ -231,17 +367,17 @@ export class TimelineRenderer {
 		for (let day = layout.domain.startDay; day < layout.domain.endDay; day++) {
 			const date = new Date(day * 86_400_000);
 			const weekday = date.getUTCDay();
-			const show = zoom === 'day' || zoom === 'week'
+			const show = zoom === 'day' || zoom === 'week' || zoom === 'biweek'
 				|| (zoom === 'month' && weekday === 1)
 				|| (zoom === 'quarter' && date.getUTCDate() === 1)
-				|| (zoom === 'year' && date.getUTCDate() === 1 && date.getUTCMonth() % 3 === 0);
+				|| ((zoom === 'year' || zoom === 'fiveyear') && date.getUTCDate() === 1 && date.getUTCMonth() % 3 === 0);
 			if (!show) continue;
-			const label = zoom === 'day' || zoom === 'week' || zoom === 'month'
+			const label = zoom === 'day' || zoom === 'week' || zoom === 'biweek' || zoom === 'month'
 				? String(date.getUTCDate())
 				: date.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' });
 			const tickEl = ticks.createDiv({ cls: 'wise-view-timeline__tick', text: label });
 			tickEl.style.setProperty('--wise-view-timeline-left', `${dateToPixel(day, layout.domain, zoom)}px`);
-			if (zoom === 'day' || zoom === 'week') {
+			if (zoom === 'day' || zoom === 'week' || zoom === 'biweek') {
 				tickEl.style.setProperty('--wise-view-timeline-tick-width', `${TIMELINE_ZOOM_SPECS[zoom].pixelsPerDay}px`);
 				if (weekday === 0 || weekday === 6) tickEl.classList.add('wise-view-timeline__tick--weekend');
 			}
@@ -262,7 +398,7 @@ export class TimelineRenderer {
 				weekend.style.setProperty('--wise-view-timeline-left', `${dateToPixel(day, layout.domain, zoom)}px`);
 				weekend.style.setProperty('--wise-view-timeline-weekend-width', `${pixelsPerDay * 2}px`);
 			}
-			const lineHere = zoom === 'day' || zoom === 'week' || zoom === 'month'
+			const lineHere = zoom === 'day' || zoom === 'week' || zoom === 'biweek' || zoom === 'month'
 				? weekday === 1
 				: zoom === 'quarter'
 					? date.getUTCDate() === 1
@@ -347,6 +483,7 @@ export class TimelineRenderer {
 		const bar = this.bars.get(row.item.path);
 		if (!bar) {
 			handle.element.classList.add('wise-view-timeline__row--unscheduled');
+			handle.element.dataset.notePath = row.item.path;
 			return;
 		}
 		const barEl = handle.element.createEl('button', { cls: 'wise-view-timeline__bar', text: row.item.title });

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
-import { BasesView, type QueryController } from 'obsidian';
+import { BasesView, Notice, type QueryController } from 'obsidian';
 import type WiseViewPlugin from '../../main';
 import { createEntrySnapshot } from '../../platform/bases/entrySnapshotAdapter';
 import { ViewConfigReader } from '../../platform/bases/ViewConfigReader';
 import { ViewRuntime } from '../../platform/dom/ViewRuntime';
+import { LegacyMutationGateway } from '../../platform/mutations/LegacyMutationGateway';
 import { isActivationKey, openPath, triggerHoverPreview } from '../../platform/navigation/NavigationService';
 import { showOpenFileMenu } from '../../utils/openFile';
 import { dateOnlyFromDayIndex } from '../../core/temporal/TemporalValue';
@@ -24,11 +25,16 @@ export class BasesTimelineView extends BasesView {
 	type = BASES_TIMELINE_VIEW_ID;
 	private readonly runtime: ViewRuntime;
 	private readonly renderer: TimelineRenderer;
+	private readonly mutations: LegacyMutationGateway;
 
 	constructor(controller: QueryController, private readonly containerEl: HTMLElement, private readonly plugin: WiseViewPlugin) {
 		super(controller);
 		this.runtime = new ViewRuntime(containerEl);
-		this.renderer = this.runtime.own(new TimelineRenderer(containerEl));
+		this.mutations = new LegacyMutationGateway(this.app);
+		this.renderer = this.runtime.own(new TimelineRenderer(containerEl, {
+			onQuickSchedule: (path, startDay, endDay) => { void this.quickSchedule(path, startDay, endDay); },
+			onZoomChange: zoom => this.config.set('zoom', zoom),
+		}));
 	}
 
 		onload(): void {
@@ -119,5 +125,18 @@ export class BasesTimelineView extends BasesView {
 			filePath,
 			targetEl,
 		});
+	}
+
+	private async quickSchedule(path: string, startDay: number, endDay: number): Promise<void> {
+		const options = readTimelineOptions(new ViewConfigReader(this.config));
+		if (!options.startProperty) return;
+		const result = await this.mutations.updateRange(
+			path,
+			options.startProperty,
+			dateOnlyFromDayIndex(startDay).iso,
+			options.endProperty,
+			options.endProperty ? dateOnlyFromDayIndex(endDay).iso : null,
+		);
+		if (!result.ok) new Notice(`Unable to schedule note: ${result.message}`);
 	}
 }
