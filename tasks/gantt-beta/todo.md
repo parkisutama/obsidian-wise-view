@@ -116,15 +116,18 @@ Preact `render` into its container, unmounts on unload, passes `theme` from `bod
 
 ### GBETA-005: Floating date and progress conversion (core)
 
+**Status:** Complete (2026-09-19). Date/date-time conversion and progress parsing are pure core
+modules; 29 focused tests pass in the `America/New_York` test timezone.
+
 **Description:** Pure functions: property value → library date string and back, for `Date`
 (inclusive end ↔ exclusive end) and `Date & time` (floating wall-clock), reading `Z`/offset
 values as local wall-clock; progress parsing and clamping.
 
 **Acceptance criteria:**
 
-- [ ] Round-trip tests: read → write returns the original string for date, datetime, month/year
+- [x] Round-trip tests: read → write returns the original string for date, datetime, month/year
   ends, leap day, and DST-transition dates in a non-UTC test time zone.
-- [ ] `Z`/offset input is converted to local wall-clock; output never contains an offset.
+- [x] `Z`/offset input is converted to local wall-clock; output never contains an offset.
 
 **Verification:** `pnpm run test -- gantt-core-dates`
 
