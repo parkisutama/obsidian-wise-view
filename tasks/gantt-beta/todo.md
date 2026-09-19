@@ -162,15 +162,19 @@ property's existing shape and the Frappe-compatible wiki-link form.
 
 ### GBETA-007: Phase tree and sequence builder (core)
 
+**Status:** Complete (2026-09-19). Pure phase/sequence modules cover grouped and external
+synthetic phases, cross-group fallback, cycle reporting, and DFS sequencing; randomized tree
+invariants pass across 100 generated cases.
+
 **Description:** Build the phase tree from parent links, out-of-results parents (synthetic
 rows), and Bases groups (synthetic top-level rows); detect cycles; compute `sequence` from Order
 values or input (Bases sort) order.
 
 **Acceptance criteria:**
 
-- [ ] Tests cover every spec §3.3 case, including cross-group parents and unresolved parents.
-- [ ] Sequence is consistent with `parentId` for any input (property-based test on random trees).
-- [ ] Cycles are reported by note path and fall back to root.
+- [x] Tests cover every spec §3.3 case, including cross-group parents and unresolved parents.
+- [x] Sequence is consistent with `parentId` for any input (property-based test on random trees).
+- [x] Cycles are reported by note path and fall back to root.
 
 **Verification:** `pnpm run test -- gantt-core-phases`
 
