@@ -63,6 +63,7 @@ import { resolveColor as resolveSharedColor } from '../platform/colors/ColorReso
 import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAdapter';
 import { triggerHoverPreview as dispatchHoverPreview, openPath } from '../platform/navigation/NavigationService';
 import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
+import { toGanttWikiLink } from '../core/gantt/dependencies';
 import {
     createEntrySnapshot,
     createEntrySnapshotGroup,
@@ -1423,7 +1424,7 @@ export class BasesGanttView extends BasesView {
     }
 
     private toWikiLink(task: GanttTask): string {
-        return `[[${task.filePath.replace(/\.md$/i, '')}]]`;
+        return toGanttWikiLink(task.filePath);
     }
 
     private rawDependencyIncludesTask(current: unknown, task: GanttTask): boolean {

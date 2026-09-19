@@ -139,15 +139,18 @@ values as local wall-clock; progress parsing and clamping.
 
 ### GBETA-006: Dependency links per type (core)
 
+**Status:** Complete (2026-09-19). Pure parsing/edit helpers cover FS/SS/FF/SF and the existing
+Frappe view now shares the exact wiki-link formatter; focused Gantt tests pass.
+
 **Description:** Parse FS/SS/FF/SF property values (list or comma string of links) into
 `TaskDependency[]` given a link resolver; produce append/remove edits that preserve the
 property's existing shape and the Frappe-compatible wiki-link form.
 
 **Acceptance criteria:**
 
-- [ ] Append/remove preserve list vs. comma shape and leave unresolved links untouched.
-- [ ] Removing a pair removes it from every type property (library semantics).
-- [ ] Written FS values match what the Frappe view's `toWikiLink` produces (test against its output).
+- [x] Append/remove preserve list vs. comma shape and leave unresolved links untouched.
+- [x] Removing a pair removes it from every type property (library semantics).
+- [x] Written FS values match what the Frappe view's `toWikiLink` produces (test against its output).
 
 **Verification:** `pnpm run test -- gantt-core-dependencies`
 
