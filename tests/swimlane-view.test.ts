@@ -258,3 +258,17 @@ describe("Swimlane lifecycle leaks (characterization)", () => {
 		}
 	});
 });
+
+describe("Swimlane keyboard navigation (characterization)", () => {
+	it("focuses the first card on ArrowDown, clears on Escape, and detaches on unload", async () => {
+		const h = await mount({ config: { plannerGroupBy: "note.status" } });
+		expect(h.host.getAttribute("tabindex")).toBe("0");
+		h.host.focus();
+		h.host.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+		expect(h.host.querySelectorAll(".planner-kanban-card--focused")).toHaveLength(1);
+		h.host.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+		expect(h.host.querySelector(".planner-kanban-card--focused")).toBeNull();
+		h.view.onunload();
+		expect(h.host.hasAttribute("tabindex")).toBe(false);
+	});
+});

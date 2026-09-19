@@ -19,6 +19,7 @@ import type WiseViewPlugin from '../main';
 import { formatDate, getEntryValue, looksLikeDateString, valueToString } from './swimlane/values';
 import type { BadgePlacement, BorderStyle, CoverDisplay, FreezeHeaders, SwimHeaderDisplay } from './swimlane/types';
 import { DragController } from './swimlane/dragAndDrop';
+import { KeyboardNavigator } from './swimlane/keyboardNavigation';
 import { CardRenderer } from './swimlane/cardRenderer';
 import { createSwimlaneOptions } from './swimlane/options';
 import { COLUMN_ORDER_KEY, SWIMLANE_ORDER_KEY, orderKeys, parseCustomOrder, reorderKeys } from './swimlane/ordering';
@@ -55,12 +56,10 @@ export class BasesSwimlaneView extends BasesView {
   private readonly mutations: LegacyMutationGateway;
   private readonly cardRenderer: CardRenderer;
   private readonly drag: DragController;
+  private readonly keyboard: KeyboardNavigator;
   private boardEl: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
-  // Keyboard navigation state
-  private focusedCardIndex: number = -1;
-  private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
 
   // Render debouncing
   private renderDebounceTimer: number | null = null;
@@ -229,7 +228,11 @@ export class BasesSwimlaneView extends BasesView {
     });
     this.setupContainer();
     this.setupResizeObserver();
-    this.setupKeyboardNavigation();
+    this.keyboard = new KeyboardNavigator({
+      containerEl,
+      getDoc: () => this.runtime.doc,
+      getBoardEl: () => this.boardEl,
+    });
     this.registerRuntimeCleanup();
   }
 
@@ -252,196 +255,9 @@ export class BasesSwimlaneView extends BasesView {
       }
     });
     this.runtime.add(() => this.cleanupVirtualScroll());
-    this.runtime.add(() => {
-      if (this.keyboardHandler) {
-        this.containerEl.removeEventListener('keydown', this.keyboardHandler);
-        this.keyboardHandler = null;
-      }
-      this.containerEl.removeAttribute('tabindex');
-    });
+    this.runtime.add(() => this.keyboard.dispose());
     this.runtime.add(() => this.containerEl.removeClass('planner-bases-kanban'));
     this.runtime.add(() => this.drag.cancelAll());
-  }
-
-  /**
-   * Setup keyboard navigation for the Swimlane board
-   * Allows navigating between cards with arrow keys
-   */
-  private setupKeyboardNavigation(): void {
-    this.keyboardHandler = (e: KeyboardEvent) => {
-      // Only handle if board is focused or a card is focused
-      const active = this.runtime.doc.activeElement;
-      if (!this.boardEl?.contains(active) && active !== this.containerEl) {
-        return;
-      }
-
-      const cards = this.getAllCards();
-      if (cards.length === 0) return;
-
-      switch (e.key) {
-        case 'ArrowDown':
-        case 'j': // vim-style
-          e.preventDefault();
-          this.navigateCards(cards, 'down');
-          break;
-        case 'ArrowUp':
-        case 'k': // vim-style
-          e.preventDefault();
-          this.navigateCards(cards, 'up');
-          break;
-        case 'ArrowRight':
-        case 'l': // vim-style
-          e.preventDefault();
-          this.navigateCards(cards, 'right');
-          break;
-        case 'ArrowLeft':
-        case 'h': // vim-style
-          e.preventDefault();
-          this.navigateCards(cards, 'left');
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          this.activateFocusedCard();
-          break;
-        case 'Escape':
-          e.preventDefault();
-          this.clearCardFocus();
-          break;
-      }
-    };
-
-    this.containerEl.addEventListener('keydown', this.keyboardHandler);
-    // Make container focusable
-    this.containerEl.setAttribute('tabindex', '0');
-  }
-
-  /**
-   * Get all card elements in the board
-   */
-  private getAllCards(): HTMLElement[] {
-    if (!this.boardEl) return [];
-    return Array.from(this.boardEl.querySelectorAll('.planner-kanban-card'));
-  }
-
-  /**
-   * Navigate between cards using arrow keys
-   */
-  private navigateCards(cards: HTMLElement[], direction: 'up' | 'down' | 'left' | 'right'): void {
-    const currentFocused = this.boardEl?.querySelector('.planner-kanban-card--focused') as HTMLElement | null;
-    let currentIndex = currentFocused ? cards.indexOf(currentFocused) : -1;
-
-    if (currentIndex === -1) {
-      // No card focused, focus first card
-      this.focusCard(cards[0] ?? null);
-      return;
-    }
-
-    // Get cards organized by columns for left/right navigation
-    if (direction === 'left' || direction === 'right') {
-      const columnCards = this.getCardsByColumn();
-      const currentCard = cards[currentIndex];
-      if (!currentCard) return;
-      const currentColumn = currentCard.closest('[data-group]') as HTMLElement;
-      const currentGroup = currentColumn?.getAttribute('data-group');
-
-      if (!currentGroup) return;
-
-      const columnKeys = Array.from(columnCards.keys());
-      const currentColumnIndex = columnKeys.indexOf(currentGroup);
-      const targetColumnIndex = direction === 'right'
-        ? Math.min(currentColumnIndex + 1, columnKeys.length - 1)
-        : Math.max(currentColumnIndex - 1, 0);
-
-      const targetColumnKey = columnKeys[targetColumnIndex];
-      if (!targetColumnKey) return;
-      const targetColumnCards = columnCards.get(targetColumnKey) || [];
-
-      if (targetColumnCards.length > 0) {
-        // Find card at same position in target column, or last card
-        const currentColumnCards = columnCards.get(currentGroup) || [];
-        const positionInColumn = currentColumnCards.indexOf(currentCard);
-        const targetCard = targetColumnCards[Math.min(positionInColumn, targetColumnCards.length - 1)];
-        this.focusCard(targetCard ?? null);
-      }
-    } else {
-      // Up/down navigation within column
-      const currentCard = cards[currentIndex];
-      if (!currentCard) return;
-      const currentColumn = currentCard.closest('[data-group]') as HTMLElement;
-      const cardsInColumn = Array.from(currentColumn?.querySelectorAll<HTMLElement>('.planner-kanban-card') || []);
-      const positionInColumn = cardsInColumn.indexOf(currentCard);
-
-      let targetIndex: number;
-      if (direction === 'down') {
-        targetIndex = Math.min(positionInColumn + 1, cardsInColumn.length - 1);
-      } else {
-        targetIndex = Math.max(positionInColumn - 1, 0);
-      }
-
-      this.focusCard(cardsInColumn[targetIndex] ?? null);
-    }
-  }
-
-  /**
-   * Get cards organized by column
-   */
-  private getCardsByColumn(): Map<string, HTMLElement[]> {
-    const result = new Map<string, HTMLElement[]>();
-    if (!this.boardEl) return result;
-
-    const columns = this.boardEl.querySelectorAll('[data-group]');
-    columns.forEach(column => {
-      const group = column.getAttribute('data-group');
-      if (group) {
-        const cards = Array.from(column.querySelectorAll<HTMLElement>('.planner-kanban-card'));
-        if (cards.length > 0) {
-          result.set(group, cards);
-        }
-      }
-    });
-
-    return result;
-  }
-
-  /**
-   * Focus a specific card
-   */
-  private focusCard(card: HTMLElement | null): void {
-    if (!card) return;
-
-    // Remove focus from all cards
-    this.boardEl?.querySelectorAll('.planner-kanban-card--focused').forEach(el => {
-      el.classList.remove('planner-kanban-card--focused');
-    });
-
-    // Add focus to target card
-    card.classList.add('planner-kanban-card--focused');
-    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    // Update focus index
-    const cards = this.getAllCards();
-    this.focusedCardIndex = cards.indexOf(card);
-  }
-
-  /**
-   * Activate (click) the currently focused card
-   */
-  private activateFocusedCard(): void {
-    const focused = this.boardEl?.querySelector('.planner-kanban-card--focused') as HTMLElement | null;
-    if (focused) {
-      focused.click();
-    }
-  }
-
-  /**
-   * Clear card focus
-   */
-  private clearCardFocus(): void {
-    this.boardEl?.querySelectorAll('.planner-kanban-card--focused').forEach(el => {
-      el.classList.remove('planner-kanban-card--focused');
-    });
-    this.focusedCardIndex = -1;
   }
 
   private setupContainer(): void {
