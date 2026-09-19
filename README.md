@@ -55,6 +55,9 @@ whole project is then governed by GPL v3. The original MIT copyright notice is p
   because Obsidian now ships a core Kanban view.
 - **Gantt view** — Date-range chart powered by [Frappe Gantt](https://frappe.io/gantt).
   Map existing start, end, progress, dependency, parent, and color properties from your notes.
+- **Gantt Beta** — Phase-aware scheduling with four dependency types and native Bases grouping.
+  See the [Gantt Beta configuration guide](docs/gantt-beta.md) for goal-based recipes and option
+  relationships.
 - **Timeline view** — Grouped, virtualized date ranges plus quick placement of unscheduled notes
   into user-selected start/end properties, with no task-schema assumptions. See the
   [Timeline View documentation](docs/timeline-view.md).
@@ -102,7 +105,7 @@ feature set.
 ## Usage
 
 Open any folder as a Base (right-click → **New base from folder**), then select the view type
-dropdown to **Calendar**, **Swimlane**, **Gantt**, or **Timeline**.
+dropdown to **Calendar**, **Swimlane**, **Gantt**, **Gantt Beta**, or **Timeline**.
 
 ### Recommended frontmatter shape
 
