@@ -523,6 +523,11 @@
 	padding-left: calc(var(--swim-label-width, 138px) + 8px + 12px);
 }
 
+/* Plain columns have no swimlane label column to offset past. */
+.planner-kanban-header-row--plain {
+	padding-left: 0;
+}
+
 .planner-kanban-header-row--frozen {
 	position: sticky;
 	top: 0;

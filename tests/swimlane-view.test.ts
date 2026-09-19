@@ -289,3 +289,14 @@ describe("Swimlane grid layout (characterization)", () => {
 		expect(texts(shown, ".planner-kanban-column-title")).toEqual(["Todo"]);
 	});
 });
+
+describe("Swimlane frozen column headers without swimlanes", () => {
+	it("marks the header row as plain so it is not offset by the swimlane label width", async () => {
+		const h = await mount({ config: { plannerGroupBy: "note.status", freezeHeaders: "columns" } });
+		const row = h.host.querySelector(".planner-kanban-header-row--frozen");
+		expect(row?.classList).toContain("planner-kanban-header-row--plain");
+		h.destroy();
+		const withLanes = await mount({ config: { plannerGroupBy: "note.status", swimlaneBy: "note.priority", freezeHeaders: "columns" } });
+		expect(withLanes.host.querySelector(".planner-kanban-header-row--plain")).toBeNull();
+	});
+});

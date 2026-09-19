@@ -329,7 +329,7 @@ export class BoardRenderer {
     // If freeze columns is enabled, create a sticky header row
     if (freezeColumns) {
       const headerRow = document.createElement('div');
-      headerRow.className = 'planner-kanban-header-row planner-kanban-header-row--frozen';
+      headerRow.className = 'planner-kanban-header-row planner-kanban-header-row--frozen planner-kanban-header-row--plain';
 
       const groupByField = this.host.getGroupBy();
 
