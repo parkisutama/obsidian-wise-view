@@ -1,6 +1,6 @@
 # Implementation plan: Gantt code quality, dependency editing, and the listener leak
 
-Status: Draft; implementation requires approval
+Status: Frozen 2026-09-19 — bug fixes only; GAN-001 complete, remaining phases deferred (see [spec §8](../../docs/specs/gantt.md))
 Specification: [../../docs/specs/gantt.md](../../docs/specs/gantt.md)
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
 Baseline: branch `dev`

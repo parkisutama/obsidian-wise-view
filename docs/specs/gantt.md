@@ -1,6 +1,6 @@
 # Spec: Gantt code quality, dependency editing, and the Frappe Gantt listener leak
 
-Status: Draft — awaiting maintainer review
+Status: Frozen 2026-09-19 — bug fixes only; GAN-001 complete, GAN-002–GAN-006 deferred (see §8)
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
@@ -106,3 +106,29 @@ additional way to reach the same mutation, not a replacement.
 4. `pnpm run check` passes; no behavior regression is found in native testing of Gantt's existing
    feature set (bar drag/resize, WBS sidebar, view-mode switching, progress display).
 5. `ROADMAP.md`'s Gantt row is updated to **Done (native-accepted YYYY-MM-DD)**.
+
+## 8. Freeze and follow-ups from Gantt Beta (2026-09-19)
+
+The maintainer froze this workstream in favor of Gantt Beta
+([gantt-beta.md](gantt-beta.md), view id `wise-view-gantt-beta`, built on
+`@jaeungkim/gantt-chart`). Frappe Gantt stays registered and receives bug fixes only until
+Gantt Beta passes its stability gate (gantt-beta.md §11), after which a separate removal
+workstream deletes it.
+
+- GAN-002 (module extraction), GAN-003/GAN-004 (listener leak), and GAN-006 (native acceptance)
+  are deferred. If the removal workstream is approved they are cancelled, not resumed.
+- GAN-005 (drag dependency editor) is superseded: Gantt Beta draws and deletes dependencies
+  natively.
+- The listener leak in §2.3 remains the accepted, unquantified state until removal.
+
+### Follow-ups caused by Gantt Beta
+
+Record here any change in a shared module that affects Frappe Gantt (gantt-beta.md §6).
+
+- **Dependency types.** Gantt Beta stores SS/FF/SF links in separate, user-chosen properties.
+  Frappe Gantt only reads its "Dependencies" property (FS). A note edited in Gantt Beta may
+  therefore show fewer arrows in Frappe Gantt. No change planned for Frappe.
+- **Phase dates.** Frappe Gantt shows a parent note's own start/end. Unless Gantt Beta's "Write
+  phase dates" option is on, those can differ from Gantt Beta's rolled-up summary dates.
+- **Order property.** Gantt Beta may write an Order property. Frappe Gantt ignores it and
+  keeps following the Bases sort.

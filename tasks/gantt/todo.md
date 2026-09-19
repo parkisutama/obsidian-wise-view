@@ -3,6 +3,11 @@
 Plan: [plan.md](plan.md)
 Specification: [../../docs/specs/gantt.md](../../docs/specs/gantt.md)
 
+> **Frozen 2026-09-19.** Frappe Gantt receives bug fixes only while Gantt Beta
+> ([tasks/gantt-beta/todo.md](../gantt-beta/todo.md)) matures. GAN-002–GAN-006 are deferred;
+> GAN-005 is superseded by Gantt Beta. Follow-ups caused by Gantt Beta are listed in
+> [spec §8](../../docs/specs/gantt.md).
+
 ## Phase 1: Characterize current behavior
 
 ### GAN-001: Add characterization tests for task mapping, dependency mutation, WBS, and lifecycle
@@ -31,6 +36,7 @@ listener leak — characterize its presence, don't fix it here).
 ## Phase 2: Extract modules
 
 ### GAN-002: Extract task data mapping, the Frappe Gantt lifecycle wrapper, WBS sidebar, and options
+**Status:** Deferred (frozen 2026-09-19)
 
 **Description:** Move each concern in `docs/specs/gantt.md` §5's table into its own module under
 `src/views/gantt/`. Leave the note-from-template seam extracted but behaviorally untouched.
@@ -51,6 +57,7 @@ listener leak — characterize its presence, don't fix it here).
 ## Phase 3: Frappe Gantt listener leak
 
 ### GAN-003: Investigate a version/API fix for the listener leak
+**Status:** Deferred (frozen 2026-09-19)
 
 **Description:** Check for a Frappe Gantt version newer than 1.2.2 that fixes the leak, and any
 supported teardown/suppress option added since. Record findings in `docs/specs/gantt.md`.
@@ -69,6 +76,7 @@ supported teardown/suppress option added since. Record findings in `docs/specs/g
 **Estimated scope:** S
 
 ### GAN-004: Implement the chosen listener-leak resolution
+**Status:** Deferred (frozen 2026-09-19)
 
 **Description:** Implement whichever path GAN-003's findings and the maintainer's sign-off
 selected: version upgrade, a supported suppress option, a vendored minimal patch (with SPDX
@@ -94,6 +102,8 @@ new/patched dependency is bundled.
 
 ### GAN-005: Design and implement drag-to-create/repoint/remove dependency arrows
 
+**Status:** Superseded by Gantt Beta (2026-09-19)
+
 **Description:** Build the interactive dependency editor per spec §2.2, writing to the existing
 "Dependencies" property through the same code path the context-menu actions already use.
 
@@ -116,6 +126,7 @@ the interaction approach).
 ## Phase 5: Native acceptance
 
 ### GAN-006: Native desktop/mobile smoke test
+**Status:** Deferred (frozen 2026-09-19)
 
 **Description:** Manually verify bar drag/resize, WBS sidebar, view-mode switching, progress
 display, and the new dependency-line editor.
