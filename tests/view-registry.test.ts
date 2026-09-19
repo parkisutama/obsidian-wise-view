@@ -120,11 +120,21 @@ describe("ViewRegistry", () => {
 
 	it("exposes schema-agnostic Timeline property and zoom options", () => {
 		const serialized = JSON.stringify(getTimelineViewOptions());
-		for (const key of ["start", "end", "titleBy", "colorBy", "groupBy", "zoom", "wrapTitles"]) {
+		for (const key of ["start", "end", "titleBy", "colorBy", "groupProperty", "zoom", "wrapTitles"]) {
 			expect(serialized).toContain(`\"key\":\"${key}\"`);
 		}
 		expect(serialized).not.toContain("status");
 		expect(serialized).not.toContain("priority");
+	});
+
+	it("never uses a Bases-reserved view-config key (type/name/filters/groupBy/order/summaries) for a custom option", () => {
+		// Obsidian's own .base file schema reserves these at the top level of a view's config
+		// (BasesViewConfigFile). Reusing one for a plugin-defined option makes Obsidian write a
+		// value of the wrong shape into that reserved slot and refuse to parse the whole file.
+		const reserved = new Set(["type", "name", "filters", "groupBy", "order", "summaries"]);
+		const keys = JSON.stringify(getTimelineViewOptions()).match(/"key":"([^"]+)"/g)?.map(m => m.slice(7, -1)) ?? [];
+		expect(keys.length).toBeGreaterThan(0);
+		for (const key of keys) expect(reserved.has(key)).toBe(false);
 	});
 });
 

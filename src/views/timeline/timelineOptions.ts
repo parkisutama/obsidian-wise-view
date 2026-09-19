@@ -30,7 +30,7 @@ export function readTimelineOptions(config: ViewConfigReader): TimelineOptions {
 		endProperty: compatibleProperty(config, 'end', 'endDate'),
 		titleProperty: config.getPropertyId('titleBy'),
 		colorProperty: config.getPropertyId('colorBy'),
-		groupProperty: config.getPropertyId('groupBy'),
+		groupProperty: config.getPropertyId('groupProperty'),
 		wrapTitles: config.getBoolean('wrapTitles', false),
 		zoom: config.getEnum('zoom', TIMELINE_ZOOMS, 'month'),
 	};

@@ -27,7 +27,11 @@ export function getTimelineViewOptions(): BasesAllOptions[] {
 				{ type: 'property', key: 'end', displayName: 'End date', placeholder: 'Same as start date' },
 				{ type: 'property', key: 'titleBy', displayName: 'Title', placeholder: 'File name' },
 				{ type: 'property', key: 'colorBy', displayName: 'Color by', placeholder: 'No category color' },
-				{ type: 'property', key: 'groupBy', displayName: 'Group by', placeholder: 'Ungrouped' },
+				// Not "groupBy": that key is reserved at the top level of a .base view's own
+				// config schema for Bases' native grouping (BasesViewConfigFile.groupBy, an
+				// object) — writing our plain property-id string into it makes Obsidian refuse
+				// to parse the whole .base file ("'groupBy' must be a object in view ...").
+				{ type: 'property', key: 'groupProperty', displayName: 'Group by', placeholder: 'Ungrouped' },
 			],
 		},
 		{

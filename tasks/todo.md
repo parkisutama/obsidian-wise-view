@@ -845,6 +845,24 @@ Because Timeline is currently the only production consumer of `entrySnapshotAdap
 
 **Likely files:** `src/styles/views/timeline.css`.
 
+### T034L: Stop colliding with the reserved `groupBy` Bases config key — done
+
+**Description:** After a rebuild, the maintainer's Base repeatedly failed to load with `Unable to parse your base file: "groupBy" must be a object in view "test_timeline"`. Root cause: Timeline registered its "Group by" property option under the key `groupBy`, but `groupBy` is reserved at the top level of Obsidian's own `.base` view config schema (`BasesViewConfigFile.groupBy`, an object, used for Bases' native grouping feature). Writing our plain property-id string into that slot produced a value of the wrong shape, and Obsidian's own `.base` parser refused to load the entire file — not a Wise View runtime error. Swimlane had already avoided this exact collision by naming its option `plannerGroupBy` rather than `groupBy`; Timeline's option did not follow that precedent.
+
+There was no working configuration to preserve compatibility with: any `.base` file that ever had this option set was already unparseable, so the key is renamed outright with no legacy-key fallback (unlike T034H's `start`/`end`, which replaced a previously *valid* key).
+
+**Acceptance criteria:**
+
+- [x] Timeline's "Group by" option is registered under `groupProperty`, not `groupBy`.
+- [x] `readTimelineOptions` reads the same `groupProperty` key.
+- [x] A test asserts no Timeline option ever reuses a Bases-reserved view-config key (`type`, `name`, `filters`, `groupBy`, `order`, `summaries`), so this class of bug cannot silently return.
+
+**Verification:** `pnpm run check` (29 files, 268 tests); production build and artifact verification passed.
+
+**Dependencies:** T034A (original Timeline option registration), reported against the T034K build.
+
+**Likely files:** `src/views/timeline/index.ts`, `src/views/timeline/timelineOptions.ts`, `tests/view-registry.test.ts`.
+
 ### T034D: Design a shared centered details window — future cross-view backlog
 
 **Description:** Capture the Keep Bases View-style **Show details** context action as a reusable, optional Wise View interaction instead of duplicating modal/window behavior per view. This task is design-only until the human approves the contract and target views.
