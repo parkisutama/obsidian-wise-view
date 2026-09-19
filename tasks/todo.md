@@ -935,23 +935,52 @@ There was no working configuration to preserve compatibility with: any `.base` f
 
 **Estimated scope:** M
 
-### T037: Migrate Swimlane cards to CardRenderer
+### T037: Migrate Swimlane cards to CardRenderer — partial, scope reduced per maintainer 2026-09-19
 
 **Description:** Use the shared card model/renderer inside Swimlane while keeping columns, swimlanes, drag/drop, badges, and virtualization behavior intact.
 
-**Acceptance criteria:**
+**Scope decision (2026-09-19):** A full migration would require either stripping Swimlane's richer
+card feature set (border-style variants, four cover display modes, two badge-placement modes,
+type-specific badge rendering with icons, forced-new-tab click semantics) to fit T036's minimal
+Grid-oriented renderer, or growing `CardRenderer` into a much larger, riskier abstraction spanning
+two very different visual systems at once. The maintainer chose safety over full unification now:
+extract only what is genuinely self-contained and low-risk, keep Swimlane's own DOM/CSS and its
+richer card behavior untouched otherwise, and record the remainder as a finding for a later
+refactor pass once Masonry/Feed/Keep reveal what card features are *actually* common across every
+view (rather than guessing now from Swimlane and Grid alone).
 
-- [ ] Swimlane no longer owns a second title/cover/property card renderer.
-- [ ] Drag/drop attaches outside CardRenderer through adapter hooks.
-- [ ] Existing card visuals and interactions remain accepted.
+**Done:**
 
-**Verification:** `pnpm run test -- swimlane-view && pnpm run typecheck`; native Swimlane smoke.
+- [x] `resolveCoverImageSrc` (wikilink/alias stripping, relative-path normalization, image-extension
+  guessing, vault-wide basename/filename fallback search) moved from
+  `BasesSwimlaneView.private resolveImagePath` into `src/platform/dom/CardRenderer.ts`, exported,
+  and reused by `renderCard`'s own cover resolution (upgrading Grid's cover handling to the same
+  richer logic Swimlane already had). Swimlane's `resolveImagePath` is now a one-line delegate.
+  Every existing Swimlane cover test passed unmodified, and dedicated unit tests cover the
+  wikilink/alias/extension-guess/fallback-search behaviors this move must preserve exactly.
+
+**Deferred (recorded finding, not started):**
+
+- [ ] Swimlane's card *shell* (`createCard`: border-style application, content container, title
+  row, badge-placement slot) still builds its own DOM rather than calling a shared shell builder.
+- [ ] `renderBadges` (date-range badges, per-type formatting, icons) is Swimlane-only; not
+  represented in `CardItem`/`CardRenderer` at all yet.
+- [ ] Swimlane's click handler forces `{ ctrlKey: true }` (always opens in a new tab) — a
+  different default than `CardRenderer.renderCard`'s plain-modifier-respecting click. Any future
+  unification needs an explicit "forced destination" option, not a silent behavior change.
+- [ ] "Swimlane no longer owns a second title/cover/property card renderer" is **not yet true**:
+  only the cover-path-resolution slice moved; title/property/badge rendering remain Swimlane's own.
+
+**Verification:** `pnpm run check` (32 files, 304 tests); production build and artifact
+verification passed. Native Swimlane visual/drag smoke still recommended before relying on this
+in production, though no DOM/CSS changed — only the *implementation* of an existing, already-
+covered code path moved.
 
 **Dependencies:** T036, T026.
 
-**Likely files:** `src/views/BasesSwimlaneView.ts`, `src/platform/dom/CardRenderer.ts`, `tests/swimlane-view.test.ts`, `tests/card-renderer.test.ts`, `src/styles/views/swimlane.css`
+**Likely files:** `src/views/BasesSwimlaneView.ts`, `src/platform/dom/CardRenderer.ts`, `tests/card-renderer.test.ts`
 
-**Estimated scope:** M
+**Estimated scope:** S (reduced from M — see scope decision above)
 
 ### T038: Implement Grid layout and offscreen policy
 

@@ -46,11 +46,50 @@ function defaultPropertyName(propertyId: string): string {
 	return dot >= 0 ? propertyId.slice(dot + 1) : propertyId;
 }
 
-/** A `url` cover is used as-is; a `file` cover resolves to Obsidian's own displayable resource path. */
+const EXTERNAL_COVER_PREFIX = /^(https?:\/\/|app:\/\/)/;
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+
+/**
+ * Resolves a raw cover value (a wikilink, a bare vault path with or without extension, an
+ * already-relative/absolute path, or an external/`app://` URL) to a displayable `<img src>`.
+ * Falls back to a vault-wide basename/filename search before giving up, so a cover property
+ * written as a short wikilink still resolves. Returns `null` (never throws) when nothing
+ * matches — the caller decides whether to omit the cover slot in that case.
+ *
+ * Shared by every card-based view (T037 moved this out of BasesSwimlaneView.ts, which is the
+ * most complete pre-existing implementation).
+ */
+export function resolveCoverImageSrc(app: App, rawValue: string): string | null {
+	if (EXTERNAL_COVER_PREFIX.test(rawValue)) return rawValue;
+
+	const cleanPath = rawValue.replace(/\[\[/g, '').replace(/\]\]/g, '').replace(/\|.*$/, '').trim();
+	if (!cleanPath) return null;
+
+	const normalizedPath = cleanPath.replace(/^(\.\.\/)+|^\.\//, '');
+	const filename = normalizedPath.split('/').pop() || normalizedPath;
+
+	const direct = app.vault.getAbstractFileByPath(normalizedPath);
+	if (direct instanceof TFile) return app.vault.getResourcePath(direct);
+
+	if (!/\.\w+$/.test(normalizedPath)) {
+		for (const extension of IMAGE_EXTENSIONS) {
+			const withExtension = app.vault.getAbstractFileByPath(normalizedPath + extension);
+			if (withExtension instanceof TFile) return app.vault.getResourcePath(withExtension);
+		}
+	}
+
+	const basenameWithoutExtension = filename.replace(/\.\w+$/, '');
+	const match = app.vault.getFiles().find((file) =>
+		file.path === normalizedPath
+		|| file.path.endsWith(`/${normalizedPath}`)
+		|| file.basename === basenameWithoutExtension
+		|| file.name === filename);
+	return match ? app.vault.getResourcePath(match) : null;
+}
+
+/** A `url` cover is used as-is; a `file` cover resolves through `resolveCoverImageSrc`. */
 function resolveCoverSrc(app: App, cover: NonNullable<CardItem['cover']>): string | null {
-	if (cover.kind === 'url') return cover.value;
-	const file = app.vault.getAbstractFileByPath(cover.value);
-	return file instanceof TFile ? app.vault.getResourcePath(file) : null;
+	return cover.kind === 'url' ? cover.value : resolveCoverImageSrc(app, cover.value);
 }
 
 function renderSlots(card: HTMLButtonElement, item: CardItem, colorPropertyId: string | null, options: CardRendererOptions): void {

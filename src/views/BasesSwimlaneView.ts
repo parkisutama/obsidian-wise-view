@@ -11,7 +11,6 @@ import {
   BasesPropertyId,
   QueryController,
   setIcon,
-  TFile,
   TFolder,
   Notice,
   normalizePath,
@@ -28,6 +27,7 @@ import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAd
 import { openPath, triggerHoverPreview as dispatchHoverPreview } from '../platform/navigation/NavigationService';
 import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
 import { getContrastColor } from '../utils/colorUtils';
+import { resolveCoverImageSrc } from '../platform/dom/CardRenderer';
 
 
 export const BASES_SWIMLANE_VIEW_ID = 'wise-view-swimlane';
@@ -1834,64 +1834,10 @@ export class BasesSwimlaneView extends BasesView {
     });
   }
 
+  /** T037: moved to the shared CardRenderer (resolveCoverImageSrc) so Grid/Masonry/Feed/Keep get the same
+   * wikilink/alias/relative-path/extension-guess/vault-wide-fallback resolution Swimlane already had. */
   private resolveImagePath(path: string): string | null {
-    // If it's already a URL, return as-is
-    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('app://')) {
-      return path;
-    }
-
-    // Clean up the path - remove any wiki link brackets (handle [[path]] and [[path|alias]])
-    // Also handle cases where brackets appear anywhere in the string (not just start/end)
-    let cleanPath = path
-      .replace(/\[\[/g, '')       // Remove all [[ occurrences
-      .replace(/\]\]/g, '')       // Remove all ]] occurrences
-      .replace(/\|.*$/, '')       // Remove alias if present (e.g., path|alias -> path)
-      .trim();
-
-    // If empty after cleaning, return null
-    if (!cleanPath) {
-      return null;
-    }
-
-    // Normalize relative paths - remove leading ../ or ./ segments
-    // Obsidian's vault API expects paths relative to vault root
-    const normalizedPath = cleanPath.replace(/^(\.\.\/)+|^\.\//, '');
-
-    // Extract just the filename for fallback searches
-    const filename = normalizedPath.split('/').pop() || normalizedPath;
-
-    // Try direct path lookup first (works for absolute vault paths)
-    const file = this.plugin.app.vault.getAbstractFileByPath(normalizedPath);
-    if (file instanceof TFile) {
-      return this.plugin.app.vault.getResourcePath(file);
-    }
-
-    // Try with common image extensions if no extension present
-    const hasExtension = /\.\w+$/.test(normalizedPath);
-    if (!hasExtension) {
-      for (const ext of ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']) {
-        const fileWithExt = this.plugin.app.vault.getAbstractFileByPath(normalizedPath + ext);
-        if (fileWithExt instanceof TFile) {
-          return this.plugin.app.vault.getResourcePath(fileWithExt);
-        }
-      }
-    }
-
-    // Search all files in vault for matching path or filename
-    // This handles: relative paths, shortest path format, and various link styles
-    const files = this.plugin.app.vault.getFiles();
-    const matchingFile = files.find(f =>
-      f.path === normalizedPath ||
-      f.path.endsWith('/' + normalizedPath) ||
-      f.basename === filename.replace(/\.\w+$/, '') ||  // Match without extension
-      f.name === filename                                // Match with extension
-    );
-    if (matchingFile) {
-      return this.plugin.app.vault.getResourcePath(matchingFile);
-    }
-
-    // Return null if file not found - caller should handle this gracefully
-    return null;
+    return resolveCoverImageSrc(this.plugin.app, path);
   }
 
   private renderBadges(container: HTMLElement, entry: EntrySnapshot): void {
