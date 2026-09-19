@@ -221,3 +221,62 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		expect(createTask).toHaveBeenCalledWith({ startDate: '2026-10-04T00:00', endDate: '2026-10-05T00:00' });
 	});
 });
+
+describe('Gantt Beta schedule write-back (GBETA-011)', () => {
+	it('adds the minimum overlap repair to the same write batch', async () => {
+		const h = harness({ dependencyPolicy: 'overlap' });
+		const before = [
+			task('Tasks/A.md', { startDate: '2026-10-01', endDate: '2026-10-03' }),
+			task('Tasks/B.md', { startDate: '2026-10-04', endDate: '2026-10-06', sequence: '2',
+				dependencies: [{ targetId: 'Tasks/A.md', type: 'FS' }] }),
+		];
+		h.writer.replaceBaseline(before);
+		await h.writer.onTasksChange([{ ...before[0]!, startDate: '2026-10-04', endDate: '2026-10-06' }, before[1]!]);
+
+		expect(h.date.updateRange).toHaveBeenCalledTimes(2);
+		expect(h.date.updateRange).toHaveBeenCalledWith('Tasks/B.md', 'note.start', '2026-10-06', 'note.end', '2026-10-07');
+	});
+
+	it('does not write unchanged successors when automatic shifting is off', async () => {
+		const h = harness({ dependencyPolicy: 'none' });
+		const before = [
+			task('Tasks/A.md'),
+			task('Tasks/B.md', { sequence: '2', dependencies: [{ targetId: 'Tasks/A.md', type: 'FS' }] }),
+		];
+		h.writer.replaceBaseline(before);
+		await h.writer.onTasksChange([{ ...before[0]!, startDate: '2026-10-02', endDate: '2026-10-04' }, before[1]!]);
+
+		expect(h.date.updateRange).toHaveBeenCalledOnce();
+		expect(h.date.updateRange).not.toHaveBeenCalledWith('Tasks/B.md', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+	});
+
+	it('skips phase dates by default and writes them with the phase own date types when enabled', async () => {
+		const before = [
+			task('Phase.md', { startDate: '2026-10-01T09:00', endDate: '2026-10-02T09:00' }),
+			task('Child.md', { parentId: 'Phase.md', sequence: '1.1' }),
+		];
+		const after = [
+			{ ...before[0]!, startDate: '2026-10-02T09:00', endDate: '2026-10-03T09:00' },
+			{ ...before[1]!, startDate: '2026-10-02', endDate: '2026-10-04' },
+		];
+		const off = harness({ writePhaseDates: false });
+		off.writer.replaceBaseline(before);
+		await off.writer.onTasksChange(after);
+		expect(off.date.updateRange).toHaveBeenCalledTimes(1);
+		expect(off.date.updateRange).toHaveBeenCalledWith('Child.md', 'note.start', '2026-10-02', 'note.end', '2026-10-03');
+
+		const on = harness({ writePhaseDates: true });
+		on.writer.replaceProperties({
+			start: { id: 'note.start', type: 'date' }, end: { id: 'note.end', type: 'date' },
+			dateTypes: new Map([
+				['Phase.md', { start: 'datetime' as const, end: 'datetime' as const }],
+				['Child.md', { start: 'date' as const, end: 'date' as const }],
+			]),
+		});
+		on.writer.replaceBaseline(before);
+		await on.writer.onTasksChange(after);
+		expect(on.date.updateRange).toHaveBeenCalledWith(
+			'Phase.md', 'note.start', '2026-10-02T09:00', 'note.end', '2026-10-03T09:00',
+		);
+	});
+});

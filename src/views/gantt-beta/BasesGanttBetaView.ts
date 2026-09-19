@@ -93,6 +93,7 @@ export class BasesGanttBetaView extends BasesView {
 		this.currentStartType = mutationProperties.start?.type ?? 'date';
 		if (this.writer) {
 			this.writer.replaceProperties(mutationProperties);
+			this.writer.replaceScheduleOptions(options.dependencyShift, options.writePhaseDates);
 			this.writer.replaceBaseline(mapped.tasks, mutationProperties);
 		} else {
 			this.writer = new GanttBetaWriteBack(mapped.tasks, {
@@ -102,6 +103,9 @@ export class BasesGanttBetaView extends BasesView {
 				gate: this.echoGate,
 				notice: message => new Notice(message),
 				createTask: draft => this.createTask(draft, this.currentOptions ?? options, this.currentStartType),
+				dependencyPolicy: options.dependencyShift,
+				writePhaseDates: options.writePhaseDates,
+				renderTasks: tasks => this.renderTaskArray(tasks),
 			});
 		}
 		const writer = this.writer;
@@ -141,6 +145,12 @@ export class BasesGanttBetaView extends BasesView {
 		this.chart.revert(tasks);
 	}
 
+	private renderTaskArray(tasks: Task[]): void {
+		if (!this.lastModel) return;
+		this.lastModel = { ...this.lastModel, tasks };
+		this.chart.update(this.lastModel);
+	}
+
 	private mutationProperties(groups: readonly EntrySnapshotGroup[], options: GanttBetaOptions) {
 		const entries = groups.flatMap(group => group.entries);
 		const dateType = (property: string | null): GanttPropertyDateType => {
@@ -149,6 +159,10 @@ export class BasesGanttBetaView extends BasesView {
 				const value = entry.values.get(property);
 				return value?.kind === 'date' && value.hasTime;
 			}) ? 'datetime' : 'date';
+		};
+		const entryDateType = (entry: EntrySnapshotGroup['entries'][number], property: string | null): GanttPropertyDateType => {
+			const value = property ? entry.values.get(property) : undefined;
+			return value?.kind === 'date' && value.hasTime ? 'datetime' : 'date';
 		};
 		const stored = (value: NormalizedValue | undefined): unknown => {
 			if (!value || value.kind === 'missing') return undefined;
@@ -163,6 +177,9 @@ export class BasesGanttBetaView extends BasesView {
 			...(options.end ? { end: { id: options.end, type: dateType(options.end) } } : {}),
 			progress: options.progress ?? undefined, parent: options.parent ?? undefined, order: options.order ?? undefined,
 			dependsOn: options.dependsOn ?? undefined,
+			dateTypes: new Map(entries.map(entry => [entry.path, {
+				start: entryDateType(entry, options.start), end: entryDateType(entry, options.end),
+			}])),
 			currentOrder: new Map(entries.map(entry => {
 				const value = options.order ? entry.values.get(options.order) : undefined;
 				return [entry.path, value?.kind === 'number' ? value.value : null] as const;

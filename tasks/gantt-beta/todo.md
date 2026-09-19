@@ -273,16 +273,21 @@ reset of scroll/selection/collapse/detail state.
 
 ### GBETA-011: Dependency schedule policy and write phase dates
 
+**Status:** Complete 2026-09-20. The pure cascade engine implements no-shift, overlap repair,
+and maintain-gap propagation across chains/diamonds with cycle-safe single processing. Write-back
+adds shifted successors to the same capability batch; phase rows remain derived by default and,
+when enabled, write with each phase note's own Date/Date & time storage type.
+
 **Description:** Implement spec §3.5 in core: no automatic shift, minimum overlap repair, and
 maintain-gap cascade. Preserve successor duration, remain cycle-safe, and apply the selected
 policy plus "Write phase dates" after a committed gesture in the same write batch.
 
 **Acceptance criteria:**
 
-- [ ] Tests cover overlap repair and maintain-gap across chains, diamonds, and cycles.
-- [ ] Every automatic successor move preserves its original duration.
-- [ ] With dependency shifting set to none and phase-date writes off, no extra notes are written.
-- [ ] Phase-date writes use the phase note's own property types.
+- [x] Tests cover overlap repair and maintain-gap across chains, diamonds, and cycles.
+- [x] Every automatic successor move preserves its original duration.
+- [x] With dependency shifting set to none and phase-date writes off, no extra notes are written.
+- [x] Phase-date writes use the phase note's own property types.
 
 **Verification:** `pnpm run test -- gantt-core-cascade gantt-beta-writeback`
 

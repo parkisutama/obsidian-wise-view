@@ -18,6 +18,9 @@ export interface GanttMutationPlanOptions {
 	currentOrder?: ReadonlyMap<string, number | null | undefined>;
 	currentDependsOn?: ReadonlyMap<string, unknown>;
 	resolveLink?: (target: string) => string | null;
+	dateTypes?: ReadonlyMap<string, { start: GanttPropertyDateType; end: GanttPropertyDateType }>;
+	phaseIds?: ReadonlySet<string>;
+	writePhaseDates?: boolean;
 }
 
 function dependencyTargets(values: readonly TaskDependency[] | undefined): Set<string> {
@@ -42,12 +45,14 @@ export function buildGanttMutationPlan(
 	for (const change of changes) {
 		if (change.id.startsWith(SYNTHETIC_PHASE_PREFIX)) continue;
 		const values = valuesFor(change.id);
-		if (change.datesChanged && options.start && change.before.startDate !== change.after.startDate) {
-			const next = writeGanttDate(change.after.startDate, options.start.type, 'start');
+		const datesWritable = options.writePhaseDates || !options.phaseIds?.has(change.id);
+		const ownTypes = options.dateTypes?.get(change.id);
+		if (datesWritable && change.datesChanged && options.start && change.before.startDate !== change.after.startDate) {
+			const next = writeGanttDate(change.after.startDate, ownTypes?.start ?? options.start.type, 'start');
 			if (next !== null) values[options.start.id] = next;
 		}
-		if (change.datesChanged && options.end && change.before.endDate !== change.after.endDate) {
-			const next = writeGanttDate(change.after.endDate, options.end.type, 'end');
+		if (datesWritable && change.datesChanged && options.end && change.before.endDate !== change.after.endDate) {
+			const next = writeGanttDate(change.after.endDate, ownTypes?.end ?? options.end.type, 'end');
 			if (next !== null) values[options.end.id] = next;
 		}
 		if (change.progressChanged && options.progress) values[options.progress] = change.after.progress ?? null;

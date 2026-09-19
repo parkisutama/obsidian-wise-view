@@ -8,6 +8,7 @@ import type {
 	Task,
 } from '@jaeungkim/gantt-chart';
 import { diffGanttTasks } from '../../core/gantt/diff';
+import { applyGanttDependencyPolicy, type GanttDependencyPolicy } from '../../core/gantt/cascade';
 import { writeGanttDate } from '../../core/gantt/dates';
 import {
 	buildGanttMutationPlan,
@@ -32,6 +33,10 @@ export interface GanttBetaWriteBackOptions {
 	revertTasks(tasks: Task[]): void;
 	notice(message: string): void;
 	createTask?(draft: GanttTaskDraft): Promise<void>;
+	dependencyPolicy?: GanttDependencyPolicy;
+	writePhaseDates?: boolean;
+	/** Applies cascade results without remounting the chart. */
+	renderTasks?(tasks: Task[]): void;
 	/** Holds Bases re-renders while writes are in flight (see EchoGate). */
 	gate?: { begin(): void; end(): void };
 }
@@ -49,10 +54,14 @@ export class GanttBetaWriteBack {
 	private properties: GanttMutationPlanOptions;
 	private queue: Promise<void> = Promise.resolve();
 	private epoch = 0;
+	private dependencyPolicy: GanttDependencyPolicy;
+	private writePhaseDates: boolean;
 
 	constructor(tasks: Task[], private readonly options: GanttBetaWriteBackOptions) {
 		this.baseline = tasks;
 		this.properties = options.properties;
+		this.dependencyPolicy = options.dependencyPolicy ?? 'none';
+		this.writePhaseDates = options.writePhaseDates ?? false;
 	}
 
 	get tasks(): Task[] {
@@ -61,6 +70,11 @@ export class GanttBetaWriteBack {
 
 	replaceProperties(properties: GanttMutationPlanOptions): void {
 		this.properties = properties;
+	}
+
+	replaceScheduleOptions(dependencyPolicy: GanttDependencyPolicy, writePhaseDates: boolean): void {
+		this.dependencyPolicy = dependencyPolicy;
+		this.writePhaseDates = writePhaseDates;
 	}
 
 	replaceBaseline(tasks: Task[], values: BaselineValues = {}): void {
@@ -123,9 +137,14 @@ export class GanttBetaWriteBack {
 
 	private async apply(nextTasks: Task[]): Promise<void> {
 		const previous = this.baseline;
-		const plan = buildGanttMutationPlan(diffGanttTasks(previous, nextTasks), this.properties);
+		const scheduledTasks = applyGanttDependencyPolicy(previous, nextTasks, this.dependencyPolicy);
+		const ids = new Set(scheduledTasks.map(task => task.id));
+		const phaseIds = new Set(scheduledTasks.map(task => task.parentId).filter((id): id is string => id !== null && ids.has(id)));
+		const plan = buildGanttMutationPlan(diffGanttTasks(previous, scheduledTasks), {
+			...this.properties, phaseIds, writePhaseDates: this.writePhaseDates,
+		});
 		if (plan.length === 0) {
-			this.baseline = nextTasks;
+			this.baseline = scheduledTasks;
 			return;
 		}
 
@@ -144,7 +163,8 @@ export class GanttBetaWriteBack {
 			this.options.notice(`Could not save Gantt change: ${failureMessage}`);
 			return;
 		}
-		this.baseline = nextTasks;
+		this.baseline = scheduledTasks;
+		if (scheduledTasks.some((task, index) => task !== nextTasks[index])) this.options.renderTasks?.(scheduledTasks);
 	}
 
 	private writeItem(path: string, values: Record<string, unknown>): Promise<MutationResult>[] {
@@ -165,7 +185,8 @@ export class GanttBetaWriteBack {
 			const endValue = remaining[end.id];
 			delete remaining[end.id];
 			const current = this.baseline.find(task => task.id === path);
-			const currentStart = current && start ? writeGanttDate(current.startDate, start.type, 'start') : null;
+			const startType = this.properties.dateTypes?.get(path)?.start ?? start?.type;
+			const currentStart = current && startType ? writeGanttDate(current.startDate, startType, 'start') : null;
 			calls.push(currentStart && start ? (this.options.mutations.date?.updateRange(
 				path, start.id, currentStart, end.id, endValue == null ? null : String(endValue),
 			) ?? Promise.resolve(failed('Date mutation capability is unavailable.')))
