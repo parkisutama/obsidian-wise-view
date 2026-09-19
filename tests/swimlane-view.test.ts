@@ -178,3 +178,83 @@ describe("Swimlane shared platform boundaries (T026)", () => {
 		expect(source).not.toContain("workspace.trigger('hover-link'");
 	});
 });
+
+describe("Swimlane card rendering (characterization)", () => {
+	const base = { plannerGroupBy: "note.status", coverField: "note.cover" };
+	const specCard = (h: SwimlaneHarness) =>
+		[...h.host.querySelectorAll<HTMLElement>(".planner-kanban-card")].find((c) => c.dataset.path === "Tasks/Write spec.md")!;
+
+	it("renders a banner cover with the configured height", async () => {
+		const h = await mount({ config: { ...base, coverDisplay: "banner", coverHeight: "150" } });
+		const cover = specCard(h).querySelector<HTMLElement>(".planner-kanban-cover--banner");
+		expect(cover).not.toBeNull();
+		expect(cover!.style.getPropertyValue("--cover-height")).toBe("150px");
+		expect(cover!.querySelector("img")?.getAttribute("src")).toBe("app://vault/cover.png");
+	});
+
+	it("renders thumbnail and background covers with their card modifier classes", async () => {
+		const left = await mount({ config: { ...base, coverDisplay: "thumbnail-left" } });
+		expect(specCard(left).classList).toContain("planner-kanban-card--thumbnail-left");
+		expect(specCard(left).querySelector(".planner-kanban-cover--thumbnail")).not.toBeNull();
+		left.destroy();
+		const right = await mount({ config: { ...base, coverDisplay: "thumbnail-right" } });
+		expect(specCard(right).classList).toContain("planner-kanban-card--thumbnail-right");
+		right.destroy();
+		const bg = await mount({ config: { ...base, coverDisplay: "background" } });
+		expect(specCard(bg).classList).toContain("planner-kanban-card--background-cover");
+		expect(specCard(bg).querySelector(".planner-kanban-cover--background")).not.toBeNull();
+	});
+
+	it("renders no cover when the display is none", async () => {
+		const h = await mount({ config: { ...base, coverDisplay: "none" } });
+		expect(h.host.querySelector(".planner-kanban-card-cover")).toBeNull();
+	});
+
+	it("applies the configured border style class", async () => {
+		const accent = await mount({ config: { plannerGroupBy: "note.status", borderStyle: "left-accent" } });
+		expect(specCard(accent).classList).toContain("planner-kanban-card-base--left-accent");
+		accent.destroy();
+		const full = await mount({ config: { plannerGroupBy: "note.status", borderStyle: "full-border" } });
+		expect(specCard(full).classList).toContain("planner-kanban-card-base--full-border");
+		full.destroy();
+		const none = await mount({ config: { plannerGroupBy: "note.status", borderStyle: "none" } });
+		expect(specCard(none).classList).toContain("planner-kanban-card-base--default-border");
+	});
+
+	it("places badges inline in the title row or in a properties section below", async () => {
+		const opts = { order: ["note.priority"] };
+		const inline = await mount({ ...opts, config: { plannerGroupBy: "note.status", badgePlacement: "inline" } });
+		expect(specCard(inline).querySelector(".planner-kanban-card-title-row--inline .planner-kanban-badges--inline")).not.toBeNull();
+		inline.destroy();
+		const section = await mount({ ...opts, config: { plannerGroupBy: "note.status", badgePlacement: "properties-section" } });
+		const card = specCard(section);
+		expect(card.querySelector(".planner-kanban-card-title-row--inline")).toBeNull();
+		expect(card.querySelector(".planner-kanban-card-content > .planner-kanban-badges--bottom")?.textContent).toContain("High");
+	});
+});
+
+describe("Swimlane column ordering (characterization)", () => {
+	it("orders columns alphabetically by default and honors a saved order", async () => {
+		const h = await mount({ config: { plannerGroupBy: "note.status" } });
+		expect(texts(h, ".planner-kanban-column-title")).toEqual(["Doing", "Done", "Todo"]);
+		h.destroy();
+		const saved = await mount({ config: { plannerGroupBy: "note.status", columnOrder: JSON.stringify(["Todo", "Doing"]) } });
+		expect(texts(saved, ".planner-kanban-column-title")).toEqual(["Todo", "Doing", "Done"]);
+	});
+});
+
+describe("Swimlane lifecycle leaks (characterization)", () => {
+	it("leaves no clone, context-menu blocker, or timer after repeated mount/update/unload", async () => {
+		for (let i = 0; i < 3; i++) {
+			const h = await mount({ config: { plannerGroupBy: "note.status" } });
+			h.view.onDataUpdated();
+			await waitForRender();
+			const card = h.host.querySelector<HTMLElement>(".planner-kanban-card")!;
+			internals(h).startTouchDrag(card, { path: "Tasks/Build.md" }, { touches: [{ clientX: 0, clientY: 0 }] });
+			h.destroy();
+			harness = null;
+			expect(document.querySelector(".planner-kanban-drag-clone")).toBeNull();
+			expect(document.querySelector(".planner-kanban-swimlane-drag-clone")).toBeNull();
+		}
+	});
+});
