@@ -1,6 +1,6 @@
 # Spec: Extensible view platform for Wise View
 
-Status: Approved  
+Status: Approved; Timeline mutation amendment approved 2026-09-19
 Baseline branch: `dev`  
 Baseline commit: `572895c` (`feat(swimlane): use a lanes icon instead of the kanban icon`)  
 Prepared: 2026-09-18  
@@ -23,7 +23,7 @@ Wise View remains:
 - mobile-compatible;
 - an Obsidian Bases view-enrichment plugin rather than a task workflow engine;
 - based on configurable properties rather than required frontmatter schemas;
-- read-only by default for all newly added views;
+- read-only by default for newly added views unless a human-approved, narrowly scoped capability amendment applies;
 - compatible with Obsidian themes and optional Pretty Properties colors;
 - distributable as the normal Obsidian plugin artifacts: `main.js`, `manifest.json`, and `styles.css`.
 
@@ -36,7 +36,7 @@ The specification proceeds with these assumptions:
 1. All views are integrated into the existing `wise-view` plugin; Wise View does not require the source plugins to be installed at runtime.
 2. The five new registrations are Timeline, Grid, Masonry, Feed, and Keep.
 3. Grid and Masonry are separate Bases view types. Keep is an opinionated presentation preset backed by the same card and masonry platform, not a second masonry implementation.
-4. Newly added views are read-only. Timeline date editing, Feed inline editing, Keep pin/color/delete actions, and Dynamic Views checkbox mutation are excluded.
+4. Newly added views are read-only by default. The 2026-09-19 Timeline amendment permits quick scheduling into the configured start/end properties only; Feed inline editing, Keep pin/color/delete actions, and Dynamic Views checkbox mutation remain excluded.
 5. Wise View continues to use imperative DOM and Obsidian `Component` lifecycle primitives. React, ReactDOM, TanStack Virtual, Sass, Tailwind, and other UI runtimes are not added.
 6. Authoring uses modular regular CSS. The build still emits one root `styles.css` file.
 7. The minimum supported Obsidian version is corrected to 1.10.2 because the existing code already calls `BasesView.createFileForView`, introduced in Obsidian 1.10.2. No Obsidian 1.13-only API may be used without a separate compatibility decision.
@@ -109,7 +109,7 @@ The assessed snapshots are pinned so later implementation can distinguish design
 
 | Candidate | Snapshot | License | Useful design evidence | Do not adopt directly |
 |---|---|---|---|---|
-| Bases Timeline | `2c6ee7ca2ab881f5557df5a042a377b0139b8608` | MIT | time-domain model, zoom levels, synchronized sidebar/timeline scroll, edge arrows, grouping, mobile list mode | hardcoded status/priority workflows, direct writes, quick scheduling, monolithic 1,316-line view |
+| Bases Timeline | `2c6ee7ca2ab881f5557df5a042a377b0139b8608` | MIT | time-domain model, zoom levels, synchronized sidebar/timeline scroll, edge arrows, grouping, mobile list mode, quick scheduling into selected date properties | hardcoded status/priority workflows, direct unguarded writes, monolithic 1,316-line view |
 | Keep Bases View | `6bf8342fe6a50dcb4b653d8346be30d54390f846` | MIT | virtual masonry requirements, offscreen measurement, bounded preview concurrency, stable card widths, pinned sections, scroll restore | copying bundled `main.js`, hardcoded `keep_pinned`/`keep_color`, popup editor, pin/color/delete writes |
 | Feed Bases | `a753c21332b6ca07f7ffdf43fb2c50e013579e55` | MIT | linear virtualization, dynamic measurement, feed presentation | React stack, private TanStack cache access, internal `new WorkspaceLeaf(app)`, embedded editable Markdown views |
 | Dynamic Views | `7af74541825440bdb581023b0f795b41190c6817` | GPL-3.0-or-later | normalized `CardData`, data transform, content cache, render hashes, pure masonry layout, scroll anchors, popout safety, shared renderer, extensive tests | wholesale import, 1.13-only assumptions, Sass pipeline, automatic `.base` cleanup, network thumbnails, slideshow/image viewer, checkbox writes, broad settings framework |
@@ -157,7 +157,7 @@ Wise View remains `GPL-3.0-only`.
 
 - task status, priority, recurrence, hierarchy, or dependency business logic;
 - introducing a required frontmatter schema;
-- Timeline bar drag/resize, quick scheduling, priority editing, or group/status writes;
+- Timeline bar drag/resize, priority editing, or group/status writes; quick scheduling is the sole approved Timeline mutation and must use the mutation capability;
 - Feed inline editing or embedding source-mode Markdown editors;
 - Keep pin/unpin, recolor, delete, or popup editing actions;
 - Dynamic Views checkbox mutation, file creation, randomization commands, external thumbnail fetches, image viewer, slideshow, or Style Settings integration;

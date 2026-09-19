@@ -43,7 +43,7 @@ Every phase ends in a working plugin and a human checkpoint. Existing view behav
 4. Keep imperative DOM and Obsidian lifecycle primitives; add no React runtime.
 5. Keep regular CSS; compile an explicitly ordered set of CSS source modules into one root artifact.
 6. Keep view-specific configuration in Bases view options.
-7. Isolate existing mutations behind explicit capabilities; new views are read-only.
+7. Isolate mutations behind explicit capabilities; new views are read-only by default, with Timeline quick scheduling approved on 2026-09-19 as a start/end-only capability.
 8. Share card presentation and layout infrastructure, but keep Grid, Masonry, Feed, and Keep as separate view adapters.
 9. Share temporal parsing/range/coordinates, but keep FullCalendar, Frappe Gantt, and Timeline rendering engines independent.
 10. Target Obsidian 1.10.2 and avoid 1.13-only APIs.

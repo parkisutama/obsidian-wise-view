@@ -165,10 +165,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 - Source: <https://github.com/mmattia09/obsidian-project-manager>
 - Reference commit: `2c6ee7ca2ab881f5557df5a042a377b0139b8608`
 - Upstream license: MIT
-- Used for: selectively adapted Timeline toolbar/sidebar controls, temporal header/grid, today
-  indicator, edge navigation, scroll anchoring, responsive layout, and related styling
-- Excluded from Wise View: task status/priority workflow, property writes, drag/resize, and quick
-  scheduling
+- Used for: adapted Timeline toolbar/sidebar controls, temporal header/grid, today indicator,
+  edge navigation, scroll anchoring, responsive layout, pointer/pinch zoom, quick scheduling into
+  configured date properties, and related styling
+- Excluded from Wise View: task status/priority workflow, arbitrary property writes, group writes,
+  recurrence/dependency logic, and bar drag/resize
 
 The authoritative file-level reuse decision is maintained in
 `docs/architecture/upstream-provenance.md`. The adapted work is distributed as part of Wise View

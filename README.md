@@ -55,11 +55,12 @@ whole project is then governed by GPL v3. The original MIT copyright notice is p
   because Obsidian now ships a core Kanban view.
 - **Gantt view** — Date-range chart powered by [Frappe Gantt](https://frappe.io/gantt).
   Map existing start, end, progress, dependency, parent, and color properties from your notes.
-- **Timeline view** — Read-only, grouped, virtualized date ranges with configurable properties
-  and no task-schema assumptions. See the [Timeline View documentation](docs/timeline-view.md).
+- **Timeline view** — Grouped, virtualized date ranges plus quick placement of unscheduled notes
+  into user-selected start/end properties, with no task-schema assumptions. See the
+  [Timeline View documentation](docs/timeline-view.md).
 
-All views are **Obsidian Bases-native**: they read your notes' frontmatter properties directly and
-write no extra data.
+All views are **Obsidian Bases-native**: they use your selected frontmatter properties directly and
+introduce no hidden task schema.
 
 ---
 
@@ -240,7 +241,7 @@ bundled.
   clean pattern for integrating Frappe Gantt into Obsidian Bases.
 - **[mmattia09](https://github.com/mmattia09)** — whose MIT-licensed
   [obsidian-project-manager](https://github.com/mmattia09/obsidian-project-manager) provided
-  the selectively adapted read-only Timeline controls, temporal grid, navigation behavior, and
-  styling. Task-workflow and write features remain intentionally excluded.
+  the attributed Timeline controls, temporal grid, navigation, zoom, quick scheduling behavior,
+  and styling. Task status/priority workflows and unrelated property writes remain excluded.
 - The [Obsidian](https://obsidian.md/) team for building the Bases API.
 - [FullCalendar](https://fullcalendar.io/) projects.

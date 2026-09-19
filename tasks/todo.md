@@ -710,6 +710,26 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** S
 
+### T034E: Adopt Timeline scheduling and zoom interactions — done (automated portion)
+
+**Description:** Complete the attributed adoption of the pinned MIT Timeline interaction model without importing its status, priority, recurrence, or dependency workflow. Timeline lists unscheduled notes and lets the user place them on the temporal surface by writing only the configured start/end properties.
+
+**Acceptance criteria:**
+
+- [x] Timeline uses the upstream-equivalent zoom density and viewport-relative time-domain padding so bars and headers remain legible instead of compressed.
+- [x] `Ctrl/Cmd+wheel` and two-finger pinch step zoom around the pointer while keeping the date under the pointer anchored.
+- [x] Hovering an unscheduled row displays a dated ghost bar; activating it writes only the configured start/end properties through the mutation gateway.
+- [x] Direct Obsidian mutation calls remain absent from the Timeline directory; status, priority, group, recurrence, and dependency writes remain excluded.
+- [x] Source/CSS attribution identifies the pinned upstream file and MIT notice.
+
+**Verification:** focused Temporal/Timeline/architecture tests passed; `pnpm run check` passed (29 files, 256 tests). Production build and artifact verification complete before commit; T034C native comparison remains required.
+
+**Dependencies:** T023, T030-T034B, human approval recorded 2026-09-19.
+
+**Likely files:** `docs/specs/extensible-view-platform.md`, `tasks/plan.md`, `src/core/temporal/TimelineScale.ts`, `src/views/timeline/BasesTimelineView.ts`, `src/views/timeline/TimelineRenderer.ts`, `src/styles/views/timeline.css`, Timeline tests.
+
+**Estimated scope:** L
+
 ### Checkpoint E: Timeline
 
 - [x] Automated gates pass.

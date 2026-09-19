@@ -1,7 +1,7 @@
 # Timeline View
 
 Timeline View menampilkan rentang tanggal note Obsidian Bases dalam garis waktu horizontal yang
-read-only. View ini memakai properti yang Anda pilih sendiri dan tidak mengharuskan `status`,
+interaktif. View ini memakai properti yang Anda pilih sendiri dan tidak mengharuskan `status`,
 `priority`, atau schema task tertentu.
 
 ## Cara menggunakan
@@ -10,7 +10,7 @@ read-only. View ini memakai properti yang Anda pilih sendiri dan tidak mengharus
 2. Pilih tipe view **Timeline**.
 3. Buka pengaturan view dan pilih **Start date**.
 4. Opsional: pilih **End date**, **Title**, **Color by**, dan **Group by**.
-5. Pilih zoom Day, Week, Month, Quarter, atau Year.
+5. Pilih zoom Day, Week, Two weeks, Month, Quarter, Year, atau Five years.
 
 Contoh frontmatter berikut hanya contoh; nama propertinya bebas:
 
@@ -37,7 +37,7 @@ Timeline sengaja tidak menebak tanggal lokal seperti `tomorrow` atau `31/03/2026
 | **Title** | Label bar. Kosong atau tidak tersedia memakai nama file. |
 | **Color by** | Nilai kategori yang dipetakan melalui color resolver bersama. |
 | **Group by** | Membagi note menjadi section. Kosong memakai Ungrouped. |
-| **Zoom** | Skala Day, Week, Month, Quarter, atau Year. |
+| **Zoom** | Tujuh skala dari Day sampai Five years. |
 
 Nilai akhir `ongoing` didukung dan diselesaikan terhadap tanggal hari ini untuk visualisasi.
 Rentang terbalik dinormalisasi untuk tampilan tanpa menulis perubahan ke note.
@@ -50,15 +50,18 @@ Rentang terbalik dinormalisasi untuk tampilan tanpa menulis perubahan ke note.
 - Klik kanan membuka menu lokasi file bersama Wise View.
 - Klik heading group untuk collapse atau expand.
 - Tombol **Today** membawa posisi horizontal ke hari ini.
+- `Ctrl/Cmd+wheel` atau pinch dua jari mengganti zoom dengan tanggal di bawah pointer tetap terjangkar.
+- Hover pada row Unscheduled menampilkan ghost bar beserta rentang tanggal; klik ghost untuk menulis properti start/end yang dikonfigurasi.
 - Pilihan zoom dan posisi scroll dipertahankan saat data Base diperbarui.
 
-Timeline tidak menyediakan drag, resize, quick scheduling, atau editor properti. Pointer gesture
-tidak pernah mengubah tanggal maupun frontmatter.
+Timeline tidak menyediakan status/priority workflow, recurrence, dependency editing, atau perubahan
+group. Satu-satunya write yang dimiliki Timeline adalah quick scheduling dari row Unscheduled ke
+properti start/end yang dipilih pengguna, melalui mutation gateway Wise View.
 
 ## Unscheduled dan data tidak valid
 
-Note ditampilkan di section **Unscheduled** bila start date belum dikonfigurasi, kosong, atau tidak
-valid, atau bila end date yang terisi tidak valid. Ini mempertahankan visibilitas data bermasalah
+Jika start date belum dikonfigurasi, view menampilkan panduan konfigurasi. Note ditampilkan di
+section **Unscheduled** bila start date kosong/tidak valid, atau bila end date yang terisi tidak valid. Ini mempertahankan visibilitas data bermasalah
 tanpa menebak atau membuang note secara diam-diam.
 
 ## Responsif dan kumpulan besar
@@ -78,11 +81,12 @@ diadaptasi secara selektif dari
 `2c6ee7ca2ab881f5557df5a042a377b0139b8608` (MIT), dengan notice dipertahankan pada file yang
 diadaptasi dan di `THIRD_PARTY_NOTICES.md`.
 
-Berbeda dari workflow upstream yang editable, Timeline Wise View:
+Wise View mengadopsi perilaku Timeline upstream secara penuh untuk navigasi temporal dan penempatan
+item yang belum terjadwal, tetapi tetap memisahkan workflow task yang tidak agnostik:
 
 - tidak memiliki status atau urutan priority bawaan;
-- tidak melakukan quick scheduling;
-- tidak menulis tanggal, group, atau status;
+- melakukan quick scheduling hanya ke properti start/end yang dikonfigurasi;
+- tidak menulis group, status, priority, recurrence, atau dependency;
 - memakai Temporal Core, navigation service, dan virtualization platform Wise View;
 - memisahkan model murni, renderer DOM, dan adapter Obsidian Bases.
 

@@ -29,21 +29,22 @@ repository listed here beyond what its **Reuse mode** and **Excluded** rows perm
 - **Repository:** <https://github.com/mmattia09/obsidian-project-manager>
 - **Commit:** `2c6ee7ca2ab881f5557df5a042a377b0139b8608`
 - **License:** MIT
-- **Reuse mode:** Selective source adaptation approved by the maintainer on 2026-09-19.
+- **Reuse mode:** Full behavioral adaptation of the task-agnostic Timeline surface approved by the maintainer on 2026-09-19; implementation remains modular rather than copying the monolith.
 - **Useful design evidence:** time-domain model, zoom levels, synchronized sidebar/timeline
-  scroll, edge arrows, grouping, mobile list mode.
-- **Excluded:** hardcoded status/priority workflows, direct writes, quick scheduling, the
+  scroll, edge arrows, grouping, mobile list mode, pointer-anchored zoom, and quick scheduling.
+- **Excluded:** hardcoded status/priority workflows, direct unguarded writes, the
   monolithic 1,316-line view structure.
 - **File-level provenance:** T034A may adapt the following pinned files:
   - upstream `src/timeline-view.ts` -> Wise View `src/views/timeline/TimelineRenderer.ts` and,
     only where lifecycle wiring is necessary, `src/views/timeline/BasesTimelineView.ts`;
     permitted scope is toolbar/sidebar controls, temporal header/grid, today indicator, edge
-    navigation, and scroll-anchor behavior;
+    navigation, scroll-anchor behavior, pointer/pinch zoom, and quick scheduling through the
+    configured start/end mutation capability;
   - upstream `styles.css` -> Wise View `src/styles/views/timeline.css`; permitted scope is the
-    corresponding read-only layout and presentation rules.
+    corresponding layout, ghost-bar, and presentation rules.
 - **Must remain excluded:** `PRIORITY_LEVELS`, `PRIORITY_RANK`, `STATUS_ORDER`, workflow group
-  sorting, group/status drops, priority editing, quick scheduling, bar drag/resize, date/property
-  writes, and hardcoded task property defaults.
+  sorting, group/status drops, priority editing, bar drag/resize, arbitrary property writes, and
+  hardcoded task property defaults. Quick scheduling may write only configured start/end dates.
 - **Attribution required:** adapted TypeScript files carry an SPDX/copyright adaptation header;
   adapted CSS carries a preserved attribution header; the upstream MIT text is included in
   `THIRD_PARTY_NOTICES.md`.
