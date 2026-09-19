@@ -751,6 +751,27 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** L
 
+### T034G: Fix Timeline scroll layers and committed range stability — done (automated portion)
+
+**Description:** Correct the native defects found after T034F: true left alignment, visible Today line, horizontally scrolling calendar bands, transparent unscheduled rows, obvious resize handles, and optimistic range retention across stale Bases refreshes.
+
+**Acceptance criteria:**
+
+- [x] Sidebar buttons use flex-start alignment regardless of Obsidian button defaults.
+- [x] Today line is an overlay above virtual rows and shares the same temporal coordinate as its header badge.
+- [x] Grid and weekend bands use the timeline scroller as their positioned containing block and move with bars.
+- [x] Unscheduled rows remain transparent so shared calendar banding is visible.
+- [x] Move preserves duration; resize changes only the selected edge; pending committed geometry survives stale data refresh until the new range arrives or the write fails.
+- [x] Resize handles expose a usable hit target and visual edge affordance.
+
+**Verification:** focused Timeline and architecture tests passed; `pnpm run check` passed (29 files, 261 tests). Build/artifact verification completes before commit; native comparison remains required.
+
+**Dependencies:** T034F and maintainer native feedback on 2026-09-19.
+
+**Likely files:** Timeline renderer/CSS/tests and the native acceptance record.
+
+**Estimated scope:** M
+
 ### Checkpoint E: Timeline
 
 - [x] Automated gates pass.

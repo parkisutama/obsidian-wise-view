@@ -60,6 +60,12 @@ These checks validate shared navigation integration only. They do not accept the
 | Open-ended domain | Grid stops after a finite rendered range or pane resize | Reflow to the actual viewport and extend the domain as scrolling nears either edge |
 | Grouping | Synthetic Ungrouped and Unscheduled headers appear without Group by | No group header unless Group by is configured; unscheduled rows stay in their actual group/order |
 
+A fourth comparison found that sidebar labels were still visually centered, the Today line was
+hidden although its badge remained, weekend bands did not share horizontal scrolling, unscheduled
+rows painted an opaque white strip, and a stale Bases refresh could visually undo a committed drag.
+These are tracked by T034G. The date mutation gateway is already shared with Gantt; gesture geometry
+cannot be shared directly because Gantt delegates it to Frappe while Timeline owns its DOM renderer.
+
 ## Required follow-up
 
 - T034A owns toolbar, sidebar, temporal header/grid, today presentation, and scroll synchronization.
