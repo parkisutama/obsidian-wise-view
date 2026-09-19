@@ -215,15 +215,19 @@ Render read-only with the unscheduled/empty state.
 
 ### GBETA-009: Diff engine and mutation plan (core)
 
+**Status:** Complete 2026-09-20. Pure task diffing and frontmatter mutation planning cover
+dates, progress, Parent, sparse sibling Order, and Depends on while excluding synthetic rows.
+The full quality gate passes (38 files, 376 tests).
+
 **Description:** Diff previous vs. next `Task[]` into field changes; translate changes into a
 mutation plan (date formatting per property type, progress, parent, order renumbering with gaps,
 Depends on edits), writing only changed fields of changed notes.
 
 **Acceptance criteria:**
 
-- [ ] Summary drag diff yields one date change per moved descendant and none for untouched tasks.
-- [ ] Order renumbering writes only siblings whose value changed.
-- [ ] Synthetic rows never appear in a mutation plan.
+- [x] Summary drag diff yields one date change per moved descendant and none for untouched tasks.
+- [x] Order renumbering writes only siblings whose value changed.
+- [x] Synthetic rows never appear in a mutation plan.
 
 **Verification:** `pnpm run test -- gantt-core-diff`
 

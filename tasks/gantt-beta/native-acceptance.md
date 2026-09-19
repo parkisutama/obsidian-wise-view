@@ -18,6 +18,7 @@ Tema: light dan dark
 | Progress | Lulus dengan catatan | Nilai terbaca dan tooltip menunjukkan persentase, tetapi fill kurang terlihat pada sebagian warna. |
 | Color by | Lulus | Warna kategori diterapkan pada bar; kontras progress bergantung pada warna. |
 | Ctrl/Cmd + wheel | Lulus dengan catatan | Scale berubah, tetapi belum ada indikator/picker scale yang terlihat dan tersinkron. |
+| Today marker | Gagal | Pada 2026-09-20 sebelum 07.00 WIB marker menunjuk 2026-09-19 karena library memakai UTC. GBETA-016 harus menggantinya dengan marker tanggal lokal. |
 | Tooltip | Perlu perbaikan | Tooltip library dan tooltip lain dapat bertumpuk saat hover. |
 | Detail panel | Parsial sesuai tahap | Panel library muncul; renderer detail Wise View belum diimplementasikan. |
 | Move/resize/dependency drawing | Belum diuji | View masih sengaja dipaksa read-only sampai GBETA-009–GBETA-011 selesai. |
