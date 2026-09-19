@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Parkis Utama
 
 import type { EntrySnapshot } from '../../core/entries/EntrySnapshot';
-import type { NormalizedValue } from '../../core/entries/NormalizedValue';
+import { valueText } from '../../core/entries/valueText';
 import { normalizeDateRange, type NormalizedDateRange } from '../../core/temporal/DateRange';
 import { parseTemporalValue, type DateOnlyValue } from '../../core/temporal/TemporalValue';
 import type { TimelineOptions } from './timelineOptions';
@@ -59,23 +59,6 @@ export function flattenTimelineRows(
 		}
 	}
 	return rows;
-}
-
-function valueText(value: NormalizedValue | undefined): string | null {
-	if (!value || value.kind === 'missing') return null;
-	switch (value.kind) {
-		case 'text':
-		case 'date': return value.value;
-		case 'number':
-		case 'boolean': return String(value.value);
-		case 'link': return value.display || value.target;
-		case 'file': return value.path;
-		case 'list': {
-			const text = value.items.map(valueText).filter((item): item is string => item != null).join(', ');
-			return text || null;
-		}
-		case 'unsupported': return value.raw == null ? null : String(value.raw);
-	}
 }
 
 function mapRange(
