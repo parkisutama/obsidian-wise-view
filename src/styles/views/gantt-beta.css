@@ -36,3 +36,10 @@
 	--gantt-bar-text-color: var(--text-on-accent);
 	--gantt-progress-color: var(--interactive-accent-hover);
 }
+
+.gantt-beta-empty {
+	display: grid;
+	min-height: 240px;
+	place-items: center;
+	color: var(--text-muted);
+}

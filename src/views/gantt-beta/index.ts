@@ -2,15 +2,18 @@
 // Copyright (C) 2026 Parkis Utama
 
 import type { BasesViewRegistration, QueryController } from 'obsidian';
+import type WiseViewPlugin from '../../main';
 import { BASES_GANTT_BETA_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
+import { getGanttBetaViewOptions } from './options';
 
 export { BASES_GANTT_BETA_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
 
-export function createGanttBetaViewRegistration(): BasesViewRegistration {
+export function createGanttBetaViewRegistration(plugin: WiseViewPlugin): BasesViewRegistration {
 	return {
 		name: 'Gantt Beta',
 		icon: 'gantt-chart-square',
 		factory: (controller: QueryController, containerEl: HTMLElement) =>
-			new BasesGanttBetaView(controller, containerEl),
+			new BasesGanttBetaView(controller, containerEl, plugin),
+		options: config => getGanttBetaViewOptions(config),
 	};
 }

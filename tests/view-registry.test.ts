@@ -71,7 +71,7 @@ describe("ViewRegistry", () => {
 		const gantt = createGanttViewRegistration(plugin);
 		const swimlane = createSwimlaneViewRegistration(plugin);
 		const timeline = createTimelineViewRegistration(plugin);
-		const ganttBeta = createGanttBetaViewRegistration();
+		const ganttBeta = createGanttBetaViewRegistration(plugin);
 
 		registry.register({
 			id: BASES_GANTT_BETA_VIEW_ID,

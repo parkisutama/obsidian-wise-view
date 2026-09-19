@@ -9,36 +9,17 @@ import type { ViewRuntime } from '../../platform/dom/ViewRuntime';
 export type GanttBetaTheme = 'light' | 'dark';
 export type ChartRender = (node: ComponentChild, container: Element) => void;
 
-const STATIC_TASKS: Task[] = [
-	{
-		id: 'gantt-beta-foundation',
-		name: 'Gantt Beta foundation',
-		startDate: '2026-09-15',
-		endDate: '2026-09-26',
-		parentId: null,
-		sequence: '1',
-		progress: 50,
-	},
-	{
-		id: 'gantt-beta-runtime',
-		name: 'Preact runtime',
-		startDate: '2026-09-15',
-		endDate: '2026-09-20',
-		parentId: 'gantt-beta-foundation',
-		sequence: '1.1',
-		progress: 100,
-	},
-	{
-		id: 'gantt-beta-skeleton',
-		name: 'View skeleton',
-		startDate: '2026-09-20',
-		endDate: '2026-09-26',
-		parentId: 'gantt-beta-foundation',
-		sequence: '1.2',
-		progress: 35,
-		dependencies: [{ targetId: 'gantt-beta-runtime', type: 'FS' }],
-	},
-];
+export interface GanttBetaChartModel {
+	tasks: Task[];
+	unscheduledCount: number;
+	rowHeight: number;
+	props: {
+		defaultScale: 'day' | 'week' | 'month' | 'quarter' | 'year'; readOnly: boolean; hierarchy: boolean;
+		showTaskList: boolean; showRowNumbers: boolean; showDetail: boolean; showTooltip: boolean;
+		showNonWorkingDays: boolean; workingWeekdays: number[]; holidays: string[]; firstDayOfWeek: number;
+		zoomOnWheel: boolean; infiniteScroll: boolean; initialScrollTo?: 'today';
+	};
+}
 
 function bodyTheme(body: HTMLElement): GanttBetaTheme {
 	return body.classList.contains('theme-dark') ? 'dark' : 'light';
@@ -49,6 +30,7 @@ export class GanttBetaChartHost {
 	private theme: GanttBetaTheme;
 	private readonly observer: MutationObserver;
 	private disposed = false;
+	private model: GanttBetaChartModel | null = null;
 
 	constructor(
 		private readonly containerEl: HTMLElement,
@@ -59,7 +41,6 @@ export class GanttBetaChartHost {
 		const MutationObserverCtor = (runtime.win as Window & { MutationObserver: typeof MutationObserver }).MutationObserver;
 		this.observer = new MutationObserverCtor(() => this.refreshTheme());
 		this.observer.observe(runtime.doc.body, { attributes: true, attributeFilter: ['class'] });
-		this.paint();
 	}
 
 	get currentTheme(): GanttBetaTheme {
@@ -74,17 +55,28 @@ export class GanttBetaChartHost {
 	}
 
 	private paint(): void {
+		if (!this.model) return;
+		if (this.model.tasks.length === 0) {
+			this.renderChart(h('div', { class: 'gantt-beta-empty' },
+				this.model.unscheduledCount > 0 ? `${this.model.unscheduledCount} note(s) need a configured start date.` : 'No scheduled notes.'), this.containerEl);
+			return;
+		}
 		this.renderChart(h(ReactGanttChart, {
-			tasks: STATIC_TASKS,
+			tasks: this.model.tasks,
 			height: '100%',
 			width: '100%',
 			theme: this.theme,
-			defaultScale: 'day',
-			showTaskList: true,
-			showRowNumbers: true,
-			hierarchy: true,
-			readOnly: true,
+			...this.model.props,
 		}), this.containerEl);
+	}
+
+	/** Row height is a CSS-only update; unchanged task/prop references do not repaint Preact. */
+	update(model: GanttBetaChartModel): void {
+		this.containerEl.style.setProperty('--gantt-row-height', `${model.rowHeight}px`);
+		const repaint = !this.model || this.model.tasks !== model.tasks || this.model.props !== model.props
+			|| this.model.unscheduledCount !== model.unscheduledCount;
+		this.model = model;
+		if (repaint) this.paint();
 	}
 
 	dispose(): void {

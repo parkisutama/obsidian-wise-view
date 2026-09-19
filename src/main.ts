@@ -112,7 +112,7 @@ export default class WiseViewPlugin extends Plugin {
     const calendar = createCalendarViewRegistration(this);
     const gantt = createGanttViewRegistration(this);
     const timeline = createTimelineViewRegistration(this);
-    const ganttBeta = createGanttBetaViewRegistration();
+    const ganttBeta = createGanttBetaViewRegistration(this);
 
     return [
       {

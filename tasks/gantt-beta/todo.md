@@ -186,14 +186,17 @@ values or input (Bases sort) order.
 
 ### GBETA-008: Options schema and Bases → Task mapping
 
+**Status:** Implemented 2026-09-19; automated mapping/options/fast-path checks pass and the
+development artifact is installed. Native parent-note + Group by acceptance is pending.
+
 **Description:** Define all spec §3.6 options (row height CSS-only) and map Bases entries to
 `Task[]` using GBETA-005–007, the existing `ColorResolver`, and formula-property detection.
 Render read-only with the unscheduled/empty state.
 
 **Acceptance criteria:**
 
-- [ ] Every spec §3.2 row has a mapping test.
-- [ ] Changing a CSS-only option does not rebuild the task array (render scheduler fast path).
+- [x] Every spec §3.2 row has a mapping test.
+- [x] Changing a CSS-only option does not rebuild the task array (render scheduler fast path).
 - [ ] A real Base with parent notes and `Group by` renders phases with roll-up and collapse.
 
 **Verification:** `pnpm run check`; manual check in a vault.
