@@ -71,11 +71,11 @@ Normalized data + config + color + navigation + render scheduling
         |
         +--> Temporal Core -------------> Timeline
         |
-        +--> Card Model + Renderer ------> Grid
+        +--> Card Model + Renderer ------> Grid (unregistered 2026-09-19, see amendment)
         |
-        +--> Masonry Strategy -----------> Masonry
+        +--> Masonry Strategy -----------> Masonry (paused 2026-09-19, see amendment)
         |
-        +--> Preview + Linear Virtual ---> Feed
+        +--> Preview + Linear Virtual ---> Feed (next actionable phase)
         |
         v
 Cross-view hardening, provenance, and native acceptance
@@ -107,8 +107,8 @@ Every phase ends in a working plugin and a human checkpoint. Existing view behav
 | Ordered regular-CSS pipeline | all existing views | all later views | deterministic build; no Sass dependency |
 | Entry snapshots, config, color, navigation, scheduler | all existing views | all later views | existing fixtures pass using shared services |
 | Temporal Core and linear virtual rows | Calendar/Gantt contract tests | Timeline | Timeline handles large grouped fixtures; approved date edits stay behind the mutation capability |
-| Card model and renderer | Swimlane cards | Grid | Grid renders through shared card handles |
-| Pure masonry geometry, measurement, and scroll anchors | Card renderer, Grid | Masonry | bounded mounted cards and stable resize/return position |
+| Card model and renderer | Swimlane cards | Grid *(unregistered 2026-09-19 — failed native acceptance)* | Grid renders through shared card handles |
+| Pure masonry geometry, measurement, and scroll anchors | Card renderer, Grid | Masonry *(paused 2026-09-19 — see the Phase 6 amendment)* | bounded mounted cards and stable resize/return position |
 | Content preview and dynamic linear virtualization | Grid/Masonry card shell | Feed | Feed renders visible read-only previews without editor leaves |
 
 Keep's row (preset/sectioning layer) is removed from this matrix; it will appear in Keep's own
@@ -219,50 +219,46 @@ The centered **Show details** window observed in the Keep Bases View is tracked 
 cross-view interaction proposal (T034D). It does not block Timeline acceptance and must not be
 implemented independently in each view before a shared contract is approved.
 
-## Phase 5: Card Core to Grid
+## Phase 5: Card Core to Grid — Grid unregistered pending rework (2026-09-19)
 
-Tasks T035-T040 build the reusable card presentation and immediately ship Grid.
+Tasks T035-T040 built the reusable card presentation and shipped Grid; T035-T038 (`CardItem`,
+`CardMapper`, `CardRenderer`, `GridLayout`/`GridCollection`) stand and are unaffected. Grid itself
+(T039-T040) passed every automated gate but failed native visual acceptance three rounds in a row
+(an oversized cover blowing out its grid column; then every card flattening to a uniform strip)
+even after direct, evidence-based fixes. The maintainer decided **not** to keep guessing against
+CSS Grid and **unregistered Grid** (`src/main.ts`) rather than ship or keep patching it blind. See
+`tasks/todo.md`'s T040/Checkpoint F entries for the specific failures and fixes tried, and the
+Dynamic Views entry in `docs/architecture/upstream-provenance.md` for what a future rework should
+reconsider (a from-scratch CSS Grid layout may not be the right adoption target regardless of
+license terms — Dynamic Views' own grid CSS uses many defensive rules this program never ported).
 
-- Define `CardItem`, slots, and mapping from entry snapshots.
-- Build a renderer returning an idempotent cleanup handle.
-- Migrate Swimlane card presentation to prove the renderer without changing board behavior.
-- Build Grid layout, grouping, batched mounting, and offscreen gating.
-- Register and document Grid with its CSS and integration tests.
+### Checkpoint F: Grid accepted — not reached; see the note above
 
-### Checkpoint F: Grid accepted
-
-- Swimlane and Grid use the same card model/renderer.
+- Swimlane and Grid use the same card model/renderer. (Superseded: the 2026-09-19 shared-DOM/CSS
+  amendment below no longer requires this.)
 - The renderer contains no layout-specific or mutation logic.
 - Grid does not synchronously construct rich DOM for every item in a large Base.
-- Card appearance is theme-, mobile-, and keyboard-compatible.
+- Card appearance is theme-, mobile-, and keyboard-compatible. **Never demonstrated — this is why
+  Grid is unregistered.**
 
-## Phase 6: Masonry strategy to Masonry
+## Phase 6: Masonry strategy to Masonry — paused (2026-09-19)
 
-Tasks T046-T050 add layout capability and ship the Masonry view immediately after Grid, so
-Swimlane/Grid/Masonry's use of the shared Card Core is settled before Feed builds on top of it.
+Tasks T046-T050 were sequenced to ship Masonry immediately after Grid. Since Grid's Dynamic Views
+adoption did not reach a stable, accepted result, the maintainer paused Masonry too rather than
+repeat the same adoption approach against a second Dynamic Views view. Masonry does not resume
+until there is an explicit decision on how to approach it differently (e.g. a more conservative,
+incrementally-verified port of Dynamic Views' actual masonry CSS/DOM, or a from-scratch
+implementation reviewed against native screenshots at each step rather than in three large jumps).
+Phase 7 (Feed) is unaffected — it adopts from Feed Bases, a different upstream project — and is
+now the next actionable phase in this program.
 
-- Add pure column and position calculations.
-- Add measurement caching keyed by item/config/width.
-- Add virtual mounting, scroll anchoring, and stable resize behavior.
-- Build and register the Masonry adapter with CSS, tests, and documentation.
-- Where Masonry's needs would otherwise force a change to Grid's or Swimlane's card rendering,
-  prefer keeping the divergent logic inside the shared component (per-view branch) over
-  destabilizing an accepted view; record the unification opportunity as deferred refactor work
-  instead of blocking this phase, matching the T037 precedent for Swimlane's cover resolution.
-
-### Checkpoint G: Masonry accepted
-
-- Pure layout tests cover narrow panes, gaps, column changes, groups, and invalid input.
-- Mounted cards remain bounded.
-- Resizing does not stack animations or visibly jump the anchor card.
-- No duplicated card or preview renderer exists.
-- Any card/layout logic kept separate per view (rather than unified) is recorded as a deferred
-  finding, not silently left undocumented.
+### Checkpoint G: Masonry accepted — deferred; Phase 6 has not started
 
 ## Phase 7: Preview and linear virtualization to Feed
 
-Tasks T041-T045 extend the platform only as required by Feed, once Grid and Masonry have proven
-the shared Card Core across two layout strategies.
+Tasks T041-T045 extend the platform only as required by Feed. This is now the next actionable
+phase (Phase 5/6's Card-Core-proof rationale for sequencing Feed after Grid/Masonry no longer
+applies, since Grid is unregistered and Masonry is paused — see the notes above).
 
 - Add preview extraction, cache keys, deduplication, invalidation, concurrency limits, and cancellation.
 - Add lifecycle-owned read-only Markdown rendering for visible cards.

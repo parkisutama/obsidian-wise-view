@@ -1024,7 +1024,18 @@ covered code path moved.
 
 **Estimated scope:** M
 
-### T040: Register, style, and document Grid — done (automated portion)
+### T040: Register, style, and document Grid — done (automated portion), then unregistered 2026-09-19
+
+**2026-09-19 status:** after this task's automated gates passed, native testing on a real vault
+surfaced repeated CSS Grid layout failures — an oversized cover blowing out its column (fixed via
+`min-width: 0` and a padding-top cover), then every card flattening to a uniform short strip
+(traced to `content-visibility: auto` misfiring in Obsidian's Bases scroll container, removed).
+After the third native round still showed a broken layout, the maintainer concluded the CSS Grid
+approach was accumulating fixes without reaching a stable result and decided to **unregister
+Grid** (`src/main.ts` no longer builds or registers its descriptor) rather than keep guessing.
+The implementation stays in the tree (`src/views/grid/`, its tests, `docs/grid-view.md`) for a
+deliberate future rework — see `docs/architecture/upstream-provenance.md`'s Dynamic Views entry
+and `tasks/plan.md`'s amendment for what to reconsider before re-registering it.
 
 **Description:** Add Grid descriptor, regular CSS, documentation, provenance, and integration acceptance.
 
@@ -1042,11 +1053,19 @@ covered code path moved.
 
 **Estimated scope:** M
 
-### Checkpoint F: Grid
+### Checkpoint F: Grid — not reached; Grid unregistered pending rework (2026-09-19)
 
-- [ ] Swimlane and Grid share CardRenderer.
+Automated gates passed (registration, options schema, tests) but native visual acceptance never
+passed — the human found the CSS Grid layout broken across three separate rounds of fixes and
+called it before spending more effort chasing it blind. Grid's descriptor is removed from
+`src/main.ts`'s registration list; the criteria below are left unchecked as an honest record of
+what was never actually demonstrated, not silently dropped.
+
+- [ ] Swimlane and Grid share CardRenderer. (Superseded: the 2026-09-19 shared-DOM/CSS amendment
+  in `tasks/plan.md` no longer requires this — Grid's CSS/DOM only needs to be correct on its own.)
 - [ ] Large Grid update behavior recorded.
-- [ ] Human accepts Grid before preview infrastructure expands.
+- [ ] Human accepts Grid before preview infrastructure expands. (Explicitly not met — this is why
+  Grid is unregistered rather than shipped.)
 
 ## Phase 6: Masonry strategy to Masonry
 

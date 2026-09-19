@@ -31,10 +31,12 @@ import {
   createTimelineViewRegistration,
 } from './views/timeline';
 
-import {
-  BASES_GRID_VIEW_ID,
-  createGridViewRegistration,
-} from './views/grid';
+// Grid (src/views/grid) is implemented but unregistered as of 2026-09-19: native testing
+// surfaced repeated, hard-to-diagnose CSS Grid layout failures (oversized covers, then
+// flattened cards) even after direct fixes, and the maintainer paused further Dynamic Views
+// adoption for Grid/Masonry rather than keep guessing blind. The code stays in the tree —
+// unregistering only removes it from the Bases view picker — pending a decision on how to
+// resume (see docs/architecture/upstream-provenance.md and tasks/plan.md's amendment).
 
 /** Command-palette commands scoped to the currently active Gantt view, if any. */
 function buildGanttCommands() {
@@ -107,7 +109,6 @@ export default class WiseViewPlugin extends Plugin {
     const calendar = createCalendarViewRegistration(this);
     const gantt = createGanttViewRegistration(this);
     const timeline = createTimelineViewRegistration(this);
-    const grid = createGridViewRegistration(this);
 
     return [
       {
@@ -146,14 +147,6 @@ export default class WiseViewPlugin extends Plugin {
         options: timeline.options,
         hover: { display: 'Timeline', defaultMod: true },
 		capabilities: { legacyMutation: true },
-      },
-      {
-        id: BASES_GRID_VIEW_ID,
-        name: grid.name,
-        icon: grid.icon,
-        factory: grid.factory,
-        options: grid.options,
-        hover: { display: 'Grid', defaultMod: true },
       },
     ];
   }

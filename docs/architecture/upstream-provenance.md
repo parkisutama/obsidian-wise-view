@@ -123,12 +123,28 @@ copied.
 - **Excluded:** wholesale import, 1.13-only API assumptions, the Sass pipeline, automatic
   `.base` cleanup, network thumbnails, the image viewer/slideshow, checkbox writes, and the
   broad settings framework.
-- **File-level provenance:** none yet. Card Core and Grid (T035-T040) were implemented from the
+- **File-level provenance:** none. Card Core and Grid (T035-T040) were implemented from the
   design evidence above plus Wise View's own established patterns (`EntrySnapshot`,
-  `ViewRuntime`, `RenderScheduler`), not by porting a specific pinned upstream file — no
-  Dynamic Views source was read line-by-line or copied. A later task records a row here, naming
-  the specific upstream file(s) and resulting Wise View file(s), the first time one is actually
-  adapted beyond design evidence.
+  `ViewRuntime`, `RenderScheduler`), not by porting a specific pinned upstream file. While
+  debugging Grid's native layout failures (2026-09-19), `src/bases/grid-view.ts`,
+  `styles/_grid-view.scss`, and `styles/card/_cover.scss` at the pinned commit were read
+  directly to confirm two specific CSS techniques (`min-width: 0` on the grid item; a
+  `height:0`/`padding-top` percentage cover instead of `aspect-ratio`) — both applied to
+  `src/styles/components/card.css` as design evidence, matching an existing upstream pattern
+  rather than adapting or copying either file. No file-level row is added because no file was
+  adapted; per the reuse-mode definitions above, design-evidence use alone needs no attribution.
+- **2026-09-19 status: Grid adoption paused.** Even after both fixes above, native testing found
+  a further CSS Grid regression (every card flattening to a uniform strip, traced to
+  `content-visibility: auto` misfiring in Obsidian's Bases scroll container). After three rounds
+  of native-testing failures, the maintainer unregistered Grid (`src/main.ts`) rather than keep
+  patching it blind, and paused Masonry (also a Dynamic Views candidate) rather than repeat the
+  same approach on a second view. See `tasks/plan.md`'s Phase 5/6 amendment and
+  `tasks/todo.md`'s T040/Checkpoint F for the full history. A future rework should reconsider
+  whether Dynamic Views' own grid/masonry CSS (which carries many defensive rules — iOS
+  `contain`/`overflow-clip-margin` workarounds, subgrid group sections, measurement lanes — none
+  of which this program ported) needs a more conservative, incrementally-verified adoption than
+  the two large jumps attempted here, independent of the license terms below (which remain
+  favorable and unaffected by this pause).
 - **Attribution required:** yes, once a file-level entry above is added. Because this upstream
   project is GPL-3.0-or-later, Wise View (GPL-3.0-only) selects GPL version 3 for the
   combined distribution per specification §5.2; the upstream license and attribution must

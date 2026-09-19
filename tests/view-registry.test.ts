@@ -190,12 +190,13 @@ describe("WiseViewPlugin.onload view registration", () => {
 
 		await realPlugin.onload();
 
+		// Grid (BASES_GRID_VIEW_ID) is implemented but unregistered as of 2026-09-19 — see
+		// src/main.ts's comment and tasks/plan.md's amendment. Intentionally absent below.
 		expect(registeredViews).toEqual([
 			BASES_SWIMLANE_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
 			BASES_GANTT_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
-			BASES_GRID_VIEW_ID,
 		]);
 		expect(new Set(registeredViews).size).toBe(registeredViews.length);
 		expect(registeredHovers).toEqual([
@@ -203,7 +204,6 @@ describe("WiseViewPlugin.onload view registration", () => {
 			BASES_CALENDAR_VIEW_ID,
 			BASES_GANTT_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
-			BASES_GRID_VIEW_ID,
 		]);
 		expect(registeredCommands).toEqual([
 			"gantt-scroll-today",

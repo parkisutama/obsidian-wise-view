@@ -1,5 +1,11 @@
 # Grid View
 
+> **Status (2026-09-19): tidak terdaftar / nonaktif.** Setelah gagal lolos pengujian native
+> sebanyak tiga kali (cover meledak keluar kolom, lalu semua kartu jadi pipih seragam), Grid
+> dicabut dari registrasi plugin (`src/main.ts`) sampai ada keputusan pendekatan baru. Kode dan
+> dokumen ini tetap disimpan untuk pengerjaan ulang nanti — lihat catatan di
+> `docs/architecture/upstream-provenance.md` dan `tasks/plan.md`.
+
 Grid View menampilkan note Obsidian Bases sebagai kartu (card) dalam grid responsif berbasis
 kolom. View ini memakai properti yang Anda pilih sendiri dan tidak mengharuskan schema task
 tertentu; tanpa konfigurasi apa pun, Grid tetap menampilkan satu kartu per note memakai nama
