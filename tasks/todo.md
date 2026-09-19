@@ -1031,7 +1031,7 @@ covered code path moved.
 **Acceptance criteria:**
 
 - [x] Grid is registered with a unique Wise View ID (`wise-view-grid`), no legacy mutation capability granted.
-- [x] Card styles are shared (`components/card.css`); Grid CSS (`views/grid.css`) contains only column/group/content-visibility layout rules.
+- [x] Card styles are shared (`components/card.css`); Grid CSS (`views/grid.css`) contains only column/group layout rules. (2026-09-19: the `content-visibility: auto`/`contain-intrinsic-size` offscreen-paint rule was removed after native testing showed Obsidian's Bases scroll container makes Chromium's offscreen heuristic misfire, flattening every mounted card to the intrinsic placeholder size regardless of content — see `src/styles/views/grid.css`. Large-Base cost containment still holds via `GridCollection`'s batched mounting; this is a deferred perf-only finding, not a correctness regression.)
 - [x] Documentation (`docs/grid-view.md`) identifies adopted Dynamic Views design-evidence concepts and explicitly lists omitted extras (status/priority workflow, checkbox writes, settings framework, 1.13-only APIs).
 
 **Verification:** `pnpm run check` (35 files, 334 tests); production build and artifact verification passed. `pnpm run check:ci` and native Grid acceptance remain for a release-readiness checkpoint.

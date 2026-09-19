@@ -11,9 +11,11 @@
  * order always matches `items`' order — including placeholders — so Bases' own group/path
  * ordering is never disturbed by which items happen to be mounted yet.
  *
- * Actual "don't paint what's offscreen" work is a CSS `content-visibility: auto` rule on the
- * mounted wrapper (declarative, in each view's own stylesheet) — this controller only bounds
- * how much synchronous mounting work a large update can cause.
+ * A CSS `content-visibility: auto` rule was also tried on the mounted wrapper to skip paint work
+ * for offscreen cards, but native testing showed Obsidian's Bases scroll container makes
+ * Chromium's offscreen heuristic misfire — every mounted card fell back to its intrinsic
+ * placeholder size instead of its real content height (src/styles/views/grid.css records this).
+ * Large-Base cost containment therefore rests on this controller's batched mounting alone.
  */
 
 export interface GridItem {

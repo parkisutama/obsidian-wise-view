@@ -47,8 +47,7 @@ tidak ada mutasi apa pun ke frontmatter.
 
 Hanya kartu dalam batch pertama yang dirender penuh secara sinkron; sisanya dipasang bertahap
 lintas beberapa animation frame agar Base besar tidak memblokir thread utama saat pertama kali
-dibuka. Kartu yang sudah dipasang menggunakan `content-visibility: auto` sehingga browser
-melewati pekerjaan render untuk kartu yang berada di luar viewport.
+dibuka.
 
 ## Perbedaan dari referensi upstream
 

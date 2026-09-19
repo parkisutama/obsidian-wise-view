@@ -39,14 +39,14 @@
 	color: var(--text-normal);
 }
 
-/* Cards mounted by GridCollection's batching skip render work while offscreen; a
-   fixed intrinsic size keeps scrollbar/layout stable before a card's real height
-   is known. */
-.wise-view-grid .wise-view-card {
-	content-visibility: auto;
-	contain-intrinsic-size: 240px;
-}
-
+/* `content-visibility: auto` + `contain-intrinsic-size` was tried here to skip paint
+   work for offscreen cards, but Obsidian's Bases scroll container makes Chromium's
+   offscreen heuristic misfire — every mounted card fell back to the intrinsic
+   placeholder size instead of its real content height, flattening every card
+   (cover included) to a uniform short strip regardless of content. Removed; actual
+   large-Base cost containment stays GridCollection's batched mounting (T038), which
+   does not depend on this CSS property. Revisit only with native confirmation that a
+   fix does not reintroduce the flattening. */
 [data-wise-view-grid-placeholder] {
 	min-height: 1px;
 }
