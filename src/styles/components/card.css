@@ -13,6 +13,12 @@
 	display: flex;
 	flex-direction: column;
 	width: 100%;
+	/* Without this, a grid/flex item's default min-width:auto lets an intrinsically
+	   large cover image (a tall portrait photo, say) force this card's track wider
+	   than its siblings instead of shrinking to the track — the classic CSS Grid
+	   "image blows out the column" gotcha. Dynamic Views hits the same failure and
+	   fixes it the same way (styles/_grid-view.scss: `.card { min-width: 0; }`). */
+	min-width: 0;
 	box-sizing: border-box;
 	padding: 0;
 	border: 1px solid var(--wise-view-color-bg, var(--background-modifier-border));
