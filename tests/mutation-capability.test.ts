@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TFile } from "./fixtures/obsidian";
 import { LegacyMutationGateway } from "../src/platform/mutations/LegacyMutationGateway";
+import { createGrantedMutations } from "../src/platform/mutations/grants";
 import type { App } from "obsidian";
 
 interface MockAppOptions {
@@ -172,5 +173,36 @@ describe("LegacyMutationGateway.createNote", () => {
 		const { app, createdFolders } = makeApp({ existingFolders: ["Journal"] });
 		await new LegacyMutationGateway(app).createNote({ path: "Journal/A.md" });
 		expect(createdFolders).toEqual([]);
+	});
+});
+
+describe("createGrantedMutations (GBETA-003)", () => {
+	it("builds nothing for an empty grant list", () => {
+		const { app } = makeApp();
+		expect(createGrantedMutations(app, [])).toEqual({});
+	});
+
+	it("exposes only the granted capabilities, each with only its own methods", () => {
+		const { app } = makeApp();
+		const granted = createGrantedMutations(app, ["property", "dependency"]);
+
+		expect(Object.keys(granted).sort()).toEqual(["dependency", "property"]);
+		expect(Object.keys(granted.property ?? {}).sort()).toEqual(["setProperties", "setProperty"]);
+		expect(Object.keys(granted.dependency ?? {})).toEqual(["setDependencies"]);
+		expect(granted).not.toHaveProperty("date");
+		expect(granted.property).not.toHaveProperty("trash");
+		expect(granted.property).not.toHaveProperty("moveToFolder");
+	});
+
+	it("delegates a granted write to the gateway's validated path", async () => {
+		const { app, frontmatterWrites } = makeApp({ existingFiles: ["Tasks/A.md"] });
+		const granted = createGrantedMutations(app, ["property"]);
+
+		await expect(granted.property?.setProperty("Tasks/A.md", "note.progress", 40)).resolves.toEqual({ ok: true });
+		await expect(granted.property?.setProperty("Tasks/A.md", "formula.x", 1)).resolves.toMatchObject({
+			ok: false,
+			reason: "formula-property",
+		});
+		expect(frontmatterWrites).toEqual([{ path: "Tasks/A.md", values: { progress: 40 } }]);
 	});
 });

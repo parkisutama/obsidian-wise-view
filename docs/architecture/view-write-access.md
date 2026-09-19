@@ -8,7 +8,9 @@ Context spec: [../specs/gantt-beta.md](../specs/gantt-beta.md) D2
 The architecture guard (`tests/architecture.test.ts`, T005) forbids new views from mutating the
 vault. Only the three legacy views (Calendar, Gantt, Swimlane) may write, and
 `ViewCapabilities.legacyMutation` "must not be set on a new view without a separately approved
-decision". Timeline, the only view added since, is read-only.
+decision". Timeline, the only view added since, received such a decision for one narrow case:
+quick scheduling writes only its configured start/end dates, through `LegacyMutationGateway`
+with `legacyMutation` declared (docs/specs/timeline.md).
 
 Gantt Beta cannot meet its purpose without writing: date, progress, dependency, parent, and
 order edits all persist to note properties.
@@ -21,14 +23,18 @@ Gantt Beta may write, under these conditions:
    (`DateMutationCapability`, `PropertyMutationCapability`, `DependencyMutationCapability`,
    `FileCreateCapability`). `src/views/gantt-beta/` joins `GUARDED_MUTATION_DIRS`, so a direct
    `processFrontMatter`/`vault.modify` call there fails the guard.
-2. The grant is declared on the view descriptor as an explicit capability (not
-   `legacyMutation`), and the registry hands a gateway only to descriptors that declare it.
+2. The grant is declared on the view descriptor as `capabilities.mutations` (not
+   `legacyMutation`), listing only `date`, `property`, `dependency`, and `fileCreate`. The view
+   receives exactly those capabilities from `ViewRegistry.mutationsFor`, never the full gateway;
+   trash and move are not grantable. Only ids in `APPROVED_MUTATION_GRANT_VIEW_IDS` may declare a
+   grant, and `src/views/gantt-beta/` may not import `LegacyMutationGateway` (GBETA-003).
 3. Gantt Beta never trashes or moves notes, and never edits note bodies. It writes frontmatter
    properties and creates new notes from a template.
 
 ## Consequences for plugin compatibility
 
-This is the first new view allowed to write, so it sets a precedent. Future decisions should
+This is the first new view granted broad property writes and note creation (Timeline writes
+only start/end), so it sets a precedent. Future decisions should
 weigh the following before granting the same capability to another view:
 
 - **Shared property ownership.** Gantt Beta writes to properties that other plugins may also
@@ -47,7 +53,8 @@ weigh the following before granting the same capability to another view:
   notes. Other plugins reacting to `metadataCache` changes (indexers, sync, git plugins) will
   see bursts; batching and changed-fields-only writes are required, not optional.
 - **Precedent scope.** This decision grants Gantt Beta only. Granting another view requires a
-  new entry in this file naming the view, the capabilities, and the properties it writes.
+  new entry in this file naming the view, the capabilities, and the properties it writes, plus
+  its id in `APPROVED_MUTATION_GRANT_VIEW_IDS` (`src/viewRegistry.ts`).
 
 ## Revisit when
 

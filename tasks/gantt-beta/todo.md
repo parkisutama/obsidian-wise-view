@@ -63,15 +63,19 @@ its bundled `zustand`, `dayjs`) and a provenance ledger entry with the pinned ve
 
 ### GBETA-003: Write capability grant and guard updates
 
+**Status:** Complete (2026-09-19). `capabilities.mutations` + `APPROVED_MUTATION_GRANT_VIEW_IDS`
+in `src/viewRegistry.ts`, `createGrantedMutations` in `src/platform/mutations/grants.ts`, and a guard
+rule that `src/views/gantt-beta/` never imports `LegacyMutationGateway`.
+
 **Description:** Implement the decision record: add an explicit write capability to
 `ViewCapabilities`, have the registry hand a mutation gateway only to descriptors declaring it,
 add `src/views/gantt-beta/` to `GUARDED_MUTATION_DIRS`.
 
 **Acceptance criteria:**
 
-- [ ] A fixture with a direct `processFrontMatter` call under `src/views/gantt-beta/` fails the guard.
-- [ ] A descriptor without the capability receives no gateway (test).
-- [ ] Existing legacy views are unaffected.
+- [x] A fixture with a direct `processFrontMatter` call under `src/views/gantt-beta/` fails the guard.
+- [x] A descriptor without the capability receives no gateway (test).
+- [x] Existing legacy views are unaffected.
 
 **Verification:** `pnpm run test -- architecture view-registry mutation-capability && pnpm run typecheck`
 

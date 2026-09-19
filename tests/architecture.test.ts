@@ -41,6 +41,7 @@ const ALLOWED_MUTATION_PATHS = [
 const GUARDED_MUTATION_DIRS = [
 	"src/views/timeline/",
 	"src/views/swimlane/",
+	"src/views/gantt-beta/",
 	"src/views/grid/",
 	"src/views/masonry/",
 	"src/views/feed/",
@@ -50,6 +51,14 @@ const GUARDED_MUTATION_DIRS = [
 	"src/platform/navigation/",
 	"src/platform/colors/",
 ];
+
+/**
+ * Views that write only through scoped grants (docs/architecture/view-write-access.md). They must
+ * not construct the full gateway themselves; they receive capabilities via ViewRegistry.mutationsFor.
+ */
+const SCOPED_GRANT_DIRS = ["src/views/gantt-beta/"];
+
+const GATEWAY_IMPORT_PATTERN = /LegacyMutationGateway/;
 
 /** Build/runtime dependencies the specification forbids adding (spec §3.5, §6.2, §7.17). */
 const FORBIDDEN_DEPENDENCIES = ["react", "react-dom", "sass", "node-sass", "tailwindcss", "@tanstack/react-virtual"];
@@ -123,6 +132,26 @@ describe("architecture guard: direct mutation ban", () => {
 	it("finds no mutation calls in the guarded new-view/shared-platform directories today", () => {
 		const violations = findMutationViolations(readRepoFiles(GUARDED_MUTATION_DIRS));
 		expect(violations).toEqual([]);
+	});
+});
+
+describe("architecture guard: scoped mutation grants", () => {
+	it("fails when a scoped-grant view reaches for the full gateway", () => {
+		const content = "import { LegacyMutationGateway } from '../../platform/mutations/LegacyMutationGateway';";
+		expect(GATEWAY_IMPORT_PATTERN.test(content)).toBe(true);
+	});
+
+	it("treats a direct mutation call in a scoped-grant view as a violation", () => {
+		const content = readFileSync(path.join(fixturesDir, "forbidden.ts"), "utf8");
+		const violations = findMutationViolations([{ relativePath: "src/views/gantt-beta/forbidden.ts", content }]);
+		expect(violations.map((v) => v.name)).toEqual(
+			expect.arrayContaining(["processFrontMatter", "vault.modify", "trashFile", "editor.setValue"]),
+		);
+	});
+
+	it("finds no gateway construction or import in scoped-grant views today", () => {
+		const offenders = readRepoFiles(SCOPED_GRANT_DIRS).filter(({ content }) => GATEWAY_IMPORT_PATTERN.test(content));
+		expect(offenders.map((f) => f.relativePath)).toEqual([]);
 	});
 });
 

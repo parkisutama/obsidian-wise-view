@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+	ConflictingMutationCapabilitiesError,
 	DuplicateViewIdError,
 	InvalidViewIdError,
+	UnapprovedMutationGrantError,
 	ViewRegistry,
 	type ViewDescriptor,
 	validateViewDescriptor,
@@ -184,5 +186,52 @@ describe("WiseViewPlugin.onload view registration", () => {
 			"gantt-view-month",
 			"gantt-view-year",
 		]);
+	});
+});
+
+describe("scoped mutation grants (GBETA-003)", () => {
+	const app = {} as never;
+
+	it("gives a descriptor without a grant no capability at all", () => {
+		const registry = new ViewRegistry();
+		registry.register(describedView("wise-view-a", "A", "a"));
+
+		expect(registry.mutationsFor("wise-view-a", app)).toEqual({});
+		expect(registry.mutationsFor("wise-view-unknown", app)).toEqual({});
+	});
+
+	it("gives a legacy-mutation descriptor no scoped capability", () => {
+		const registry = new ViewRegistry();
+		registry.register({ ...describedView("wise-view-a", "A", "a"), capabilities: { legacyMutation: true } });
+
+		expect(registry.mutationsFor("wise-view-a", app)).toEqual({});
+	});
+
+	it("gives an approved descriptor exactly the capabilities it declared", () => {
+		const registry = new ViewRegistry();
+		registry.register({
+			...describedView("wise-view-gantt-beta", "Gantt Beta", "gantt"),
+			capabilities: { mutations: ["date", "fileCreate"] },
+		});
+
+		const granted = registry.mutationsFor("wise-view-gantt-beta", app);
+		expect(Object.keys(granted).sort()).toEqual(["date", "fileCreate"]);
+		expect(Object.keys(granted.date ?? {})).toEqual(["updateRange"]);
+	});
+
+	it("rejects scoped mutations on a view that is not approved", () => {
+		const descriptor = { ...describedView("wise-view-other", "Other", "x"), capabilities: { mutations: ["date"] as const } };
+
+		expect(() => validateViewDescriptor(descriptor)).toThrow(UnapprovedMutationGrantError);
+		expect(() => new ViewRegistry().register(descriptor)).toThrow(UnapprovedMutationGrantError);
+	});
+
+	it("rejects a descriptor that declares both legacy and scoped mutations", () => {
+		const descriptor = {
+			...describedView("wise-view-gantt-beta", "Gantt Beta", "gantt"),
+			capabilities: { legacyMutation: true, mutations: ["date"] as const },
+		};
+
+		expect(() => validateViewDescriptor(descriptor)).toThrow(ConflictingMutationCapabilitiesError);
 	});
 });
