@@ -14,11 +14,11 @@ that repeated mount/update/unmount leaves no owned drag/touch/interval resource 
 
 **Acceptance criteria:**
 
-- [ ] Ordering tests cover both the no-custom-order default and a saved custom order that
+- [x] Ordering tests cover both the no-custom-order default and a saved custom order that
   includes a key not present in the saved order (the "new key appended" case).
-- [ ] Cover display and badge placement tests assert on rendered DOM structure, not just that
+- [x] Cover display and badge placement tests assert on rendered DOM structure, not just that
   code runs without throwing.
-- [ ] A repeated mount/update/unmount test asserts zero tracked resources remain.
+- [x] A repeated mount/update/unmount test asserts zero tracked resources remain.
 
 **Verification:** `pnpm run test -- swimlane && pnpm run typecheck`
 
@@ -38,8 +38,8 @@ dedicated module under `src/views/swimlane/`.
 
 **Acceptance criteria:**
 
-- [ ] SW-001's characterization tests pass unchanged against the extracted module.
-- [ ] The alphabetical-default-ordering question (spec §2) is resolved with the maintainer and
+- [x] SW-001's characterization tests pass unchanged against the extracted module.
+- [x] The alphabetical-default-ordering question (spec §2) is resolved with the maintainer and
   the decision is recorded in `docs/specs/swimlane.md`.
 
 **Verification:** `pnpm run test -- swimlane && pnpm run typecheck`
@@ -56,8 +56,8 @@ dedicated module under `src/views/swimlane/`.
 
 **Acceptance criteria:**
 
-- [ ] The options schema's serialized shape is unchanged (a snapshot/contains-key test).
-- [ ] No Bases-reserved view-config key is used (matching the existing architecture-test pattern
+- [x] The options schema's serialized shape is unchanged (a snapshot/contains-key test).
+- [x] No Bases-reserved view-config key is used (matching the existing architecture-test pattern
   from other views).
 
 **Verification:** `pnpm run test -- swimlane && pnpm run typecheck`
@@ -77,8 +77,8 @@ into its own module.
 
 **Acceptance criteria:**
 
-- [ ] SW-001's cover/badge characterization tests pass unchanged.
-- [ ] No mutation API call is introduced in the extracted module (architecture guard stays green).
+- [x] SW-001's cover/badge characterization tests pass unchanged.
+- [x] No mutation API call is introduced in the extracted module (architecture guard stays green).
 
 **Verification:** `pnpm run test -- swimlane && pnpm run typecheck`
 
@@ -95,8 +95,8 @@ module, preserving the existing interval/cleanup lifecycle exactly.
 
 **Acceptance criteria:**
 
-- [ ] SW-001's resource-cleanup characterization test passes unchanged.
-- [ ] Drag state fields move with their owning logic; `BasesSwimlaneView.ts` no longer declares
+- [x] SW-001's resource-cleanup characterization test passes unchanged.
+- [x] Drag state fields move with their owning logic; `BasesSwimlaneView.ts` no longer declares
   drag-related fields directly.
 
 **Verification:** `pnpm run test -- swimlane && pnpm run typecheck`
@@ -116,8 +116,8 @@ column/swimlane reordering on desktop and mobile after the extraction.
 
 **Acceptance criteria:**
 
-- [ ] No regression found versus pre-extraction behavior.
-- [ ] Findings recorded (a short native-acceptance note, matching
+- [x] No regression found versus pre-extraction behavior.
+- [x] Findings recorded (a short native-acceptance note, matching
   `tasks/timeline-native-acceptance.md`'s pattern).
 
 **Verification:** Native testing; `pnpm run check`.

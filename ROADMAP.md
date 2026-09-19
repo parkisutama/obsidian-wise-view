@@ -26,7 +26,7 @@ the same `dev` branch, instead of one large document that has to move together.
 
 | Workstream | Spec | Plan | Tasks | Status |
 |---|---|---|---|---|
-| Swimlane | [docs/specs/swimlane.md](docs/specs/swimlane.md) | [tasks/swimlane/plan.md](tasks/swimlane/plan.md) | [tasks/swimlane/todo.md](tasks/swimlane/todo.md) | Not started |
+| Swimlane | [docs/specs/swimlane.md](docs/specs/swimlane.md) | [tasks/swimlane/plan.md](tasks/swimlane/plan.md) | [tasks/swimlane/todo.md](tasks/swimlane/todo.md) | Done (native-accepted 2026-09-19) — [record](tasks/swimlane/native-acceptance.md) |
 | Calendar | [docs/specs/calendar.md](docs/specs/calendar.md) | [tasks/calendar/plan.md](tasks/calendar/plan.md) | [tasks/calendar/todo.md](tasks/calendar/todo.md) | Not started |
 | Gantt | [docs/specs/gantt.md](docs/specs/gantt.md) | [tasks/gantt/plan.md](tasks/gantt/plan.md) | [tasks/gantt/todo.md](tasks/gantt/todo.md) | Not started |
 | Timeline | [docs/specs/timeline.md](docs/specs/timeline.md) | [tasks/timeline/plan.md](tasks/timeline/plan.md) | [tasks/timeline/todo.md](tasks/timeline/todo.md) | Not started |
@@ -66,6 +66,13 @@ Note Template (general, cross-view; deliberately last — see below)
   view-specific reorganization work would mean rewriting the integration points twice. It also
   waits specifically for Performance (not just the four views) to land first, per the maintainer's
   explicit sequencing decision on 2026-09-19.
+
+## Follow-ups (not blocking any workstream)
+
+- **Mobile-friendly sizing per view.** Swimlane, Calendar, Gantt, and Timeline are functional on
+  mobile but sized for desktop. Each needs its own mobile CSS configuration, so plan it per view
+  after the current workstreams rather than as one shared change. Raised 2026-09-19 during
+  Swimlane native acceptance.
 
 ## How to update this file
 

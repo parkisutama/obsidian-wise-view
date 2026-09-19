@@ -1,6 +1,6 @@
 # Spec: Swimlane code quality and organization
 
-Status: Draft — awaiting maintainer review
+Status: Done (native-accepted 2026-09-19)
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
@@ -90,4 +90,4 @@ single class, in the order they appear:
 - **Known quirk kept verbatim:** `reorderKeys` with a target not in the list (or dragging a key
   onto itself) inserts at a fallback index rather than no-oping. Fix separately with a regression
   test per §5.3.
-- **Pending:** native acceptance (SW-006) and the ROADMAP row update.
+- **Native acceptance:** recorded 2026-09-19 in `tasks/swimlane/native-acceptance.md`; ROADMAP row updated.
