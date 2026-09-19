@@ -123,9 +123,12 @@ copied.
 - **Excluded:** wholesale import, 1.13-only API assumptions, the Sass pipeline, automatic
   `.base` cleanup, network thumbnails, the image viewer/slideshow, checkbox writes, and the
   broad settings framework.
-- **File-level provenance:** none yet. A Card Core/Grid/Masonry task records a row here,
-  naming the specific upstream file(s) and resulting Wise View file(s), before adapting
-  anything beyond design evidence.
+- **File-level provenance:** none yet. Card Core and Grid (T035-T040) were implemented from the
+  design evidence above plus Wise View's own established patterns (`EntrySnapshot`,
+  `ViewRuntime`, `RenderScheduler`), not by porting a specific pinned upstream file — no
+  Dynamic Views source was read line-by-line or copied. A later task records a row here, naming
+  the specific upstream file(s) and resulting Wise View file(s), the first time one is actually
+  adapted beyond design evidence.
 - **Attribution required:** yes, once a file-level entry above is added. Because this upstream
   project is GPL-3.0-or-later, Wise View (GPL-3.0-only) selects GPL version 3 for the
   combined distribution per specification §5.2; the upstream license and attribution must

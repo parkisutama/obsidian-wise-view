@@ -31,6 +31,11 @@ import {
   createTimelineViewRegistration,
 } from './views/timeline';
 
+import {
+  BASES_GRID_VIEW_ID,
+  createGridViewRegistration,
+} from './views/grid';
+
 /** Command-palette commands scoped to the currently active Gantt view, if any. */
 function buildGanttCommands() {
   const activeGantt = (): BasesGanttView | null => {
@@ -102,6 +107,7 @@ export default class WiseViewPlugin extends Plugin {
     const calendar = createCalendarViewRegistration(this);
     const gantt = createGanttViewRegistration(this);
     const timeline = createTimelineViewRegistration(this);
+    const grid = createGridViewRegistration(this);
 
     return [
       {
@@ -140,6 +146,14 @@ export default class WiseViewPlugin extends Plugin {
         options: timeline.options,
         hover: { display: 'Timeline', defaultMod: true },
 		capabilities: { legacyMutation: true },
+      },
+      {
+        id: BASES_GRID_VIEW_ID,
+        name: grid.name,
+        icon: grid.icon,
+        factory: grid.factory,
+        options: grid.options,
+        hover: { display: 'Grid', defaultMod: true },
       },
     ];
   }

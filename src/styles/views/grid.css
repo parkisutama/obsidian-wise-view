@@ -1,0 +1,52 @@
+/*! SPDX-License-Identifier: GPL-3.0-only
+ * Copyright (C) 2026 Parkis Utama
+ */
+
+/* ========================================================================== */
+/* Grid view (T040)                                                           */
+/* Layout rules only — card presentation lives in components/card.css.        */
+/* ========================================================================== */
+
+.wise-view-grid {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	overflow: auto;
+	padding: var(--size-4-2);
+	box-sizing: border-box;
+}
+
+.wise-view-grid__grid {
+	display: grid;
+	grid-template-columns: repeat(var(--wise-view-grid-columns, 3), minmax(0, 1fr));
+	gap: var(--wise-view-grid-gap, 12px);
+	align-items: start;
+}
+
+/* A group header spans every column, breaking the grid into visual sections
+   without needing a separate grid container per group. */
+.wise-view-grid__group {
+	grid-column: 1 / -1;
+	padding: var(--size-4-2) 0 var(--size-4-1);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+	cursor: pointer;
+	user-select: none;
+}
+
+.wise-view-grid__group:hover {
+	color: var(--text-normal);
+}
+
+/* Cards mounted by GridCollection's batching skip render work while offscreen; a
+   fixed intrinsic size keeps scrollbar/layout stable before a card's real height
+   is known. */
+.wise-view-grid .wise-view-card {
+	content-visibility: auto;
+	contain-intrinsic-size: 240px;
+}
+
+[data-wise-view-grid-placeholder] {
+	min-height: 1px;
+}

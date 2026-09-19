@@ -83,6 +83,7 @@ const FIRST_PARTY_CSS = [
 	"src/styles/views/calendar.css",
 	"src/styles/views/gantt.css",
 	"src/styles/views/timeline.css",
+	"src/styles/views/grid.css",
 ].map((p) => path.resolve(p));
 
 // Merge first-party sources, imported CSS, and Frappe Gantt's stylesheet (which nothing
