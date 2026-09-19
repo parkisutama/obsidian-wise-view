@@ -12,6 +12,7 @@ import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/v
 import { BASES_GANTT_VIEW_ID, createGanttViewRegistration } from "../src/views/BasesGanttView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { BASES_TIMELINE_VIEW_ID, createTimelineViewRegistration, getTimelineViewOptions } from "../src/views/timeline";
+import { BASES_GANTT_BETA_VIEW_ID, createGanttBetaViewRegistration } from "../src/views/gantt-beta";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import WiseViewPlugin from "../src/main";
 
@@ -64,13 +65,22 @@ describe("ViewRegistry", () => {
 		expect(registry.list().map((d) => d.id)).toEqual(["wise-view-a", "wise-view-b"]);
 	});
 
-	it("expresses Calendar, Gantt, Swimlane, and Timeline without view-specific registry branching", () => {
+	it("expresses all views without view-specific registry branching", () => {
 		const registry = new ViewRegistry();
 		const calendar = createCalendarViewRegistration(plugin);
 		const gantt = createGanttViewRegistration(plugin);
 		const swimlane = createSwimlaneViewRegistration(plugin);
 		const timeline = createTimelineViewRegistration(plugin);
+		const ganttBeta = createGanttBetaViewRegistration();
 
+		registry.register({
+			id: BASES_GANTT_BETA_VIEW_ID,
+			name: ganttBeta.name,
+			icon: ganttBeta.icon,
+			factory: ganttBeta.factory,
+			hover: { display: "Gantt Beta", defaultMod: true },
+			capabilities: { mutations: ["date", "property", "dependency", "fileCreate"] },
+		});
 		registry.register({
 			id: BASES_CALENDAR_VIEW_ID,
 			name: calendar.name,
@@ -109,6 +119,7 @@ describe("ViewRegistry", () => {
 		});
 
 		expect(registry.list().map((d) => d.id)).toEqual([
+			BASES_GANTT_BETA_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
 			BASES_GANTT_VIEW_ID,
@@ -170,6 +181,7 @@ describe("WiseViewPlugin.onload view registration", () => {
 			BASES_CALENDAR_VIEW_ID,
 			BASES_GANTT_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
+			BASES_GANTT_BETA_VIEW_ID,
 		]);
 		expect(new Set(registeredViews).size).toBe(registeredViews.length);
 		expect(registeredHovers).toEqual([
@@ -177,6 +189,7 @@ describe("WiseViewPlugin.onload view registration", () => {
 			BASES_CALENDAR_VIEW_ID,
 			BASES_GANTT_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
+			BASES_GANTT_BETA_VIEW_ID,
 		]);
 		expect(registeredCommands).toEqual([
 			"gantt-scroll-today",

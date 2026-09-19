@@ -88,6 +88,8 @@ add `src/views/gantt-beta/` to `GUARDED_MUTATION_DIRS`.
 
 ### GBETA-004: View skeleton, mount/unmount, theme
 
+**Status:** Implemented 2026-09-19; automated checks pass, native vault acceptance pending.
+
 **Description:** Register `wise-view-gantt-beta` ("Gantt Beta"). The view mounts the chart with
 Preact `render` into its container, unmounts on unload, passes `theme` from `body.theme-dark`
 (observed), and maps `--gantt-*` tokens to Obsidian variables in
@@ -97,7 +99,7 @@ Preact `render` into its container, unmounts on unload, passes `theme` from `bod
 
 - [ ] View appears in Bases' view picker and renders a static chart.
 - [ ] Switching Obsidian theme repaints the chart without reopening.
-- [ ] Unload leaves no mounted Preact tree (test).
+- [x] Unload leaves no mounted Preact tree (test).
 
 **Verification:** `pnpm run check`; manual check in a vault.
 

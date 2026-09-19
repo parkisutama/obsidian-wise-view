@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 Parkis Utama */
+
+.bases-gantt-beta-view {
+	height: 100%;
+	min-height: 0;
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.bases-gantt-beta-view > .gantt-container {
+	--gantt-font-sans: var(--font-interface);
+	--gantt-background: var(--background-primary);
+	--gantt-foreground: var(--text-normal);
+	--gantt-muted: var(--background-secondary);
+	--gantt-muted-foreground: var(--text-muted);
+	--gantt-border: var(--background-modifier-border);
+	--gantt-border-subtle: var(--background-modifier-border);
+	--gantt-bar-bg: var(--interactive-accent);
+	--gantt-bar-bg-hover: var(--interactive-accent-hover);
+	--gantt-bar-text: var(--text-on-accent);
+	--gantt-bar-shadow: none;
+	--gantt-bar-shadow-hover: var(--shadow-s);
+	--gantt-bar-shadow-drag: var(--shadow-l);
+	--gantt-shadow-overlay: var(--shadow-l);
+	--gantt-arrow: var(--text-muted);
+	--gantt-accent: var(--interactive-accent);
+	--gantt-today-marker: var(--color-red);
+	--gantt-summary-bg: var(--background-modifier-hover);
+	--gantt-summary-bg-hover: var(--background-modifier-active-hover);
+	--gantt-progress-bg: var(--interactive-accent-hover);
+	--gantt-progress-handle: var(--text-normal);
+	--gantt-non-working-bg: var(--background-secondary-alt);
+	--gantt-bar-color: var(--interactive-accent);
+	--gantt-bar-color-hover: var(--interactive-accent-hover);
+	--gantt-bar-text-color: var(--text-on-accent);
+	--gantt-progress-color: var(--interactive-accent-hover);
+}

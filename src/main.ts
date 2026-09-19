@@ -30,6 +30,10 @@ import {
   BASES_TIMELINE_VIEW_ID,
   createTimelineViewRegistration,
 } from './views/timeline';
+import {
+  BASES_GANTT_BETA_VIEW_ID,
+  createGanttBetaViewRegistration,
+} from './views/gantt-beta';
 
 // A Grid view (adopting Dynamic Views) was attempted and removed on 2026-09-19: native testing
 // surfaced repeated, hard-to-diagnose CSS Grid layout failures (oversized covers, then flattened
@@ -108,6 +112,7 @@ export default class WiseViewPlugin extends Plugin {
     const calendar = createCalendarViewRegistration(this);
     const gantt = createGanttViewRegistration(this);
     const timeline = createTimelineViewRegistration(this);
+    const ganttBeta = createGanttBetaViewRegistration();
 
     return [
       {
@@ -146,6 +151,15 @@ export default class WiseViewPlugin extends Plugin {
         options: timeline.options,
         hover: { display: 'Timeline', defaultMod: true },
 		capabilities: { legacyMutation: true },
+      },
+      {
+        id: BASES_GANTT_BETA_VIEW_ID,
+        name: ganttBeta.name,
+        icon: ganttBeta.icon,
+        factory: ganttBeta.factory,
+        options: ganttBeta.options,
+        hover: { display: 'Gantt Beta', defaultMod: true },
+        capabilities: { mutations: ['date', 'property', 'dependency', 'fileCreate'] },
       },
     ];
   }
