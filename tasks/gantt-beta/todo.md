@@ -141,6 +141,8 @@ values as local wall-clock; progress parsing and clamping.
 
 **Status:** Complete (2026-09-19). Pure parsing/edit helpers cover FS/SS/FF/SF and the existing
 Frappe view now shares the exact wiki-link formatter; focused Gantt tests pass.
+The public Gantt Beta v1 UX now uses only Depends on → FS. The generic converter remains internal
+so the adapter does not erase scheduling vocabulary or block future descriptive analysis.
 
 **Description:** Parse FS/SS/FF/SF property values (list or comma string of links) into
 `TaskDependency[]` given a link resolver; produce append/remove edits that preserve the
@@ -215,7 +217,7 @@ Render read-only with the unscheduled/empty state.
 
 **Description:** Diff previous vs. next `Task[]` into field changes; translate changes into a
 mutation plan (date formatting per property type, progress, parent, order renumbering with gaps,
-dependency edits per type), writing only changed fields of changed notes.
+Depends on edits), writing only changed fields of changed notes.
 
 **Acceptance criteria:**
 
@@ -242,6 +244,8 @@ reset of scroll/selection/collapse/detail state.
 **Acceptance criteria:**
 
 - [ ] Each spec §3.4 row has a test asserting the exact capability calls.
+- [ ] End-to-start drawing writes one Depends on link; other endpoint combinations are rejected
+  without changing frontmatter.
 - [ ] A rejected write reverts the bar and shows a Notice.
 - [ ] After a write, scroll position, collapse state, and the open detail panel are preserved.
 
@@ -254,16 +258,17 @@ reset of scroll/selection/collapse/detail state.
 
 **Estimated scope:** L
 
-### GBETA-011: Move dependent tasks and write phase dates
+### GBETA-011: Dependency schedule policy and write phase dates
 
-**Description:** Implement the spec §3.5 cascade in core (four types, cycle-safe, largest
-absolute delta wins) and the "Write phase dates" option; apply both after a committed gesture
-as part of the same write batch.
+**Description:** Implement spec §3.5 in core: no automatic shift, minimum overlap repair, and
+maintain-gap cascade. Preserve successor duration, remain cycle-safe, and apply the selected
+policy plus "Write phase dates" after a committed gesture in the same write batch.
 
 **Acceptance criteria:**
 
-- [ ] Cascade tests for each type, chains, diamonds, and cycles.
-- [ ] With both options off, no extra notes are written (test).
+- [ ] Tests cover overlap repair and maintain-gap across chains, diamonds, and cycles.
+- [ ] Every automatic successor move preserves its original duration.
+- [ ] With dependency shifting set to none and phase-date writes off, no extra notes are written.
 - [ ] Phase-date writes use the phase note's own property types.
 
 **Verification:** `pnpm run test -- gantt-core-cascade gantt-beta-writeback`
@@ -318,7 +323,7 @@ driven by the chart `ref`; persist scale (`onScaleChange`) and collapsed ids
 ### GBETA-014: Detail panel renderer
 
 **Description:** `renderDetail` showing note title (opens the note), editable start/end and
-progress, dependencies per type (removable), and the Base's visible properties read-only.
+progress, Depends on links (removable), and the Base's visible properties read-only.
 
 **Acceptance criteria:**
 

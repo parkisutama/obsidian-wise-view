@@ -31,10 +31,7 @@ Di pengaturan Gantt Beta, petakan `mulai` ke **Start date**, `selesai` ke **End 
 | Mengurutkan anak dalam fase | **Order** + aktifkan **Phases** | Gunakan angka. Order membandingkan note yang berada dalam parent/group yang sama. |
 | Menampilkan persentase selesai | **Progress** + aktifkan **Show progress** | Nilai dinormalisasi ke rentang 0–100. |
 | Mewarnai menurut kategori | **Color by** | Pilih properti seperti status, tim, atau kategori. Warna mengikuti konfigurasi warna Wise View/Pretty Properties. |
-| Menampilkan ketergantungan biasa | **Depends on (FS)** | Task ini mulai setelah task yang ditautkan selesai. |
-| Menyamakan waktu mulai | **Starts with (SS)** | Task ini mulai bersama task yang ditautkan. |
-| Menyamakan waktu selesai | **Finishes with (FF)** | Task ini selesai bersama task yang ditautkan. |
-| Menyelesaikan task setelah task lain mulai | **Start-to-finish (SF)** | Relasi khusus; gunakan hanya jika proses Anda memang membutuhkannya. |
+| Menampilkan hubungan antar-task | **Depends on** | Task ini mulai setelah semua task yang ditautkan selesai. Garis chart menjadi bahasa utamanya. |
 | Membuat fase dari kategori Bases | **Group by** bawaan Bases + **Phases** | Group by bukan properti Gantt. Ia membuat fase tingkat teratas dari hasil query Bases. |
 | Melihat lebih banyak ruang chart | Nonaktifkan **Task list** atau **Detail panel** | **Row numbers**, **Tooltip**, dan **Row height** hanya mengubah presentasi. |
 | Memilih tingkat waktu | **Scale** | Day/Week untuk jadwal rinci; Month/Quarter/Year untuk gambaran yang lebih panjang. |
@@ -48,7 +45,7 @@ Gunakan ringkasan ini saat lupa opsi mana yang menjadi prasyarat:
 | **Start date** | End date, bar pada chart, serta seluruh interaksi tanggal di tahap write. |
 | **Parent (phase)** | Phases untuk menampilkan hierarchy; Order untuk mengurutkan saudara; Write phase dates di tahap write. |
 | **Progress** | Show progress menentukan apakah nilai divisualkan; Edit progress akan menentukan apakah nilainya boleh ditulis. |
-| Empat properti dependensi | Draw/Delete dependencies akan menulis relasi; Move dependent tasks akan menentukan apakah penerus ikut bergeser. |
+| **Depends on** | Draw/Delete dependencies menulis relasi; When predecessor moves menentukan apakah tanggal penerus boleh ikut ditulis. |
 | **Working weekdays** + **Holidays** | Show non-working days menentukan visibilitas; Snap to working days akan memengaruhi penempatan saat edit. |
 | **Create by drawing** | Template note, Target folder, dan Title format menentukan note baru yang dibuat. |
 
@@ -94,35 +91,20 @@ Gunakan pemetaan berikut:
 - `urutan` → **Order**
 - `progres` → **Progress**
 - `status` → **Color by**
-- `bergantung_pada` → **Depends on (FS)**
+- `bergantung_pada` → **Depends on**
 
 Fase sintetis akan memakai rentang gabungan anak-anaknya. Parent eksternal yang tidak termasuk
 hasil Base tetap dapat tampil sebagai fase sintetis. Jika Bases juga memakai Group by, hierarchy
 Parent tetap berada di dalam group task tersebut; parent lintas group sengaja diabaikan agar pohon
 tidak ambigu.
 
-## Contoh lengkap FS, SS, FF, dan SF
+## Dependensi tanpa menghafal FS/SS/FF/SF
 
-Setiap tipe dependensi membutuhkan **properti terpisah**. Buat empat properti Bases bertipe link
-atau list of links, misalnya:
-
-| Properti note | Petakan ke opsi Gantt Beta |
-| --- | --- |
-| `depends_fs` | **Depends on (FS)** |
-| `depends_ss` | **Starts with (SS)** |
-| `depends_ff` | **Finishes with (FF)** |
-| `depends_sf` | **Start-to-finish (SF)** |
-
-Relasi disimpan pada note yang bergantung (successor), sedangkan link menunjuk note acuan
-(predecessor). Jadi untuk hubungan “B setelah A”, tulis `[[A]]` pada properti milik **B**, bukan
-sebaliknya.
-
-### FS — finish to start
-
-Gunakan bila B baru dimulai setelah A selesai. Ini tipe yang paling umum.
+Pilih satu properti link atau list of links sebagai **Depends on**. Hubungan disimpan pada note
+yang bergantung, sedangkan link menunjuk note pendahulu.
 
 ```yaml
-# A - Riset.md
+# Riset.md
 ---
 start: 2026-10-01
 end: 2026-10-03
@@ -130,85 +112,36 @@ end: 2026-10-03
 ```
 
 ```yaml
-# B - Implementasi.md
+# Implementasi.md
 ---
 start: 2026-10-04
 end: 2026-10-08
-depends_fs:
-  - "[[A - Riset]]"
----
-```
-
-### SS — start to start
-
-Gunakan bila B dapat berjalan paralel setelah A mulai. Kedua task tidak harus selesai bersamaan.
-
-```yaml
-# C - Catatan riset.md
----
-start: 2026-10-01
-end: 2026-10-05
-depends_ss:
-  - "[[A - Riset]]"
----
-```
-
-### FF — finish to finish
-
-Gunakan bila B harus selesai bersama A, walaupun tanggal mulainya berbeda.
-
-```yaml
-# D - Ringkasan riset.md
----
-start: 2026-10-02
-end: 2026-10-03
-depends_ff:
-  - "[[A - Riset]]"
----
-```
-
-### SF — start to finish
-
-Gunakan bila berakhirnya B bergantung pada mulainya A. Ini jarang dipakai; contoh praktisnya
-adalah sistem lama yang baru boleh berhenti ketika sistem baru mulai dijalankan.
-
-```yaml
-# A - Aktifkan sistem baru.md
----
-start: 2026-10-10T08:00
-end: 2026-10-10T12:00
----
-```
-
-```yaml
-# B - Operasikan sistem lama.md
----
-start: 2026-10-09T08:00
-end: 2026-10-10T08:00
-depends_sf:
-  - "[[A - Aktifkan sistem baru]]"
----
-```
-
-Satu note boleh memiliki beberapa predecessor dan beberapa tipe sekaligus:
-
-```yaml
----
-depends_fs:
+depends_on:
+  - "[[Riset]]"
   - "[[Persetujuan desain]]"
-  - "[[Pengadaan perangkat]]"
-depends_ss:
-  - "[[Dokumentasi pelaksanaan]]"
-depends_ff:
-  - "[[Audit hasil]]"
-depends_sf:
-  - "[[Operasikan sistem lama]]"
 ---
 ```
 
-Link yang tidak dapat ditemukan tetap dipertahankan di frontmatter, tetapi garisnya tidak
-digambar. Pada tahap read-only sekarang, dependensi memvisualkan hubungan yang sudah Anda tulis;
-Gantt belum otomatis mengubah tanggal agar memenuhi hubungan tersebut.
+Petakan `depends_on` ke **Depends on**. Artinya `Implementasi` tidak boleh mulai sebelum seluruh
+pendahulunya selesai (finish-to-start/FS). Setelah editing aktif, hubungan yang sama dibuat dengan
+menarik garis dari akhir bar pendahulu ke awal bar penerus; pengguna tidak perlu mengetik `FS`.
+
+Pilih perilaku **When predecessor moves** sesuai kebutuhan:
+
+| Pilihan | Efek |
+| --- | --- |
+| **Do not shift automatically** | Garis hanya memberi informasi. Tanggal note lain tidak ditulis. |
+| **Shift only when dates overlap** | Penerus digeser secukupnya ketika mulai sebelum pendahulu selesai. Jarak yang masih valid boleh mengecil. |
+| **Shift and maintain time between tasks** | Penerus mengikuti delta pergeseran pendahulu sehingga jarak tetap sama. |
+
+Kedua mode yang menggeser selalu mempertahankan durasi task penerus. Pergeseran dapat merambat ke
+rantai berikutnya, tetapi tidak mengubah progress. Link yang tidak dapat ditemukan tetap tersimpan
+di frontmatter dan tidak digambar.
+
+FS, SS, FF, dan SF adalah istilah analisis jadwal yang berguna untuk perangkat manajemen proyek
+lanjutan. Gantt Beta v1 sengaja memakai FS sebagai kontrak tunggal yang mudah dipahami. Critical
+path, slack, atau pelanggaran dependency nantinya merupakan informasi yang dihitung dari garis dan
+tanggal—bukan teks yang harus ditambahkan pengguna ke setiap note.
 
 ## Timeline dan hari kerja
 
@@ -233,7 +166,7 @@ Group by, fase sintetis, serta opsi tampilan/timeline yang diteruskan ke chart.
 
 Gantt Beta saat ini tetap dipaksa **read-only** selama write path dikerjakan. Karena itu opsi
 **Move bars**, **Resize bars**, **Edit progress**, **Draw/Delete dependencies**, **Reorder rows**,
-**Create by drawing**, **Move dependent tasks**, **Snap to working days**, **Write phase dates**,
+**Create by drawing**, **When predecessor moves**, **Snap to working days**, **Write phase dates**,
 dan bagian **Note template** belum menjadi janji perilaku aktif. Opsi tersebut sudah terlihat agar
 kontrak konfigurasi stabil, tetapi baru boleh diandalkan setelah task implementasi write terkait
 selesai dan diterima.

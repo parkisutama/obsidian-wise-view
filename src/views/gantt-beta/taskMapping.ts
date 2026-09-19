@@ -97,10 +97,7 @@ export function mapSnapshotsToGanttTasks(
 		let end = endValue?.kind === 'date' ? readGanttDate(endValue.value, endValue.hasTime ? 'datetime' : 'date', 'end') : null;
 		if (!end) end = dateType === 'date' ? readGanttDate(startSource, 'date', 'end')! : addScaleStep(start, options.scale);
 		const dependencies = parseGanttDependencies({
-			FS: rawDependency(options.dependencyFS ? entry.values.get(options.dependencyFS) : undefined),
-			SS: rawDependency(options.dependencySS ? entry.values.get(options.dependencySS) : undefined),
-			FF: rawDependency(options.dependencyFF ? entry.values.get(options.dependencyFF) : undefined),
-			SF: rawDependency(options.dependencySF ? entry.values.get(options.dependencySF) : undefined),
+			FS: rawDependency(options.dependsOn ? entry.values.get(options.dependsOn) : undefined),
 		}, target => services.resolveLink(target, entry.path)?.path ?? null);
 		const formulaDates = Boolean(options.start?.startsWith('formula.') || options.end?.startsWith('formula.'));
 		const category = options.colorBy ? text(entry.values.get(options.colorBy)) : null;

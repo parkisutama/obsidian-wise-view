@@ -6,19 +6,20 @@ import { ViewConfigReader } from '../../platform/bases/ViewConfigReader';
 
 export const GANTT_BETA_SCALES = ['day', 'week', 'month', 'quarter', 'year'] as const;
 export type GanttBetaScale = typeof GANTT_BETA_SCALES[number];
+export const GANTT_BETA_DEPENDENCY_SHIFTS = ['none', 'overlap', 'maintain-gap'] as const;
+export type GanttBetaDependencyShift = typeof GANTT_BETA_DEPENDENCY_SHIFTS[number];
 
 export interface GanttBetaOptions {
 	start: BasesPropertyId | null; end: BasesPropertyId | null; label: BasesPropertyId | null;
 	parent: BasesPropertyId | null; order: BasesPropertyId | null; progress: BasesPropertyId | null;
-	colorBy: BasesPropertyId | null; dependencyFS: BasesPropertyId | null; dependencySS: BasesPropertyId | null;
-	dependencyFF: BasesPropertyId | null; dependencySF: BasesPropertyId | null;
+	colorBy: BasesPropertyId | null; dependsOn: BasesPropertyId | null;
 	scale: GanttBetaScale; showNonWorkingDays: boolean; workingWeekdays: string; holidays: string;
 	snapToWorkingDays: boolean; firstDayOfWeek: number; zoomOnWheel: boolean; infiniteScroll: boolean;
 	scrollToToday: boolean; phases: boolean; showTaskList: boolean; showRowNumbers: boolean;
 	showDetail: boolean; showProgress: boolean; showTooltip: boolean; rowHeight: number;
 	readOnly: boolean; allowMove: boolean; allowResize: boolean; allowProgress: boolean;
 	allowLinkCreate: boolean; allowLinkDelete: boolean; allowReorder: boolean; allowTaskCreate: boolean;
-	moveDependencies: boolean; writePhaseDates: boolean; templatePath: string; targetFolder: string; titleFormat: string;
+	dependencyShift: GanttBetaDependencyShift; writePhaseDates: boolean; templatePath: string; targetFolder: string; titleFormat: string;
 }
 
 export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions {
@@ -26,8 +27,7 @@ export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions 
 	return {
 		start: r.getPropertyId('ganttBetaStart'), end: r.getPropertyId('ganttBetaEnd'), label: r.getPropertyId('ganttBetaLabel'),
 		parent: r.getPropertyId('ganttBetaParent'), order: r.getPropertyId('ganttBetaOrder'), progress: r.getPropertyId('ganttBetaProgress'),
-		colorBy: r.getPropertyId('ganttBetaColorBy'), dependencyFS: r.getPropertyId('ganttBetaDependencyFS'), dependencySS: r.getPropertyId('ganttBetaDependencySS'),
-		dependencyFF: r.getPropertyId('ganttBetaDependencyFF'), dependencySF: r.getPropertyId('ganttBetaDependencySF'),
+		colorBy: r.getPropertyId('ganttBetaColorBy'), dependsOn: r.getPropertyId('ganttBetaDependsOn') ?? r.getPropertyId('ganttBetaDependencyFS'),
 		scale: r.getEnum('ganttBetaScale', GANTT_BETA_SCALES, 'month'), showNonWorkingDays: r.getBoolean('ganttBetaShowNonWorkingDays', true),
 		workingWeekdays: r.getString('ganttBetaWorkingWeekdays', '1,2,3,4,5'), holidays: r.getOptionalString('ganttBetaHolidays') ?? '',
 		snapToWorkingDays: r.getBoolean('ganttBetaSnapToWorkingDays', false), firstDayOfWeek: r.getNumber('ganttBetaFirstDayOfWeek', 1),
@@ -40,7 +40,9 @@ export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions 
 		allowResize: r.getBoolean('ganttBetaAllowResize', true), allowProgress: r.getBoolean('ganttBetaAllowProgress', true),
 		allowLinkCreate: r.getBoolean('ganttBetaAllowLinkCreate', true), allowLinkDelete: r.getBoolean('ganttBetaAllowLinkDelete', true),
 		allowReorder: r.getBoolean('ganttBetaAllowReorder', true), allowTaskCreate: r.getBoolean('ganttBetaAllowTaskCreate', true),
-		moveDependencies: r.getBoolean('ganttBetaMoveDependencies', false), writePhaseDates: r.getBoolean('ganttBetaWritePhaseDates', false),
+		dependencyShift: r.getEnum('ganttBetaDependencyShift', GANTT_BETA_DEPENDENCY_SHIFTS,
+			r.getBoolean('ganttBetaMoveDependencies', false) ? 'maintain-gap' : 'none'),
+		writePhaseDates: r.getBoolean('ganttBetaWritePhaseDates', false),
 		templatePath: r.getOptionalString('ganttBetaTemplatePath') ?? '', targetFolder: r.getOptionalString('ganttBetaTargetFolder') ?? '',
 		titleFormat: r.getString('ganttBetaTitleFormat', 'New note {{date}}'),
 	};
@@ -54,9 +56,7 @@ export function getGanttBetaViewOptions(_config: BasesViewConfig): BasesAllOptio
 		{ type: 'group', displayName: 'Properties', items: [
 			property('ganttBetaStart', 'Start date'), property('ganttBetaEnd', 'End date'), property('ganttBetaLabel', 'Label'),
 			property('ganttBetaParent', 'Parent (phase)'), property('ganttBetaOrder', 'Order'), property('ganttBetaProgress', 'Progress'),
-			property('ganttBetaColorBy', 'Color by'), property('ganttBetaDependencyFS', 'Depends on (FS)'),
-			property('ganttBetaDependencySS', 'Starts with (SS)'), property('ganttBetaDependencyFF', 'Finishes with (FF)'),
-			property('ganttBetaDependencySF', 'Start-to-finish (SF)'),
+			property('ganttBetaColorBy', 'Color by'), property('ganttBetaDependsOn', 'Depends on'),
 		] },
 		{ type: 'group', displayName: 'Timeline', items: [
 			{ type: 'dropdown', key: 'ganttBetaScale', displayName: 'Scale', default: 'month', options: { day: 'Day', week: 'Week', month: 'Month', quarter: 'Quarter', year: 'Year' } },
@@ -77,7 +77,10 @@ export function getGanttBetaViewOptions(_config: BasesViewConfig): BasesAllOptio
 			toggle('ganttBetaReadOnly', 'Read only', true), toggle('ganttBetaAllowMove', 'Move bars', true), toggle('ganttBetaAllowResize', 'Resize bars', true),
 			toggle('ganttBetaAllowProgress', 'Edit progress', true), toggle('ganttBetaAllowLinkCreate', 'Draw dependencies', true),
 			toggle('ganttBetaAllowLinkDelete', 'Delete dependencies', true), toggle('ganttBetaAllowReorder', 'Reorder rows', true),
-			toggle('ganttBetaAllowTaskCreate', 'Create by drawing', true), toggle('ganttBetaMoveDependencies', 'Move dependent tasks', false),
+			toggle('ganttBetaAllowTaskCreate', 'Create by drawing', true),
+			{ type: 'dropdown', key: 'ganttBetaDependencyShift', displayName: 'When predecessor moves', default: 'none', options: {
+				none: 'Do not shift automatically', overlap: 'Shift only when dates overlap', 'maintain-gap': 'Shift and maintain time between tasks',
+			} },
 			toggle('ganttBetaWritePhaseDates', 'Write phase dates', false),
 		] },
 		{ type: 'group', displayName: 'Note template', items: [
@@ -90,5 +93,5 @@ export function getGanttBetaViewOptions(_config: BasesViewConfig): BasesAllOptio
 
 export function ganttBetaRequestedProperties(options: GanttBetaOptions): BasesPropertyId[] {
 	return [...new Set([options.start, options.end, options.label, options.parent, options.order, options.progress, options.colorBy,
-		options.dependencyFS, options.dependencySS, options.dependencyFF, options.dependencySF].filter((id): id is BasesPropertyId => id !== null))];
+		options.dependsOn].filter((id): id is BasesPropertyId => id !== null))];
 }

@@ -32,11 +32,11 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 	it('defines every spec §3.6 option under Gantt-Beta-specific keys', () => {
 		const serialized = JSON.stringify(getGanttBetaViewOptions({} as never));
 		for (const key of [
-			'Start', 'End', 'Label', 'Parent', 'Order', 'Progress', 'ColorBy', 'DependencyFS', 'DependencySS', 'DependencyFF', 'DependencySF',
+			'Start', 'End', 'Label', 'Parent', 'Order', 'Progress', 'ColorBy', 'DependsOn',
 			'Scale', 'ShowNonWorkingDays', 'WorkingWeekdays', 'Holidays', 'SnapToWorkingDays', 'FirstDayOfWeek', 'ZoomOnWheel', 'InfiniteScroll',
 			'ScrollToToday', 'Phases', 'ShowTaskList', 'ShowRowNumbers', 'ShowDetail', 'ShowProgress', 'ShowTooltip', 'RowHeight',
 			'ReadOnly', 'AllowMove', 'AllowResize', 'AllowProgress', 'AllowLinkCreate', 'AllowLinkDelete', 'AllowReorder', 'AllowTaskCreate',
-			'MoveDependencies', 'WritePhaseDates', 'TemplatePath', 'TargetFolder', 'TitleFormat',
+			'DependencyShift', 'WritePhaseDates', 'TemplatePath', 'TargetFolder', 'TitleFormat',
 		]) expect(serialized).toContain(`ganttBeta${key}`);
 		expect(serialized).not.toMatch(/"key":"(?:type|name|filters|groupBy|order|summaries)"/);
 	});
@@ -45,20 +45,26 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 			snapshot('Tasks/A.md', {
 				'note.start': date('2026-01-31'), 'note.end': date('2026-02-02'), 'note.label': text('Custom A'),
 				'note.progress': text('125'), 'note.color': text('Urgent'), 'note.parent': link('Tasks/Parent'),
-				'note.order': number(20), 'note.fs': { kind: 'list', items: [link('Tasks/B')] }, 'note.ss': link('Tasks/C'),
+				'note.order': number(20), 'note.depends': { kind: 'list', items: [link('Tasks/B'), link('Tasks/C')] },
 			}),
 			snapshot('Tasks/Parent.md', { 'note.start': date('2026-01-01') }),
 		])], options({
 			ganttBetaStart: 'note.start', ganttBetaEnd: 'note.end', ganttBetaLabel: 'note.label', ganttBetaProgress: 'note.progress',
 			ganttBetaColorBy: 'note.color', ganttBetaParent: 'note.parent', ganttBetaOrder: 'note.order',
-			ganttBetaDependencyFS: 'note.fs', ganttBetaDependencySS: 'note.ss', ganttBetaReadOnly: false,
+			ganttBetaDependsOn: 'note.depends', ganttBetaReadOnly: false,
 		}), services);
 		const task = result.tasks.find(item => item.id === 'Tasks/A.md')!;
 		expect(task).toMatchObject({ id: 'Tasks/A.md', name: 'Custom A', startDate: '2026-01-31', endDate: '2026-02-03',
 			progress: 100, color: '#ff0000', parentId: 'Tasks/Parent.md', sequence: '1.1' });
 		expect(task.dependencies).toEqual([
-			{ targetId: 'Tasks/B.md', type: 'FS' }, { targetId: 'Tasks/C.md', type: 'SS' },
+			{ targetId: 'Tasks/B.md', type: 'FS' }, { targetId: 'Tasks/C.md', type: 'FS' },
 		]);
+	});
+
+	it('reads the previous FS and move-dependencies keys as a compatibility fallback', () => {
+		const value = options({ ganttBetaDependencyFS: 'note.fs', ganttBetaMoveDependencies: true });
+		expect(value.dependsOn).toBe('note.fs');
+		expect(value.dependencyShift).toBe('maintain-gap');
 	});
 
 	it('uses basename, supplies one scale step for missing end, and lists missing-start entries', () => {

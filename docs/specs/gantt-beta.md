@@ -29,8 +29,8 @@ Gantt Beta meets the stability gate (§11), a separate workstream removes Frappe
 | D2 | Write access | Approved: Gantt Beta may write, **only** through `src/platform/mutations` capabilities, never by calling `processFrontMatter`/`vault.modify` from `src/views/gantt-beta/`. Recorded as a precedent with plugin-compatibility consequences in [view-write-access.md](../architecture/view-write-access.md). |
 | D3 | View ID | `wise-view-gantt-beta`, permanent. It is not migrated onto `wise-view-gantt` when Frappe is removed; users switch their `.base` views manually (the removal workstream documents how). The display name may later drop "Beta"; the ID never changes. |
 | D4 | Phases | A phase is a **parent note** referenced by the configured Parent property, **and** each Bases `Group by` group becomes a synthetic, read-only phase row. |
-| D5 | Dependency types | All four types (FS, SS, FF, SF), stored as **one Bases-configured list-of-links property per type**. FS reuses the same property the Frappe view reads. |
-| D6 | Frappe carry-over | Only "move dependent tasks" (`persistDependencyDateChanges`) is carried over. Expected progress, the sub-day scales (Hour/Quarter day/Half day), the context menu, and the Gantt command-palette commands are **not** carried over (§4). |
+| D5 | Dependency UX | One Bases-configured **Depends on** list-of-links property. Every stored edge is finish-to-start (FS). Users create/delete it through the line on the chart or the relation property; FS/SS/FF/SF codes are not exposed in the primary UX. |
+| D6 | Schedule response | A three-state **When predecessor moves** policy: do not shift; shift only to resolve overlap; or shift by the same delta and maintain the gap. Every automatic move preserves successor duration and is cycle-safe. |
 | D7 | Date storage | Local, floating values: `Date` properties as `YYYY-MM-DD` (end date **inclusive**), `Date & time` properties as `YYYY-MM-DDTHH:mm` with no offset. ISO strings with `Z` are read but never produced. |
 | D8 | Obsidian integration | Click opens the note (modifier = new tab, per existing navigation helpers) and Ctrl/Cmd-hover shows Page Preview. |
 | D9 | Detail panel | Custom Obsidian renderer (`renderDetail`), not the library's built-in body. |
@@ -60,7 +60,7 @@ Gantt Beta meets the stability gate (§11), a separate workstream removes Frappe
 | `color` | Color-by property via the existing `ColorResolver` | |
 | `parentId` | Parent property (link) resolved to a path, or the synthetic group phase id | See §3.3. |
 | `sequence` | Computed, never stored | Depth-first numbering of the phase tree (`1`, `1.1`, `1.2`, `2`, …). Sibling order = Order property ascending when configured, else Bases sort order. |
-| `dependencies` | FS/SS/FF/SF properties | Each property is a list of links; each resolved link becomes `{ targetId: path, type }`. Unresolved links are kept in the property untouched and not drawn. |
+| `dependencies` | Depends on property | Each resolved predecessor link becomes `{ targetId: path, type: 'FS' }`. Unresolved links remain untouched in frontmatter and are not drawn. The type is an adapter detail, not user-authored data. |
 | `readOnly` / `allow*` | Synthetic rows; formula-backed properties | Synthetic phase rows are read-only. A task whose date property is a formula has `allowMove`/`allowResize` off. |
 
 ### 3.3 Phases (D4)
@@ -94,8 +94,8 @@ and writes only changed fields of changed notes.
 | Move / resize / keyboard date edit | `onTasksChange` | Start/End (formatted per D7, inclusive end restored for `Date`) |
 | Progress drag / keyboard | `onTasksChange` | Progress (integer) |
 | Summary (phase) bar drag | `onTasksChange` | Start/End of every moved descendant; phase dates only if "Write phase dates" is on |
-| Draw a dependency | `onDependencyCreate` → `onTasksChange` | Appends `[[link]]` to the property of the drawn type, on the successor note |
-| Delete a dependency | `onDependencyDelete` → `onTasksChange` | Removes the link from **every** type property for that predecessor/successor pair (library deletes per pair) |
+| Draw a dependency | `onDependencyCreate` → `onTasksChange` | A finish-to-start line from predecessor end to successor start appends `[[predecessor]]` to Depends on in the successor note. Other endpoint combinations are rejected in v1. |
+| Delete a dependency | `onDependencyDelete` → `onTasksChange` | Removes `[[predecessor]]` from Depends on in the successor note. |
 | Drag row to another phase | `onTaskMove` → `onTasksChange` | Parent (link to the new parent note, or cleared at root). Dropping into a synthetic group phase is rejected with a Notice in v1. |
 | Drag row within a phase | `onTaskMove` → `onTasksChange` | Order on the moved sibling set. Rejected with a Notice when no Order property is configured. |
 | Draw a range / Add task | `onTaskCreate` | New note from the template (`NoteTemplateService`, unchanged API) with Start/End prefilled; Parent prefilled when drawn on a phase row |
@@ -104,7 +104,7 @@ and writes only changed fields of changed notes.
 Rules:
 
 - **Link format.** Written links use the same wiki-link form the Frappe view already writes
-  (`toWikiLink`), so FS stays readable by Frappe Gantt. Existing list/comma shapes are
+  (`toWikiLink`). Existing list/comma shapes are
   preserved (append/remove within the shape the property already has).
 - **Failure.** A failed write shows a Notice and re-passes the previous array so the bar
   reverts (library-supported optimistic-revert pattern).
@@ -115,16 +115,28 @@ Rules:
 - **Order values.** Reordering renumbers the affected siblings with gaps (10, 20, 30, …) and only
   writes notes whose value changed.
 
-### 3.5 Move dependent tasks (D6)
+### 3.5 Dependency schedule policy (D6)
 
-Carried over from `persistDependencyDateChanges`, generalized to four types. Option
-"Move dependent tasks" (default off). When a gesture moves an edge of task A by Δ, each
-successor B linked to A via a type whose predecessor edge moved (FS/FF → A's finish; SS/SF →
-A's start) is shifted by Δ with its duration preserved, recursively, visiting each task once per
-gesture (cycle-safe). If B is reached by several moved predecessors, the delta with the largest
-absolute value wins. The cascade is previewed nowhere (library limitation) and applied after
-the gesture commits. The cascade is calculated in `src/core/gantt/` so it can be unit-tested
-without Obsidian.
+Depends on is a descriptive graph in every mode. The **When predecessor moves** option determines
+whether Wise View is also authorized to write downstream dates:
+
+1. **Do not shift automatically** (default): keep every successor date unchanged; the line makes
+   the consequence visible without silently changing data.
+2. **Shift only when dates overlap:** if successor B starts before predecessor A finishes, shift B
+   forward by the minimum delta needed to restore the FS boundary. Existing positive gaps may
+   shrink, matching Notion's "Shift only when dates overlap" behavior.
+3. **Shift and maintain time between tasks:** when A moves by Δ, shift B by the same Δ so their
+   existing gap is retained, matching Notion's "Shift & maintain time between items" behavior.
+
+Every automatic shift preserves B's duration, cascades recursively, and visits each task once per
+gesture (cycle-safe). Completed/progress state does not change the date rule in v1. If B is reached
+by several predecessors, the latest required start wins. The policy is calculated in
+`src/core/gantt/` so it can be unit-tested without Obsidian.
+
+FS/SS/FF/SF remain useful scheduling vocabulary and may inform a future critical-path analysis,
+but they are not four manual properties in Gantt Beta v1. Critical path, slack, and violated-edge
+indicators are derived/descriptive outputs from the dependency graph and dates; they must not add
+frontmatter merely to explain the visualization.
 
 ### 3.6 Bases view options
 
@@ -132,7 +144,7 @@ Keys are Gantt Beta's own; none are shared with the Frappe view's config so the 
 fight over a `.base` file.
 
 - **Properties:** Start date, End date, Label, Parent (phase), Order, Progress, Color by,
-  Depends on (FS), Starts with (SS), Finishes with (FF), Start-to-finish (SF).
+  Depends on.
 - **Timeline:** Scale (day/week/month/quarter/year; also persisted when changed on the chart),
   Show non-working days, Working weekdays (multitext, default Mon–Fri), Holidays (multitext of
   `YYYY-MM-DD`), Snap to working days, First day of week, Zoom with Ctrl/Cmd + wheel,
@@ -140,7 +152,8 @@ fight over a `.base` file.
 - **Layout:** Phases (hierarchy), Task list, Row numbers, Detail panel, Show progress,
   Tooltip, Row height (CSS-only option via `ViewOptionSchema`).
 - **Editing:** Read only, Move bars, Resize bars, Edit progress, Draw dependencies, Delete
-  dependencies, Reorder rows, Create by drawing, Move dependent tasks, Write phase dates.
+  dependencies, Reorder rows, Create by drawing, When predecessor moves (do not shift / shift
+  only on overlap / shift and maintain time), Write phase dates.
 - **Note template:** Template note, Target folder, Title format (same semantics as today).
 - **Persisted UI state:** collapsed phase ids and the current scale are stored in the view
   config (`config.set`), not in plugin settings.
@@ -153,8 +166,8 @@ fight over a `.base` file.
 - **Theme:** `theme` prop set from `body.theme-dark` (observed), and `--gantt-*` tokens mapped to
   Obsidian CSS variables in `src/styles/views/gantt-beta.css`. The library stylesheet is merged
   through the existing CSS merge plugin without rewriting (it has no `:root` selectors).
-- **Detail panel (D9):** note title (opens the note), start/end, progress, dependencies per
-  type (as links, each removable), and the Base's visible properties (`config.getOrder()`)
+- **Detail panel (D9):** note title (opens the note), start/end, progress, Depends on links
+  (each removable), and the Base's visible properties (`config.getOrder()`)
   rendered read-only. Date/progress fields are editable and write back via §3.4.
 - **Click / hover (D8):** `onTaskClick` opens the note through the existing navigation helper
   (respecting modifiers); hover preview uses a delegated `mouseover` listener reading
@@ -171,7 +184,8 @@ fight over a `.base` file.
   commands (D6). Recorded as follow-ups in §12, not planned.
 - Moving rows into a synthetic Bases group phase (would require writing the group-by property,
   which may be a formula).
-- Automatic rescheduling to satisfy dependency constraints beyond §3.5's delta cascade.
+- Critical-path/slack calculation and advanced SS/FF/SF scheduling. These are descriptive
+  follow-ups, not additional manual properties in v1.
 - PDF/image export, resource/workload views, multi-select editing (not in the library).
 - Localising the library's own built-in strings (English only upstream).
 - Redesigning note creation — `docs/specs/note-template.md` owns that; Gantt Beta calls the
@@ -187,7 +201,7 @@ fight over a `.base` file.
 | Global `document` listeners and `document.body` cursor | Drags inside an Obsidian popout window may not work. Documented limitation for Beta; plan opens an upstream issue/PR to use the element's `ownerDocument`. Never monkey-patched (existing guard). |
 | Whole-array `onTasksChange` | Diffing (§3.4). |
 | No context-menu/hover callbacks | Delegated listeners on `data-task-id`. |
-| Deleting a link removes all types for that pair | Mirrored when writing (§3.4). |
+| Library reports a typed dependency | The v1 adapter accepts only end-to-start/FS and persists one Depends on link (§3.4). |
 | Fixed 28 px bar height | Only row height is configurable. |
 | Single maintainer, fast release cadence | Exact version pin, provenance ledger entry, characterization tests around the adapter before any upgrade. |
 
@@ -213,8 +227,8 @@ change is either kept backward compatible or the impact is recorded as a follow-
 
 1. Phase 0 spike is a hard gate: nothing else starts until preact/compat compatibility is proven.
 2. Pure logic (`src/core/gantt/`) is unit-tested first: mapping, sequence, phases, date
-   conversion round-trips (date and datetime, inclusive end), dependency parsing/writing per
-   type, diffing, cascade.
+  conversion round-trips (date and datetime, inclusive end), dependency parsing/writing,
+  diffing, and both authorized cascade policies.
 3. The view is tested in happy-dom with the real library mounted through Preact: a simulated
    `onTasksChange`/`onDependencyCreate`/`onTaskMove`/`onTaskCreate` produces the expected
    mutation-capability calls (no real vault writes).
@@ -259,7 +273,24 @@ provenance entries, the `wise-view-gantt` registration, and document how users s
 ## 12. Follow-ups (not planned)
 
 - Expected progress on Gantt Beta.
+- Descriptive critical-path, slack, and violated-dependency analysis derived from the graph and
+  dates; no additional user-authored relationship text.
+- Advanced SS/FF/SF relationships only if a later design provides equally simple visual creation
+  and lossless Bases-compatible persistence.
 - Sub-day scales (requires upstream support for custom scales or a fork).
 - Context menu and command-palette commands for Gantt Beta.
 - Moving rows between synthetic Bases group phases.
 - Upstream: `ownerDocument`-aware listeners (popout windows), local-time today marker.
+
+## 13. External UX references
+
+- [Notion: Sub-items & dependencies](https://www.notion.com/help/tasks-and-dependencies) — one
+  dependency relation plus three automatic date-shifting policies: overlap-only, maintain time,
+  or never shift.
+- [Notion: Dependencies in Timeline](https://www.notion.com/en-gb/help/guides/tasks-manageable-steps-sub-tasks-dependencies)
+  — users draw a line between timeline items; the relation property is the stored representation.
+- [Microsoft Project: Link tasks](https://support.microsoft.com/en-us/project/link-tasks-in-a-project)
+  — FS is the default relationship; SS/FF/SF are advanced schedule models, and predecessor
+  changes can affect downstream successors.
+- [Microsoft Project: Scheduling behind the scenes](https://support.microsoft.com/en-us/project/how-project-schedules-tasks-behind-the-scenes)
+  — dependency chains influence project finish and form the basis for critical-path analysis.

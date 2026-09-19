@@ -28,7 +28,8 @@ Tema: light dan dark
   Ctrl/Cmd + wheel.
 - Progress fill harus tetap terbaca pada warna kategori terang maupun gelap.
 - Hover tidak boleh menampilkan dua tooltip yang saling menumpuk.
-- Dokumentasi harus memberi contoh frontmatter terpisah untuk FS, SS, FF, dan SF.
+- Dependency harus memakai satu properti Depends on dan garis chart; pengguna tidak perlu
+  menghafal atau menulis FS/SS/FF/SF.
 
 ## Write path
 

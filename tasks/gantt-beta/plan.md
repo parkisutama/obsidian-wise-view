@@ -46,7 +46,7 @@ ID, so progress can be checked in a real vault at every checkpoint.
 ## Phase 2: Read path (pure core + mapping)
 
 - `src/core/gantt/`: floating date conversion (date/datetime, inclusive↔exclusive end),
-  progress parsing, dependency link parsing per type, phase tree (parent notes, out-of-results
+  progress parsing, Depends on link parsing (FS adapter), phase tree (parent notes, out-of-results
   parents, Bases groups), sequence builder (Order property or Bases sort), cycle reporting.
 - View mapping: Bases entries → library `Task[]` with the §3.2 rules; option schema (§3.6) with
   all keys; unscheduled/empty state.
@@ -61,10 +61,11 @@ ID, so progress can be checked in a real vault at every checkpoint.
 
 - Diff engine (`src/core/gantt/diff.ts`): previous vs. next `Task[]` → a list of field changes.
 - Change → mutation plan: date formatting per property type, progress, order renumbering,
-  parent writes, dependency append/remove per type preserving the property's shape.
+  parent writes, Depends on append/remove preserving the property's shape.
 - Wiring: `onTasksChange`, `onDependencyCreate`/`onDependencyDelete`, `onTaskMove`,
   `onTaskCreate` → mutation capabilities; batching, failure revert, echo suppression.
-- Dependent-task cascade (§3.5) and "Write phase dates".
+- Dependency schedule policies (§3.5)—no shift, overlap repair, or maintain gap—and
+  "Write phase dates".
 
 ### Checkpoint C (Gate 2)
 
