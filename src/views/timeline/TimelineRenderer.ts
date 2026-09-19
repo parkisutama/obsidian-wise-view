@@ -233,6 +233,12 @@ export class TimelineRenderer {
 		this.currentToday = today;
 		this.wrapTitles = wrapTitles;
 		this.containerEl.classList.toggle('wise-view-timeline--wrap-titles', wrapTitles);
+		// No start property configured: the toolbar/header/grid/today below would otherwise
+		// still render a fully-formed-looking calendar around "today" that tracks no real
+		// property, misleadingly implying a working timeline. CSS hides that chrome under this
+		// class so only the configuration hint is visible; the pipeline still runs normally
+		// (with an empty model) so bars/rows from a previous configured state are cleared.
+		this.containerEl.classList.toggle('wise-view-timeline--unconfigured', !model.startConfigured);
 		this.activeZoom ??= zoom;
 		this.layoutViewportWidth = this.timelineViewport.clientWidth || 500;
 		const layout = createTimelineLayout(model, today, this.activeZoom, this.layoutViewportWidth, this.extraPaddingDays);

@@ -2301,6 +2301,14 @@ body.gantt-wbs-resizing {
 	box-shadow: var(--shadow-s);
 }
 
+/* No start property configured: hide the toolbar/sidebar/chart chrome entirely instead of
+   showing a fully-formed-looking calendar around "today" that tracks no real property. Only
+   the centered configuration hint (.wise-view-timeline__empty) remains visible. */
+.wise-view-timeline--unconfigured .wise-view-timeline__main,
+.wise-view-timeline--unconfigured .wise-view-timeline__expand-controls {
+	display: none;
+}
+
 .wise-view-timeline__toolbar button:hover,
 .wise-view-timeline__toolbar button[aria-pressed="true"],
 .wise-view-timeline__sidebar-row button:hover {

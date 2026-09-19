@@ -107,6 +107,31 @@ describe('Timeline renderer', () => {
 		expect(host.querySelector('[data-note-path="A.md"]')).toBeNull();
 	});
 
+	it('hides the toolbar/sidebar/grid chrome entirely when no start property is configured', () => {
+		// A fully-rendered calendar grid around "today" with no property configured falsely
+		// implies a working timeline; only the configuration hint should be visible.
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		new TimelineRenderer(host).render(
+			buildTimelineModel([timelineSnapshot('A.md', {})], { ...options, startProperty: null }, today),
+			today,
+			'month',
+		);
+		expect(host.classList.contains('wise-view-timeline--unconfigured')).toBe(true);
+		expect(host.querySelector('.wise-view-timeline__empty')).not.toBeNull();
+	});
+
+	it('shows the toolbar/sidebar/grid chrome again once a start property is configured', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		const renderer = new TimelineRenderer(host);
+		renderer.render(buildTimelineModel([timelineSnapshot('A.md', {})], { ...options, startProperty: null }, today), today, 'month');
+		expect(host.classList.contains('wise-view-timeline--unconfigured')).toBe(true);
+
+		renderer.render(buildTimelineModel([timelineSnapshot('A.md', { 'note.start': date('2026-01-01') })], options, today), today, 'month');
+		expect(host.classList.contains('wise-view-timeline--unconfigured')).toBe(false);
+	});
+
 	it('keeps unscheduled note titles in the sidebar without generic chart pills', () => {
 		const host = document.createElement('div');
 		const today = dateOnlyFromParts(2026, 1, 2)!;

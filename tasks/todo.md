@@ -814,6 +814,22 @@ Because Timeline is currently the only production consumer of `entrySnapshotAdap
 
 **Likely files:** `src/platform/bases/entrySnapshotAdapter.ts`, `tests/entry-snapshot.test.ts`.
 
+### T034J: Hide Timeline chrome entirely when no start property is configured — done
+
+**Description:** The maintainer reported that Timeline "already shows a timeline view" when the start/end properties have not been set in the Bases view options — misleading because it does not reveal which property, if any, is actually driving the display. Root cause: `render()` always called `renderToolbar()`/`renderHeader()`/`renderGrid()`/`renderToday()` regardless of `model.startConfigured`; only an absolutely-positioned message box (`.wise-view-timeline__empty`) was layered on top, leaving the zoom toolbar, sidebar, calendar header, and grid fully visible and looking functional around "today" even though no property backs any of it.
+
+**Acceptance criteria:**
+
+- [x] When `model.startConfigured` is false, the toolbar, sidebar, chart header, and grid are hidden entirely (`display: none` under a `wise-view-timeline--unconfigured` class); only the "Configure a start date property…" message is visible.
+- [x] The render pipeline still runs normally with the empty model so bars/rows from a previously configured state are cleared, rather than special-casing an early return.
+- [x] The chrome reappears once a start property is configured on a later `render()` call.
+
+**Verification:** focused Timeline tests plus `pnpm run check` (29 files, 267 tests); production build and artifact verification passed.
+
+**Dependencies:** T034A (renderer structure), reported against the T034I build.
+
+**Likely files:** `src/views/timeline/TimelineRenderer.ts`, `src/styles/views/timeline.css`, `tests/timeline-view.test.ts`.
+
 ### T034D: Design a shared centered details window — future cross-view backlog
 
 **Description:** Capture the Keep Bases View-style **Show details** context action as a reusable, optional Wise View interaction instead of duplicating modal/window behavior per view. This task is design-only until the human approves the contract and target views.

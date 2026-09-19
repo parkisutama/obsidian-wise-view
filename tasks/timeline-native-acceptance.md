@@ -80,6 +80,15 @@ calendar day whenever it disagrees with `toString()`'s, matching the pattern `ga
 already used. This was Timeline-only in practice because Timeline is currently the sole
 production consumer of `entrySnapshotAdapter`.
 
+## Sixth comparison (2026-09-19, post-T034I)
+
+The maintainer noted that Timeline still "shows a timeline view" when start/end properties are
+unset in the Bases view options, without any indication of which property (if any) actually
+drives it — the fully-rendered toolbar, header, and grid around "today" implied a working
+timeline that tracked nothing. Fixed under T034J: the toolbar/sidebar/chart chrome now hides
+entirely (only the "Configure a start date property…" message remains) whenever no start
+property is configured.
+
 ## Required follow-up
 
 - T034A owns toolbar, sidebar, temporal header/grid, today presentation, and scroll synchronization.
