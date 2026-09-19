@@ -29,7 +29,7 @@ describe('Timeline renderer', () => {
 			timelineSnapshot('A.md', { 'note.start': date('2026-01-01'), 'note.end': date('2026-01-03') }),
 		], options, today);
 		const layout = createTimelineLayout(model, today, 'month');
-		expect(layout.bars[0]?.width).toBe(45);
+		expect(layout.bars[0]?.width).toBe(43);
 		expect(layout.bars[0]?.left).toBeGreaterThan(0);
 	});
 
@@ -256,6 +256,8 @@ describe('Timeline view interactions', () => {
 	it('writes moved date ranges through the mutation capability and suppresses accidental open', async () => {
 		harness = createTimelineHarness();
 		const bar = harness.host.querySelector<HTMLElement>('.wise-view-timeline__bar[data-note-path="Notes/Alpha.md"]')!;
+		const initialLeft = bar.style.getPropertyValue('--wise-view-timeline-left');
+		const initialWidth = bar.style.getPropertyValue('--wise-view-timeline-bar-width');
 		bar.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7, button: 0, clientX: 100 }));
 		bar.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 7, clientX: 130 }));
 		bar.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 7, clientX: 130 }));
@@ -263,16 +265,26 @@ describe('Timeline view interactions', () => {
 		expect(harness.frontmatterUpdates[0]).toMatchObject({ start: '2026-01-03', end: '2026-01-05' });
 		bar.click();
 		expect(harness.opened).toEqual([]);
+		harness.view.onDataUpdated();
+		const optimisticBar = harness.host.querySelector<HTMLElement>('.wise-view-timeline__bar[data-note-path="Notes/Alpha.md"]')!;
+		expect(optimisticBar.style.getPropertyValue('--wise-view-timeline-left')).not.toBe(initialLeft);
+		expect(optimisticBar.style.getPropertyValue('--wise-view-timeline-bar-width')).toBe(initialWidth);
 	});
 
 	it('resizes the end date from the right handle', async () => {
 		harness = createTimelineHarness();
+		const bar = harness.host.querySelector<HTMLElement>('.wise-view-timeline__bar[data-note-path="Notes/Alpha.md"]')!;
+		const initialWidth = Number.parseFloat(bar.style.getPropertyValue('--wise-view-timeline-bar-width'));
 		const handle = harness.host.querySelector<HTMLElement>('.wise-view-timeline__bar[data-note-path="Notes/Alpha.md"] .wise-view-timeline__handle--right')!;
 		handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 9, button: 0, clientX: 100 }));
 		handle.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 9, clientX: 130 }));
 		handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 9, clientX: 130 }));
 		await Promise.resolve();
 		expect(harness.frontmatterUpdates[0]).toMatchObject({ start: '2026-01-01', end: '2026-01-05' });
+		harness.view.onDataUpdated();
+		const resizedWidth = Number.parseFloat(harness.host.querySelector<HTMLElement>('.wise-view-timeline__bar[data-note-path="Notes/Alpha.md"]')!
+			.style.getPropertyValue('--wise-view-timeline-bar-width'));
+		expect(resizedWidth).toBeGreaterThan(initialWidth);
 	});
 
 	it('keeps the today marker synchronized and extends the time domain near an edge', () => {
@@ -288,6 +300,8 @@ describe('Timeline view interactions', () => {
 		expect(extendedWidth).toBeGreaterThan(initialWidth);
 		harness.host.querySelector<HTMLElement>('[data-action="today"]')!.click();
 		expect(header.style.transform).toBe(`translateX(${-scroller.scrollLeft}px)`);
+		const todayLine = harness.host.querySelector<HTMLElement>('.wise-view-timeline__today-line')!;
+		expect(todayLine.parentElement).toBe(scroller);
 	});
 
 	it('uses compact zoom controls and preserves sidebar collapse state', () => {

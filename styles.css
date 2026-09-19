@@ -2277,7 +2277,7 @@ body.gantt-wbs-resizing {
 }
 
 .wise-view-timeline__row--unscheduled {
-	background: var(--background-primary);
+	background: transparent;
 	cursor: crosshair;
 }
 
@@ -2337,6 +2337,10 @@ body.gantt-wbs-resizing {
 	min-height: 0;
 	overflow: auto;
 	scrollbar-gutter: stable;
+}
+
+.wise-view-timeline__scroller {
+	position: relative;
 }
 
 .wise-view-timeline__sidebar {
@@ -2481,6 +2485,9 @@ body.gantt-wbs-resizing {
 }
 
 .wise-view-timeline__sidebar-row button {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
 	width: 100%;
 	height: 100%;
 	padding-inline: var(--size-4-2);
@@ -2549,12 +2556,25 @@ body.gantt-wbs-resizing {
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	width: 7px;
+	z-index: 2;
+	width: 10px;
+	border-color: transparent;
 	cursor: col-resize;
 }
 
-.wise-view-timeline__handle--left { left: 0; }
-.wise-view-timeline__handle--right { right: 0; }
+.wise-view-timeline__bar:hover .wise-view-timeline__handle {
+	border-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.wise-view-timeline__handle--left {
+	left: 0;
+	border-left: 2px solid;
+}
+
+.wise-view-timeline__handle--right {
+	right: 0;
+	border-right: 2px solid;
+}
 
 .wise-view-timeline__date-label {
 	position: absolute;
@@ -2656,7 +2676,7 @@ body.gantt-wbs-resizing {
 }
 
 @media (pointer: coarse) {
-	.wise-view-timeline__handle { width: 14px; }
+	.wise-view-timeline__handle { width: 16px; }
 }
 
 /* === BUNDLED CSS IMPORTS === */

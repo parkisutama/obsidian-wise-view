@@ -89,7 +89,7 @@ export function createTimelineLayout(
 			return {
 				item,
 				left: dateToPixel(range.startDay, domain, zoom),
-				width: Math.max(pixelsPerDay, dateToPixel(range.endDay, domain, zoom) - dateToPixel(range.startDay, domain, zoom)),
+				width: Math.max(8, dateToPixel(range.endDay, domain, zoom) - dateToPixel(range.startDay, domain, zoom) - 2),
 			};
 		}),
 	};
@@ -113,6 +113,7 @@ export class TimelineRenderer {
 	private activeZoom: TimelineZoom | null = null;
 	private currentLayout: TimelineLayout | null = null;
 	private bars = new Map<string, TimelineBarLayout>();
+	private readonly pendingRanges = new Map<string, { startDay: number; endDay: number }>();
 	private syncingScroll = false;
 	private sidebarCollapsed = false;
 	private pinchAccum = 0;
@@ -226,6 +227,7 @@ export class TimelineRenderer {
 		this.activeZoom ??= zoom;
 		this.layoutViewportWidth = this.timelineViewport.clientWidth || 500;
 		const layout = createTimelineLayout(model, today, this.activeZoom, this.layoutViewportWidth, this.extraPaddingDays);
+		this.applyPendingRanges(layout);
 		this.currentLayout = layout;
 		this.bars = new Map(layout.bars.map(bar => [bar.item.path, bar]));
 		this.renderToolbar();
@@ -333,6 +335,9 @@ export class TimelineRenderer {
 		const layout = path ? this.bars.get(path) : null;
 		if (!barEl || !path || !layout?.item.range) return;
 		const bounds = rangeToDayBounds(layout.item.range);
+		const pending = this.pendingRanges.get(path);
+		const startDay = pending?.startDay ?? bounds.startDay;
+		const endDay = pending?.endDay ?? bounds.endDay - 1;
 		let mode: TimelineDragState['mode'] = 'move';
 		if (target?.closest('.wise-view-timeline__handle--left')) mode = 'resize-left';
 		else if (target?.closest('.wise-view-timeline__handle--right')) mode = 'resize-right';
@@ -342,10 +347,10 @@ export class TimelineRenderer {
 			mode,
 			pointerId: event.pointerId,
 			x0: event.clientX,
-			start0: bounds.startDay,
-			end0: bounds.endDay - 1,
-			start: bounds.startDay,
-			end: bounds.endDay - 1,
+			start0: startDay,
+			end0: endDay,
+			start: startDay,
+			end: endDay,
 			moved: false,
 		};
 		try { barEl.setPointerCapture(event.pointerId); } catch { /* Synthetic pointer or detached DOM. */ }
@@ -393,7 +398,9 @@ export class TimelineRenderer {
 		try { drag.barEl.releasePointerCapture(event.pointerId); } catch { /* No active capture. */ }
 		if (!drag.moved) return;
 		this.suppressBarClick = true;
+		this.pendingRanges.set(drag.path, { startDay: drag.start, endDay: drag.end });
 		const success = await this.actions.onRangeChange?.(drag.path, drag.start, drag.end);
+		if (success === false) this.pendingRanges.delete(drag.path);
 		if (success === false && this.currentModel && this.currentToday && this.activeZoom) {
 			this.render(this.currentModel, this.currentToday, this.activeZoom, this.wrapTitles);
 		}
@@ -465,6 +472,22 @@ export class TimelineRenderer {
 
 	private syncHorizontalHeader(): void {
 		this.headerCanvas.style.transform = `translateX(${-this.timelineViewport.scrollLeft}px)`;
+	}
+
+	private applyPendingRanges(layout: TimelineLayout): void {
+		if (!this.activeZoom) return;
+		for (const bar of layout.bars) {
+			const pending = this.pendingRanges.get(bar.item.path);
+			if (!pending) continue;
+			const current = bar.item.range ? rangeToDayBounds(bar.item.range) : null;
+			if (current?.startDay === pending.startDay && current.endDay - 1 === pending.endDay) {
+				this.pendingRanges.delete(bar.item.path);
+				continue;
+			}
+			bar.left = dateToPixel(pending.startDay, layout.domain, this.activeZoom);
+			bar.width = Math.max(8, (pending.endDay - pending.startDay + 1)
+				* TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay - 2);
+		}
 	}
 
 	private renderToolbar(): void {
@@ -576,8 +599,9 @@ export class TimelineRenderer {
 			const marker = ticks.createDiv({ cls: 'wise-view-timeline__today', text: String(this.currentToday?.day ?? '') });
 			marker.setAttribute('aria-label', 'Today');
 			marker.style.setProperty('--wise-view-timeline-left', `${layout.todayLeft}px`);
-			const line = this.gridEl.createDiv({ cls: 'wise-view-timeline__today-line' });
+			const line = this.timelineViewport.createDiv({ cls: 'wise-view-timeline__today-line' });
 			line.style.setProperty('--wise-view-timeline-left', `${layout.todayLeft}px`);
+			line.style.height = this.gridEl.style.height;
 		} else {
 			const edge = this.containerEl.createDiv({ cls: `wise-view-timeline__edge wise-view-timeline__edge--${layout.todayEdge}` });
 			edge.dataset.edge = layout.todayEdge;
