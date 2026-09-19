@@ -101,6 +101,115 @@ hasil Base tetap dapat tampil sebagai fase sintetis. Jika Bases juga memakai Gro
 Parent tetap berada di dalam group task tersebut; parent lintas group sengaja diabaikan agar pohon
 tidak ambigu.
 
+## Contoh lengkap FS, SS, FF, dan SF
+
+Setiap tipe dependensi membutuhkan **properti terpisah**. Buat empat properti Bases bertipe link
+atau list of links, misalnya:
+
+| Properti note | Petakan ke opsi Gantt Beta |
+| --- | --- |
+| `depends_fs` | **Depends on (FS)** |
+| `depends_ss` | **Starts with (SS)** |
+| `depends_ff` | **Finishes with (FF)** |
+| `depends_sf` | **Start-to-finish (SF)** |
+
+Relasi disimpan pada note yang bergantung (successor), sedangkan link menunjuk note acuan
+(predecessor). Jadi untuk hubungan “B setelah A”, tulis `[[A]]` pada properti milik **B**, bukan
+sebaliknya.
+
+### FS — finish to start
+
+Gunakan bila B baru dimulai setelah A selesai. Ini tipe yang paling umum.
+
+```yaml
+# A - Riset.md
+---
+start: 2026-10-01
+end: 2026-10-03
+---
+```
+
+```yaml
+# B - Implementasi.md
+---
+start: 2026-10-04
+end: 2026-10-08
+depends_fs:
+  - "[[A - Riset]]"
+---
+```
+
+### SS — start to start
+
+Gunakan bila B dapat berjalan paralel setelah A mulai. Kedua task tidak harus selesai bersamaan.
+
+```yaml
+# C - Catatan riset.md
+---
+start: 2026-10-01
+end: 2026-10-05
+depends_ss:
+  - "[[A - Riset]]"
+---
+```
+
+### FF — finish to finish
+
+Gunakan bila B harus selesai bersama A, walaupun tanggal mulainya berbeda.
+
+```yaml
+# D - Ringkasan riset.md
+---
+start: 2026-10-02
+end: 2026-10-03
+depends_ff:
+  - "[[A - Riset]]"
+---
+```
+
+### SF — start to finish
+
+Gunakan bila berakhirnya B bergantung pada mulainya A. Ini jarang dipakai; contoh praktisnya
+adalah sistem lama yang baru boleh berhenti ketika sistem baru mulai dijalankan.
+
+```yaml
+# A - Aktifkan sistem baru.md
+---
+start: 2026-10-10T08:00
+end: 2026-10-10T12:00
+---
+```
+
+```yaml
+# B - Operasikan sistem lama.md
+---
+start: 2026-10-09T08:00
+end: 2026-10-10T08:00
+depends_sf:
+  - "[[A - Aktifkan sistem baru]]"
+---
+```
+
+Satu note boleh memiliki beberapa predecessor dan beberapa tipe sekaligus:
+
+```yaml
+---
+depends_fs:
+  - "[[Persetujuan desain]]"
+  - "[[Pengadaan perangkat]]"
+depends_ss:
+  - "[[Dokumentasi pelaksanaan]]"
+depends_ff:
+  - "[[Audit hasil]]"
+depends_sf:
+  - "[[Operasikan sistem lama]]"
+---
+```
+
+Link yang tidak dapat ditemukan tetap dipertahankan di frontmatter, tetapi garisnya tidak
+digambar. Pada tahap read-only sekarang, dependensi memvisualkan hubungan yang sudah Anda tulis;
+Gantt belum otomatis mengubah tanggal agar memenuhi hubungan tersebut.
+
 ## Timeline dan hari kerja
 
 - **Working weekdays** memakai angka `0` sampai `6`: Minggu = `0`, Senin = `1`, sampai Sabtu = `6`.
@@ -113,6 +222,9 @@ tidak ambigu.
 
 Nilai Date harus berbentuk `YYYY-MM-DD`. Datetime memakai ISO, misalnya
 `2026-09-18T09:30`. Nilai dengan offset atau `Z` dibaca dan ditampilkan dalam waktu lokal.
+Datetime dapat menempatkan awal/akhir bar pada jam tertentu dan scale **Day** menampilkan tick
+jam. Namun Gantt Beta belum menawarkan scale Hour/Quarter day/Half day; pilihan scale resminya
+tetap Day, Week, Month, Quarter, dan Year.
 
 ## Status fitur Beta saat ini
 

@@ -186,8 +186,9 @@ values or input (Bases sort) order.
 
 ### GBETA-008: Options schema and Bases → Task mapping
 
-**Status:** Implemented 2026-09-19; automated mapping/options/fast-path checks pass and the
-development artifact is installed. Native parent-note + Group by acceptance is pending.
+**Status:** Complete 2026-09-19. Automated mapping/options/fast-path checks pass; native desktop
+acceptance confirmed Parent hierarchy, Bases Group by, roll-up/collapse, progress, and Color by.
+Visual follow-ups are recorded in `native-acceptance.md` for the relevant UI/hardening tasks.
 
 **Description:** Define all spec §3.6 options (row height CSS-only) and map Bases entries to
 `Task[]` using GBETA-005–007, the existing `ColorResolver`, and formula-property detection.
@@ -197,7 +198,7 @@ Render read-only with the unscheduled/empty state.
 
 - [x] Every spec §3.2 row has a mapping test.
 - [x] Changing a CSS-only option does not rebuild the task array (render scheduler fast path).
-- [ ] A real Base with parent notes and `Group by` renders phases with roll-up and collapse.
+- [x] A real Base with parent notes and `Group by` renders phases with roll-up and collapse.
 
 **Verification:** `pnpm run check`; manual check in a vault.
 
@@ -302,6 +303,8 @@ driven by the chart `ref`; persist scale (`onScaleChange`) and collapsed ids
 **Acceptance criteria:**
 
 - [ ] Scale and collapse state survive closing and reopening the `.base` file.
+- [ ] The visible scale indicator/picker updates after Ctrl/Cmd + wheel and picker changes update
+  the chart without reopening view settings.
 - [ ] Toolbar actions tested through the ref API.
 
 **Verification:** `pnpm run test -- gantt-beta && pnpm run typecheck`
@@ -339,6 +342,8 @@ holidays, snap, and first-day-of-week options wired to the chart.
 **Acceptance criteria:**
 
 - [ ] Navigation and hover tests match the other views' behavior.
+- [ ] Hover presents one unambiguous tooltip/preview layer; the library tooltip and Obsidian
+  preview do not overlap.
 - [ ] Holidays and weekdays shade and snap as configured.
 
 **Verification:** `pnpm run test -- gantt-beta && pnpm run typecheck`
@@ -362,6 +367,8 @@ properties, and a missing template. Record any Frappe-visible side effect of sha
 **Acceptance criteria:**
 
 - [ ] Spec §5 table matches observed behavior.
+- [ ] Progress fill remains distinguishable for configured light and dark bar colors in both
+  Obsidian themes.
 - [ ] No UI freeze on a single gesture in the large-Base check (measured, recorded).
 
 **Verification:** `pnpm run check && pnpm run build && pnpm run verify:artifacts`
