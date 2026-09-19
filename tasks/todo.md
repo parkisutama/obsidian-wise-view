@@ -674,17 +674,17 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T034B: Refine Timeline scheduled and unscheduled presentation
+### T034B: Refine Timeline scheduled and unscheduled presentation — done (automated portion)
 
 **Description:** Make configuration errors, genuinely unscheduled notes, and scheduled bars visually distinct while keeping Timeline schema-agnostic and read-only.
 
 **Acceptance criteria:**
 
-- [ ] An unconfigured start property shows configuration guidance instead of converting every note into an Unscheduled row.
-- [ ] With a configured start property, only missing/invalid dates enter one clear Unscheduled section; note titles are not replaced by repeated generic “Unscheduled” pills.
-- [ ] Scheduled bars, row emphasis, truncation, and labels align with the temporal grid while preserving shared colors/navigation and zero mutation paths.
+- [x] An unconfigured start property shows configuration guidance instead of converting every note into an Unscheduled row.
+- [x] With a configured start property, only missing/invalid dates enter one clear Unscheduled section; note titles are not replaced by repeated generic “Unscheduled” pills.
+- [x] Scheduled bars, row emphasis, truncation, and labels align with the temporal grid while preserving shared colors/navigation and zero mutation paths.
 
-**Verification:** `pnpm run test -- timeline-model timeline-view && pnpm run check`; native fixtures with scheduled, missing, invalid, ongoing, and reversed ranges.
+**Verification:** `pnpm run check` passed (29 files, 251 tests), including the focused Timeline model/renderer coverage, lint, Obsidian lint, and typecheck. Native fixtures with scheduled, missing, invalid, ongoing, and reversed ranges remain under T034C.
 
 **Dependencies:** T034A.
 

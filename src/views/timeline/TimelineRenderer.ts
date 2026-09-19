@@ -50,6 +50,7 @@ export class TimelineRenderer {
 	private readonly toolbarEl: HTMLElement;
 	private readonly sidebarPanel: HTMLElement;
 	private readonly expandControls: HTMLElement;
+	private readonly emptyEl: HTMLElement;
 	private readonly sidebarViewport: HTMLElement;
 	private readonly timelineViewport: HTMLElement;
 	private readonly headerEl: HTMLElement;
@@ -97,6 +98,7 @@ export class TimelineRenderer {
 		this.sidebarViewport.addEventListener('scroll', this.syncFromSidebar, { passive: true });
 		this.timelineViewport.addEventListener('scroll', this.syncFromTimeline, { passive: true });
 		this.expandControls = containerEl.createDiv({ cls: 'wise-view-timeline__expand-controls' });
+		this.emptyEl = containerEl.createDiv({ cls: 'wise-view-timeline__empty' });
 	}
 
 	render(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom): TimelineLayout {
@@ -113,6 +115,7 @@ export class TimelineRenderer {
 		this.timelineRows.updateItems(rows);
 		this.renderGrid(layout, this.activeZoom);
 		this.renderToday(layout);
+		this.renderEmptyState(model, rows.length);
 		return layout;
 	}
 
@@ -287,6 +290,21 @@ export class TimelineRenderer {
 		}
 	}
 
+	private renderEmptyState(model: TimelineModel, rowCount: number): void {
+		this.emptyEl.replaceChildren();
+		if (!model.startConfigured) {
+			this.emptyEl.setText('Configure a start date property in the view options to display the timeline.');
+			this.emptyEl.hidden = false;
+			return;
+		}
+		if (rowCount === 0) {
+			this.emptyEl.setText('No notes to display.');
+			this.emptyEl.hidden = false;
+			return;
+		}
+		this.emptyEl.hidden = true;
+	}
+
 	private renderSidebarRow(row: TimelineVirtualRow): VirtualRowHandle {
 		const element = this.containerEl.ownerDocument.createElement('div');
 		const handle = { element, dispose() {} };
@@ -307,6 +325,7 @@ export class TimelineRenderer {
 			const button = handle.element.createEl('button', { text: row.item.title });
 			button.type = 'button';
 			button.dataset.notePath = row.item.path;
+			if (row.item.unscheduledReason) button.title = `Unscheduled: ${row.item.unscheduledReason}`;
 		}
 	}
 
@@ -327,9 +346,7 @@ export class TimelineRenderer {
 		}
 		const bar = this.bars.get(row.item.path);
 		if (!bar) {
-			const unscheduled = handle.element.createEl('button', { cls: 'wise-view-timeline__unscheduled', text: 'Unscheduled' });
-			unscheduled.type = 'button';
-			unscheduled.dataset.notePath = row.item.path;
+			handle.element.classList.add('wise-view-timeline__row--unscheduled');
 			return;
 		}
 		const barEl = handle.element.createEl('button', { cls: 'wise-view-timeline__bar', text: row.item.title });

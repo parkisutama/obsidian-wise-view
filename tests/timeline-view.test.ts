@@ -75,6 +75,28 @@ describe('Timeline renderer', () => {
 		expect(bar.style.getPropertyValue('--wise-view-color-bg')).toMatch(/^#[0-9a-f]{6}$/i);
 	});
 
+	it('shows configuration guidance instead of converting every note to Unscheduled', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		new TimelineRenderer(host).render(
+			buildTimelineModel([timelineSnapshot('A.md', {})], { ...options, startProperty: null }, today),
+			today,
+			'month',
+		);
+		expect(host.querySelector('.wise-view-timeline__empty')?.textContent).toContain('Configure a start date property');
+		expect(host.querySelector('[data-note-path="A.md"]')).toBeNull();
+	});
+
+	it('keeps unscheduled note titles in the sidebar without generic chart pills', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 1, 2)!;
+		new TimelineRenderer(host).render(buildTimelineModel([
+			timelineSnapshot('Missing.md', {}),
+		], options, today), today, 'month');
+		expect(host.querySelector('[data-note-path="Missing.md"]')?.textContent).toBe('Missing');
+		expect(host.querySelector('.wise-view-timeline__unscheduled')).toBeNull();
+	});
+
 	it('uses the same virtual row identity and order for sidebar and timeline', () => {
 		const host = document.createElement('div');
 		const today = dateOnlyFromParts(2026, 1, 2)!;

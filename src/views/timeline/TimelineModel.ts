@@ -24,6 +24,7 @@ export interface TimelineGroup {
 }
 
 export interface TimelineModel {
+	startConfigured: boolean;
 	groups: TimelineGroup[];
 	unscheduled: TimelineItem[];
 	itemsByPath: ReadonlyMap<string, TimelineItem>;
@@ -113,6 +114,9 @@ export function buildTimelineModel(
 	options: TimelineOptions,
 	today?: DateOnlyValue,
 ): TimelineModel {
+	if (!options.startProperty) {
+		return { startConfigured: false, groups: [], unscheduled: [], itemsByPath: new Map() };
+	}
 	const groups = new Map<string, TimelineItem[]>();
 	const unscheduled: TimelineItem[] = [];
 	const itemsByPath = new Map<string, TimelineItem>();
@@ -135,6 +139,7 @@ export function buildTimelineModel(
 		groups.set(item.group, group);
 	}
 	return {
+		startConfigured: true,
 		groups: [...groups].map(([key, items]) => ({ key, items })),
 		unscheduled,
 		itemsByPath,

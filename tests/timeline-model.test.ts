@@ -53,6 +53,13 @@ describe('Timeline model', () => {
 		]);
 	});
 
+	it('treats an unconfigured start property as configuration state, not unscheduled data', () => {
+		const model = buildTimelineModel([timelineSnapshot('A.md', {})], { ...options, startProperty: null });
+		expect(model.startConfigured).toBe(false);
+		expect(model.unscheduled).toEqual([]);
+		expect(flattenTimelineRows(model)).toEqual([]);
+	});
+
 	it('uses basename and Ungrouped only as presentation fallbacks', () => {
 		const model = buildTimelineModel([
 			timelineSnapshot('Folder/Fallback.md', { 'note.begins': date('2026-01-01') }),
