@@ -9,6 +9,7 @@ const options: TimelineOptions = {
 	titleProperty: 'note.caption',
 	colorProperty: 'note.category',
 	groupProperty: 'note.owner',
+	wrapTitles: false,
 	zoom: 'month',
 };
 
@@ -45,7 +46,8 @@ describe('Timeline model', () => {
 			timelineSnapshot('BadEnd.md', { 'note.begins': date('2026-01-01'), 'note.finishes': text('later') }),
 		];
 		const model = buildTimelineModel(entries, options);
-		expect(model.groups).toEqual([]);
+		expect(model.groups).toHaveLength(1);
+		expect(model.groups[0]?.items.map(item => item.path)).toEqual(['Missing.md', 'BadStart.md', 'BadEnd.md']);
 		expect(model.unscheduled.map(item => [item.path, item.unscheduledReason])).toEqual([
 			['Missing.md', 'start-missing'],
 			['BadStart.md', 'start-invalid'],
@@ -60,11 +62,11 @@ describe('Timeline model', () => {
 		expect(flattenTimelineRows(model)).toEqual([]);
 	});
 
-	it('uses basename and Ungrouped only as presentation fallbacks', () => {
+	it('uses basename and an unlabeled group when no group property value exists', () => {
 		const model = buildTimelineModel([
 			timelineSnapshot('Folder/Fallback.md', { 'note.begins': date('2026-01-01') }),
 		], options);
-		expect(model.groups[0]).toMatchObject({ key: 'Ungrouped', items: [{ title: 'Fallback' }] });
+		expect(model.groups[0]).toMatchObject({ label: '—', items: [{ title: 'Fallback' }] });
 	});
 
 	it('requests only configured properties and contains no workflow ranking', () => {
@@ -76,7 +78,7 @@ describe('Timeline model', () => {
 		expect(model).not.toHaveProperty('priorityRanking');
 	});
 
-	it('flattens groups and unscheduled items into one stable virtual-row order', () => {
+	it('keeps scheduled and unscheduled items together in their configured group', () => {
 		const model = buildTimelineModel([
 			timelineSnapshot('A.md', { 'note.begins': date('2026-01-01'), 'note.owner': text('Team') }),
 			timelineSnapshot('B.md', { 'note.owner': text('Team') }),
@@ -84,11 +86,20 @@ describe('Timeline model', () => {
 		expect(flattenTimelineRows(model).map(row => [row.kind, row.path])).toEqual([
 			['group', 'wise-view-timeline-group:Team'],
 			['item', 'A.md'],
-			['group', 'wise-view-timeline-group:Unscheduled'],
 			['item', 'B.md'],
 		]);
-		expect(flattenTimelineRows(model, new Set(['Team', 'Unscheduled'])).map(row => row.kind)).toEqual([
-			'group', 'group',
+		expect(flattenTimelineRows(model, new Set(['Team'])).map(row => row.kind)).toEqual(['group']);
+	});
+
+	it('does not render a synthetic group header when grouping is not configured', () => {
+		const ungrouped = { ...options, groupProperty: null };
+		const model = buildTimelineModel([
+			timelineSnapshot('A.md', { 'note.begins': date('2026-01-01') }),
+			timelineSnapshot('B.md', {}),
+		], ungrouped);
+		expect(flattenTimelineRows(model).map(row => [row.kind, row.path])).toEqual([
+			['item', 'A.md'],
+			['item', 'B.md'],
 		]);
 	});
 });

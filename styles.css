@@ -2346,11 +2346,15 @@ body.gantt-wbs-resizing {
 .wise-view-timeline__expand-controls {
 	display: none;
 	position: absolute;
-	z-index: var(--layer-popover);
+	z-index: 20;
 	top: var(--size-4-2);
 	left: var(--size-4-2);
 	align-items: center;
 	gap: var(--size-4-1);
+	padding: var(--size-4-1);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	box-shadow: var(--shadow-s);
 }
 
 .wise-view-timeline--sidebar-collapsed .wise-view-timeline__main {
@@ -2486,6 +2490,14 @@ body.gantt-wbs-resizing {
 	white-space: nowrap;
 }
 
+.wise-view-timeline--wrap-titles .wise-view-timeline__sidebar-row--item button {
+	display: -webkit-box;
+	white-space: normal;
+	line-height: 1rem;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
 .wise-view-timeline__sidebar-row--group,
 .wise-view-timeline__row--group {
 	background: var(--background-secondary-alt);
@@ -2500,23 +2512,69 @@ body.gantt-wbs-resizing {
 
 .wise-view-timeline__bar {
 	position: absolute;
+	top: 3px;
 	left: var(--wise-view-timeline-left);
 	width: var(--wise-view-timeline-bar-width);
+	height: 30px;
 	max-width: none;
-	padding: var(--size-4-1) var(--size-4-2);
+	box-sizing: border-box;
+	padding: 0 var(--size-4-2);
 	border: 1px solid var(--wise-view-color-bg, var(--interactive-accent));
 	border-radius: var(--radius-s);
 	color: var(--wise-view-color-fg, var(--text-on-accent));
 	background: var(--wise-view-color-bg, var(--interactive-accent));
-	overflow: hidden;
-	text-overflow: ellipsis;
+	overflow: visible;
+	text-align: left;
 	white-space: nowrap;
+	cursor: grab;
 	transition: filter 120ms ease;
 }
 
 .wise-view-timeline__bar:hover {
 	filter: brightness(1.08);
 }
+
+.wise-view-timeline__bar--dragging {
+	cursor: grabbing;
+}
+
+.wise-view-timeline__bar-label {
+	display: block;
+	min-width: max-content;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.wise-view-timeline__handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 7px;
+	cursor: col-resize;
+}
+
+.wise-view-timeline__handle--left { left: 0; }
+.wise-view-timeline__handle--right { right: 0; }
+
+.wise-view-timeline__date-label {
+	position: absolute;
+	z-index: 3;
+	top: 50%;
+	left: var(--wise-view-timeline-left);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+}
+
+.wise-view-timeline__row:hover > .wise-view-timeline__date-label,
+.wise-view-timeline__date-label--active {
+	opacity: 1;
+}
+
+.wise-view-timeline__date-label--start { transform: translate(-100%, -50%); }
+.wise-view-timeline__date-label--end { transform: translateY(-50%); }
 
 .wise-view-timeline__ghost {
 	position: absolute;
@@ -2595,6 +2653,10 @@ body.gantt-wbs-resizing {
 @media (prefers-reduced-motion: reduce) {
 	.wise-view-timeline__bar,
 	.wise-view-timeline__sidebar-panel { transition: none; }
+}
+
+@media (pointer: coarse) {
+	.wise-view-timeline__handle { width: 14px; }
 }
 
 /* === BUNDLED CSS IMPORTS === */

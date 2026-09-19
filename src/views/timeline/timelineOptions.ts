@@ -11,6 +11,7 @@ export interface TimelineOptions {
 	titleProperty: BasesPropertyId | null;
 	colorProperty: BasesPropertyId | null;
 	groupProperty: BasesPropertyId | null;
+	wrapTitles: boolean;
 	zoom: TimelineZoom;
 }
 
@@ -24,6 +25,7 @@ export function readTimelineOptions(config: ViewConfigReader): TimelineOptions {
 		titleProperty: config.getPropertyId('titleBy'),
 		colorProperty: config.getPropertyId('colorBy'),
 		groupProperty: config.getPropertyId('groupBy'),
+		wrapTitles: config.getBoolean('wrapTitles', false),
 		zoom: config.getEnum('zoom', TIMELINE_ZOOMS, 'month'),
 	};
 }

@@ -29,7 +29,21 @@ function touchDistance(event: TouchEvent): number {
 
 export interface TimelineRendererActions {
 	onQuickSchedule?(path: string, startDay: number, endDay: number): void;
+	onRangeChange?(path: string, startDay: number, endDay: number): Promise<boolean> | boolean;
 	onZoomChange?(zoom: TimelineZoom): void;
+}
+
+interface TimelineDragState {
+	path: string;
+	barEl: HTMLElement;
+	mode: 'move' | 'resize-left' | 'resize-right';
+	pointerId: number;
+	x0: number;
+	start0: number;
+	end0: number;
+	start: number;
+	end: number;
+	moved: boolean;
 }
 
 export interface TimelineBarLayout {
@@ -47,11 +61,17 @@ export interface TimelineLayout {
 }
 
 /** All horizontal geometry is derived exclusively through Temporal Core. */
-export function createTimelineLayout(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom, viewportWidth = 500): TimelineLayout {
+export function createTimelineLayout(
+	model: TimelineModel,
+	today: DateOnlyValue,
+	zoom: TimelineZoom,
+	viewportWidth = 500,
+	extraPaddingDays = 0,
+): TimelineLayout {
 	const scheduled = model.groups.flatMap(group => group.items).filter(item => item.range != null);
 	const bounds = scheduled.map(item => rangeToDayBounds(item.range!));
 	const pixelsPerDay = TIMELINE_ZOOM_SPECS[zoom].pixelsPerDay;
-	const paddingDays = Math.max(14, Math.ceil(Math.max(1, viewportWidth) / pixelsPerDay));
+	const paddingDays = Math.max(14, Math.ceil(Math.max(1, viewportWidth) / pixelsPerDay)) + extraPaddingDays;
 	const rawDomain = calculateTimeDomain(bounds, { today, paddingDays, minimumSpanDays: paddingDays * 2, includeToday: true });
 	const weekday = new Date(rawDomain.startDay * 86_400_000).getUTCDay();
 	const domain = {
@@ -62,7 +82,7 @@ export function createTimelineLayout(model: TimelineModel, today: DateOnlyValue,
 	return {
 		domain,
 		width: dateToPixel(domain.endDay, domain, zoom),
-		todayLeft: dateToPixel(today.dayIndex, domain, zoom),
+		todayLeft: dateToPixel(today.dayIndex + 0.5, domain, zoom),
 		todayEdge: todayPosition(domain, today),
 		bars: scheduled.map(item => {
 			const range = rangeToDayBounds(item.range!);
@@ -100,10 +120,17 @@ export class TimelineRenderer {
 	private quickScheduleGhost: HTMLElement | null = null;
 	private quickScheduleStart = 0;
 	private quickScheduleEnd = 0;
+	private drag: TimelineDragState | null = null;
+	private suppressBarClick = false;
+	private extraPaddingDays = 0;
+	private layoutViewportWidth = 0;
+	private wrapTitles = false;
+	private extendingDomain = false;
 	private readonly syncFromSidebar = (): void => this.syncScroll(this.sidebarViewport, this.timelineViewport);
 	private readonly syncFromTimeline = (): void => {
 		this.syncScroll(this.timelineViewport, this.sidebarViewport);
 		this.syncHorizontalHeader();
+		this.extendDomainNearEdge();
 	};
 	private readonly handleWheel = (event: WheelEvent): void => {
 		if (!event.ctrlKey && !event.metaKey) return;
@@ -115,8 +142,13 @@ export class TimelineRenderer {
 		this.pinchAccum = 0;
 		this.stepZoom(direction, event.clientX);
 	};
-	private readonly handlePointerMove = (event: PointerEvent): void => this.previewQuickSchedule(event);
+	private readonly handlePointerMove = (event: PointerEvent): void => {
+		if (this.drag) this.updateDrag(event);
+		else this.previewQuickSchedule(event);
+	};
 	private readonly handlePointerLeave = (): void => this.clearQuickSchedule();
+	private readonly handlePointerDown = (event: PointerEvent): void => this.startDrag(event);
+	private readonly handlePointerUp = (event: PointerEvent): void => { void this.finishDrag(event); };
 	private readonly handleTouchStart = (event: TouchEvent): void => {
 		this.pinchDistance = event.touches.length === 2 ? touchDistance(event) : null;
 	};
@@ -133,6 +165,12 @@ export class TimelineRenderer {
 	};
 	private readonly handleTouchEnd = (): void => { this.pinchDistance = null; };
 	private readonly handleQuickScheduleClick = (event: MouseEvent): void => {
+		if (this.suppressBarClick && event.target instanceof Element && event.target.closest('.wise-view-timeline__bar')) {
+			event.preventDefault();
+			event.stopPropagation();
+			this.suppressBarClick = false;
+			return;
+		}
 		const ghost = event.target instanceof Element ? event.target.closest<HTMLElement>('.wise-view-timeline__ghost') : null;
 		const path = ghost?.dataset.notePath;
 		if (!path || !this.quickScheduleGhost) return;
@@ -168,6 +206,9 @@ export class TimelineRenderer {
 		this.timelineViewport.addEventListener('scroll', this.syncFromTimeline, { passive: true });
 		this.timelineViewport.addEventListener('wheel', this.handleWheel, { passive: false });
 		this.timelineViewport.addEventListener('pointermove', this.handlePointerMove, { passive: true });
+		this.timelineViewport.addEventListener('pointerdown', this.handlePointerDown);
+		this.timelineViewport.addEventListener('pointerup', this.handlePointerUp);
+		this.timelineViewport.addEventListener('pointercancel', this.handlePointerUp);
 		this.timelineViewport.addEventListener('pointerleave', this.handlePointerLeave, { passive: true });
 		this.timelineViewport.addEventListener('click', this.handleQuickScheduleClick);
 		this.timelineViewport.addEventListener('touchstart', this.handleTouchStart, { passive: true });
@@ -177,11 +218,14 @@ export class TimelineRenderer {
 		this.emptyEl = containerEl.createDiv({ cls: 'wise-view-timeline__empty' });
 	}
 
-	render(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom): TimelineLayout {
+	render(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom, wrapTitles = this.wrapTitles): TimelineLayout {
 		this.currentModel = model;
 		this.currentToday = today;
+		this.wrapTitles = wrapTitles;
+		this.containerEl.classList.toggle('wise-view-timeline--wrap-titles', wrapTitles);
 		this.activeZoom ??= zoom;
-		const layout = createTimelineLayout(model, today, this.activeZoom, this.timelineViewport.clientWidth || 500);
+		this.layoutViewportWidth = this.timelineViewport.clientWidth || 500;
+		const layout = createTimelineLayout(model, today, this.activeZoom, this.layoutViewportWidth, this.extraPaddingDays);
 		this.currentLayout = layout;
 		this.bars = new Map(layout.bars.map(bar => [bar.item.path, bar]));
 		this.renderToolbar();
@@ -213,20 +257,24 @@ export class TimelineRenderer {
 		this.sidebarCollapsed = !this.sidebarCollapsed;
 		this.containerEl.classList.toggle('wise-view-timeline--sidebar-collapsed', this.sidebarCollapsed);
 		this.renderToolbar();
+		this.refreshViewport(true);
 	}
 
 	scrollToToday(): void {
 		if (!this.currentLayout) return;
 		this.timelineViewport.scrollLeft = Math.max(0, this.currentLayout.todayLeft - this.timelineViewport.clientWidth / 2);
+		this.syncHorizontalHeader();
 	}
 
 	setNarrow(narrow: boolean): void {
 		this.containerEl.classList.toggle('wise-view-timeline--narrow', narrow);
 	}
 
-	refreshViewport(): void {
+	refreshViewport(reflow = false): void {
 		this.sidebarRows.refresh();
 		this.timelineRows.refresh();
+		const width = this.timelineViewport.clientWidth;
+		if (reflow || (width > 0 && Math.abs(width - this.layoutViewportWidth) > 1)) this.reflowAtCenter();
 	}
 
 	dispose(): void {
@@ -234,6 +282,9 @@ export class TimelineRenderer {
 		this.timelineViewport.removeEventListener('scroll', this.syncFromTimeline);
 		this.timelineViewport.removeEventListener('wheel', this.handleWheel);
 		this.timelineViewport.removeEventListener('pointermove', this.handlePointerMove);
+		this.timelineViewport.removeEventListener('pointerdown', this.handlePointerDown);
+		this.timelineViewport.removeEventListener('pointerup', this.handlePointerUp);
+		this.timelineViewport.removeEventListener('pointercancel', this.handlePointerUp);
 		this.timelineViewport.removeEventListener('pointerleave', this.handlePointerLeave);
 		this.timelineViewport.removeEventListener('click', this.handleQuickScheduleClick);
 		this.timelineViewport.removeEventListener('touchstart', this.handleTouchStart);
@@ -242,6 +293,114 @@ export class TimelineRenderer {
 		this.clearQuickSchedule();
 		this.sidebarRows.destroy();
 		this.timelineRows.destroy();
+	}
+
+	private reflowAtCenter(): void {
+		if (!this.currentLayout || !this.currentModel || !this.currentToday || !this.activeZoom) return;
+		const pixelsPerDay = TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay;
+		const centerOffset = this.timelineViewport.clientWidth / 2;
+		const centerDay = this.currentLayout.domain.startDay
+			+ (this.timelineViewport.scrollLeft + centerOffset) / pixelsPerDay;
+		this.render(this.currentModel, this.currentToday, this.activeZoom, this.wrapTitles);
+		this.timelineViewport.scrollLeft = Math.max(0,
+			(centerDay - this.currentLayout.domain.startDay) * pixelsPerDay - centerOffset);
+		this.syncHorizontalHeader();
+	}
+
+	private extendDomainNearEdge(): void {
+		if (this.extendingDomain || !this.currentLayout || !this.activeZoom || !this.currentModel || !this.currentToday) return;
+		const viewportWidth = this.timelineViewport.clientWidth;
+		if (viewportWidth <= 0) return;
+		const remainingRight = this.currentLayout.width - this.timelineViewport.scrollLeft - viewportWidth;
+		if (this.timelineViewport.scrollLeft > viewportWidth / 2 && remainingRight > viewportWidth / 2) return;
+		this.extendingDomain = true;
+		const pixelsPerDay = TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay;
+		const centerDay = this.currentLayout.domain.startDay
+			+ (this.timelineViewport.scrollLeft + viewportWidth / 2) / pixelsPerDay;
+		this.extraPaddingDays += Math.ceil((viewportWidth * 2) / pixelsPerDay);
+		this.render(this.currentModel, this.currentToday, this.activeZoom, this.wrapTitles);
+		this.timelineViewport.scrollLeft = Math.max(0,
+			(centerDay - this.currentLayout.domain.startDay) * pixelsPerDay - viewportWidth / 2);
+		this.syncHorizontalHeader();
+		this.extendingDomain = false;
+	}
+
+	private startDrag(event: PointerEvent): void {
+		if (event.button !== 0 || !this.currentLayout) return;
+		const target = event.target instanceof Element ? event.target : null;
+		const barEl = target?.closest<HTMLElement>('.wise-view-timeline__bar');
+		const path = barEl?.dataset.notePath;
+		const layout = path ? this.bars.get(path) : null;
+		if (!barEl || !path || !layout?.item.range) return;
+		const bounds = rangeToDayBounds(layout.item.range);
+		let mode: TimelineDragState['mode'] = 'move';
+		if (target?.closest('.wise-view-timeline__handle--left')) mode = 'resize-left';
+		else if (target?.closest('.wise-view-timeline__handle--right')) mode = 'resize-right';
+		this.drag = {
+			path,
+			barEl,
+			mode,
+			pointerId: event.pointerId,
+			x0: event.clientX,
+			start0: bounds.startDay,
+			end0: bounds.endDay - 1,
+			start: bounds.startDay,
+			end: bounds.endDay - 1,
+			moved: false,
+		};
+		try { barEl.setPointerCapture(event.pointerId); } catch { /* Synthetic pointer or detached DOM. */ }
+		event.preventDefault();
+	}
+
+	private updateDrag(event: PointerEvent): void {
+		const drag = this.drag;
+		if (!drag || event.pointerId !== drag.pointerId || !this.currentLayout || !this.activeZoom) return;
+		const deltaDays = Math.round((event.clientX - drag.x0) / TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay);
+		if (deltaDays !== 0) drag.moved = true;
+		if (drag.mode === 'move') {
+			drag.start = drag.start0 + deltaDays;
+			drag.end = drag.end0 + deltaDays;
+		} else if (drag.mode === 'resize-left') {
+			drag.start = Math.min(drag.start0 + deltaDays, drag.end0);
+			drag.end = drag.end0;
+		} else {
+			drag.start = drag.start0;
+			drag.end = Math.max(drag.end0 + deltaDays, drag.start0);
+		}
+		const left = dateToPixel(drag.start, this.currentLayout.domain, this.activeZoom);
+		const width = Math.max(8, (drag.end - drag.start + 1) * TIMELINE_ZOOM_SPECS[this.activeZoom].pixelsPerDay - 2);
+		drag.barEl.style.setProperty('--wise-view-timeline-left', `${left}px`);
+		drag.barEl.style.setProperty('--wise-view-timeline-bar-width', `${width}px`);
+		drag.barEl.classList.toggle('wise-view-timeline__bar--dragging', drag.moved);
+		const startLabel = drag.barEl.parentElement?.querySelector<HTMLElement>('.wise-view-timeline__date-label--start');
+		const endLabel = drag.barEl.parentElement?.querySelector<HTMLElement>('.wise-view-timeline__date-label--end');
+		if (startLabel) {
+			startLabel.setText(this.formatDay(drag.start));
+			startLabel.style.setProperty('--wise-view-timeline-left', `${left}px`);
+			startLabel.classList.toggle('wise-view-timeline__date-label--active', drag.moved);
+		}
+		if (endLabel) {
+			endLabel.setText(this.formatDay(drag.end));
+			endLabel.style.setProperty('--wise-view-timeline-left', `${left + width}px`);
+			endLabel.classList.toggle('wise-view-timeline__date-label--active', drag.moved);
+		}
+	}
+
+	private async finishDrag(event: PointerEvent): Promise<void> {
+		const drag = this.drag;
+		if (!drag || event.pointerId !== drag.pointerId) return;
+		this.drag = null;
+		try { drag.barEl.releasePointerCapture(event.pointerId); } catch { /* No active capture. */ }
+		if (!drag.moved) return;
+		this.suppressBarClick = true;
+		const success = await this.actions.onRangeChange?.(drag.path, drag.start, drag.end);
+		if (success === false && this.currentModel && this.currentToday && this.activeZoom) {
+			this.render(this.currentModel, this.currentToday, this.activeZoom, this.wrapTitles);
+		}
+	}
+
+	private formatDay(day: number): string {
+		return new Date(day * 86_400_000).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 	}
 
 	private stepZoom(direction: 1 | -1, clientX: number): void {
@@ -461,7 +620,9 @@ export class TimelineRenderer {
 			const button = handle.element.createEl('button', { text: row.item.title });
 			button.type = 'button';
 			button.dataset.notePath = row.item.path;
-			if (row.item.unscheduledReason) button.title = `Unscheduled: ${row.item.unscheduledReason}`;
+			button.title = row.item.unscheduledReason
+				? `${row.item.title} — Unscheduled: ${row.item.unscheduledReason}`
+				: row.item.title;
 		}
 	}
 
@@ -486,9 +647,25 @@ export class TimelineRenderer {
 			handle.element.dataset.notePath = row.item.path;
 			return;
 		}
-		const barEl = handle.element.createEl('button', { cls: 'wise-view-timeline__bar', text: row.item.title });
+		const startDay = rangeToDayBounds(row.item.range!).startDay;
+		const endDay = rangeToDayBounds(row.item.range!).endDay - 1;
+		const startLabel = handle.element.createSpan({
+			cls: 'wise-view-timeline__date-label wise-view-timeline__date-label--start',
+			text: this.formatDay(startDay),
+		});
+		startLabel.style.setProperty('--wise-view-timeline-left', `${bar.left}px`);
+		const endLabel = handle.element.createSpan({
+			cls: 'wise-view-timeline__date-label wise-view-timeline__date-label--end',
+			text: this.formatDay(endDay),
+		});
+		endLabel.style.setProperty('--wise-view-timeline-left', `${bar.left + bar.width}px`);
+		const barEl = handle.element.createEl('button', { cls: 'wise-view-timeline__bar' });
 		barEl.type = 'button';
 		barEl.dataset.notePath = row.item.path;
+		barEl.title = `${row.item.title} — ${dateOnlyFromDayIndex(startDay).iso} – ${dateOnlyFromDayIndex(endDay).iso}`;
+		barEl.createSpan({ cls: 'wise-view-timeline__bar-label', text: row.item.title });
+		barEl.createSpan({ cls: 'wise-view-timeline__handle wise-view-timeline__handle--left' });
+		barEl.createSpan({ cls: 'wise-view-timeline__handle wise-view-timeline__handle--right' });
 		barEl.dataset.colorValue = row.item.colorValue ?? '';
 		if (row.item.colorValue) {
 			for (const [name, value] of Object.entries(toCssVariables(resolveColor({ categoryValue: row.item.colorValue })))) {

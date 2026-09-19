@@ -38,7 +38,12 @@ export function getTimelineViewOptions(): BasesAllOptions[] {
 				key: 'zoom',
 				displayName: 'Zoom',
 				default: 'month',
-				options: { day: 'Day', week: 'Week', month: 'Month', quarter: 'Quarter', year: 'Year' },
+				options: { day: 'Day', week: 'Week', biweek: 'Two weeks', month: 'Month', quarter: 'Quarter', year: 'Year', fiveyear: 'Five years' },
+			}, {
+				type: 'toggle',
+				key: 'wrapTitles',
+				displayName: 'Wrap sidebar titles',
+				default: false,
 			}],
 		},
 	];

@@ -139,6 +139,7 @@ export default class WiseViewPlugin extends Plugin {
         factory: timeline.factory,
         options: timeline.options,
         hover: { display: 'Timeline', defaultMod: true },
+		capabilities: { legacyMutation: true },
       },
     ];
   }

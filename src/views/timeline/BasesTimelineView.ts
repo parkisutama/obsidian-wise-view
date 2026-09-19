@@ -33,6 +33,7 @@ export class BasesTimelineView extends BasesView {
 		this.mutations = new LegacyMutationGateway(this.app);
 		this.renderer = this.runtime.own(new TimelineRenderer(containerEl, {
 			onQuickSchedule: (path, startDay, endDay) => { void this.quickSchedule(path, startDay, endDay); },
+			onRangeChange: (path, startDay, endDay) => this.updateRange(path, startDay, endDay),
 			onZoomChange: zoom => this.config.set('zoom', zoom),
 		}));
 	}
@@ -63,7 +64,7 @@ export class BasesTimelineView extends BasesView {
 		const properties = timelineRequestedProperties(options);
 		const snapshots = this.data.data.map(entry => createEntrySnapshot(entry, properties));
 		const today = localToday();
-		this.renderer.render(buildTimelineModel(snapshots, options, today), today, options.zoom);
+		this.renderer.render(buildTimelineModel(snapshots, options, today), today, options.zoom, options.wrapTitles);
 	}
 
 	onunload(): void {
@@ -138,5 +139,19 @@ export class BasesTimelineView extends BasesView {
 			options.endProperty ? dateOnlyFromDayIndex(endDay).iso : null,
 		);
 		if (!result.ok) new Notice(`Unable to schedule note: ${result.message}`);
+	}
+
+	private async updateRange(path: string, startDay: number, endDay: number): Promise<boolean> {
+		const options = readTimelineOptions(new ViewConfigReader(this.config));
+		if (!options.startProperty) return false;
+		const result = await this.mutations.updateRange(
+			path,
+			options.startProperty,
+			dateOnlyFromDayIndex(startDay).iso,
+			options.endProperty,
+			options.endProperty ? dateOnlyFromDayIndex(endDay).iso : null,
+		);
+		if (!result.ok) new Notice(`Unable to update timeline dates: ${result.message}`);
+		return result.ok;
 	}
 }

@@ -12,7 +12,7 @@ export type TimelineUnscheduledReason = 'start-not-configured' | 'start-missing'
 export interface TimelineItem {
 	path: string;
 	title: string;
-	group: string;
+	group: string | null;
 	colorValue: string | null;
 	range: NormalizedDateRange | null;
 	unscheduledReason: TimelineUnscheduledReason | null;
@@ -20,6 +20,7 @@ export interface TimelineItem {
 
 export interface TimelineGroup {
 	key: string;
+	label: string | null;
 	items: TimelineItem[];
 }
 
@@ -35,7 +36,7 @@ export type TimelineVirtualRow =
 	| { path: string; kind: 'item'; groupKey: string; item: TimelineItem };
 
 const GROUP_ROW_PREFIX = 'wise-view-timeline-group:';
-export const UNSCHEDULED_GROUP_KEY = 'Unscheduled';
+const UNGROUPED_KEY = '__timeline-all-items__';
 
 /** Produces the single row identity/order consumed by both sidebar and timeline surfaces. */
 export function flattenTimelineRows(
@@ -44,27 +45,17 @@ export function flattenTimelineRows(
 ): TimelineVirtualRow[] {
 	const rows: TimelineVirtualRow[] = [];
 	for (const group of model.groups) {
-		rows.push({
-			path: `${GROUP_ROW_PREFIX}${encodeURIComponent(group.key)}`,
-			kind: 'group',
-			groupKey: group.key,
-			label: group.key,
-			count: group.items.length,
-		});
+		if (group.label !== null) {
+			rows.push({
+				path: `${GROUP_ROW_PREFIX}${encodeURIComponent(group.key)}`,
+				kind: 'group',
+				groupKey: group.key,
+				label: group.label,
+				count: group.items.length,
+			});
+		}
 		if (!collapsedGroups.has(group.key)) {
 			rows.push(...group.items.map(item => ({ path: item.path, kind: 'item' as const, groupKey: group.key, item })));
-		}
-	}
-	if (model.unscheduled.length > 0) {
-		rows.push({
-			path: `${GROUP_ROW_PREFIX}${encodeURIComponent(UNSCHEDULED_GROUP_KEY)}`,
-			kind: 'group',
-			groupKey: UNSCHEDULED_GROUP_KEY,
-			label: UNSCHEDULED_GROUP_KEY,
-			count: model.unscheduled.length,
-		});
-		if (!collapsedGroups.has(UNSCHEDULED_GROUP_KEY)) {
-			rows.push(...model.unscheduled.map(item => ({ path: item.path, kind: 'item' as const, groupKey: UNSCHEDULED_GROUP_KEY, item })));
 		}
 	}
 	return rows;
@@ -117,30 +108,29 @@ export function buildTimelineModel(
 	if (!options.startProperty) {
 		return { startConfigured: false, groups: [], unscheduled: [], itemsByPath: new Map() };
 	}
-	const groups = new Map<string, TimelineItem[]>();
+	const groups = new Map<string, { label: string | null; items: TimelineItem[] }>();
 	const unscheduled: TimelineItem[] = [];
 	const itemsByPath = new Map<string, TimelineItem>();
 	for (const entry of entries) {
 		const mappedRange = mapRange(entry, options, today);
+		const groupLabel = options.groupProperty ? valueText(entry.values.get(options.groupProperty)) ?? '—' : null;
+		const groupKey = groupLabel ?? UNGROUPED_KEY;
 		const item: TimelineItem = {
 			path: entry.path,
 			title: (options.titleProperty && valueText(entry.values.get(options.titleProperty))) || entry.basename,
-			group: (options.groupProperty && valueText(entry.values.get(options.groupProperty))) || 'Ungrouped',
+			group: groupLabel,
 			colorValue: options.colorProperty ? valueText(entry.values.get(options.colorProperty)) : null,
 			...mappedRange,
 		};
 		itemsByPath.set(item.path, item);
-		if (!item.range) {
-			unscheduled.push(item);
-			continue;
-		}
-		const group = groups.get(item.group) ?? [];
-		group.push(item);
-		groups.set(item.group, group);
+		if (!item.range) unscheduled.push(item);
+		const group = groups.get(groupKey) ?? { label: groupLabel, items: [] };
+		group.items.push(item);
+		groups.set(groupKey, group);
 	}
 	return {
 		startConfigured: true,
-		groups: [...groups].map(([key, items]) => ({ key, items })),
+		groups: [...groups].map(([key, group]) => ({ key, label: group.label, items: group.items })),
 		unscheduled,
 		itemsByPath,
 	};

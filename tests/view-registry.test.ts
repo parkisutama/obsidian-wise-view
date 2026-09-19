@@ -85,6 +85,7 @@ describe("ViewRegistry", () => {
 			factory: timeline.factory,
 			options: timeline.options,
 			hover: { display: "Timeline", defaultMod: true },
+			capabilities: { legacyMutation: true },
 		});
 		registry.register({
 			id: BASES_GANTT_VIEW_ID,
@@ -114,12 +115,12 @@ describe("ViewRegistry", () => {
 		for (const descriptor of registry.list()) {
 			expect(descriptor.hover?.display).toBeTruthy();
 		}
-		expect(registry.get(BASES_TIMELINE_VIEW_ID)?.capabilities?.legacyMutation).not.toBe(true);
+		expect(registry.get(BASES_TIMELINE_VIEW_ID)?.capabilities?.legacyMutation).toBe(true);
 	});
 
 	it("exposes schema-agnostic Timeline property and zoom options", () => {
 		const serialized = JSON.stringify(getTimelineViewOptions());
-		for (const key of ["startDate", "endDate", "titleBy", "colorBy", "groupBy", "zoom"]) {
+		for (const key of ["startDate", "endDate", "titleBy", "colorBy", "groupBy", "zoom", "wrapTitles"]) {
 			expect(serialized).toContain(`\"key\":\"${key}\"`);
 		}
 		expect(serialized).not.toContain("status");
