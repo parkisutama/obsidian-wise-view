@@ -36,6 +36,29 @@ export const THIRD_PARTY_COMPONENTS = [
 		packages: ["preact"],
 	},
 	{
+		name: "Gantt Chart",
+		license: "MIT",
+		copyright: "Copyright (c) 2025 jaeungkim",
+		files: ["main.js", "styles.css"],
+		packages: ["@jaeungkim/gantt-chart"],
+	},
+	// Day.js and Zustand are inlined in @jaeungkim/gantt-chart's dist, so esbuild never sees them
+	// as separate packages; they are credited here because their code ships in main.js.
+	{
+		name: "Day.js",
+		license: "MIT",
+		copyright: "Copyright (c) 2018-present, iamkun",
+		files: ["main.js"],
+		packages: [],
+	},
+	{
+		name: "Zustand",
+		license: "MIT",
+		copyright: "Copyright (c) 2019 Paul Henschel",
+		files: ["main.js"],
+		packages: [],
+	},
+	{
 		name: "Frappe Gantt",
 		license: "MIT",
 		copyright: "Copyright (c) 2024 Frappe Technologies Pvt. Ltd.",

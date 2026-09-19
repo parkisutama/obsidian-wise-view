@@ -11,6 +11,7 @@ import {
 	findUnlistedPackages,
 } from "./scripts/license-banner.mjs";
 import { createCssMergePlugin } from "./scripts/css-merge.mjs";
+import { UI_RUNTIME_ALIASES } from "./scripts/ui-runtime-aliases.mjs";
 
 const prod = (process.argv[2] === "production");
 
@@ -84,7 +85,7 @@ const FIRST_PARTY_CSS = [
 	"src/styles/views/timeline.css",
 ].map((p) => path.resolve(p));
 
-// Merge first-party sources, imported CSS, and Frappe Gantt's stylesheet (which nothing
+// Merge first-party sources, imported CSS, and the Gantt Chart and Frappe Gantt stylesheets (which nothing
 // imports) into styles.css.
 const cssPlugin = createCssMergePlugin({
 	stylesPath: "./styles.css",
@@ -92,6 +93,10 @@ const cssPlugin = createCssMergePlugin({
 	bannerStart: BANNER_START,
 	firstPartyCss: FIRST_PARTY_CSS,
 	extraCss: [
+		{
+			path: path.resolve("node_modules/@jaeungkim/gantt-chart/dist/gantt-chart.css"),
+			note: "Unmodified; Gantt Beta themes it through --gantt-* tokens in first-party CSS",
+		},
 		{
 			path: path.resolve("node_modules/frappe-gantt/dist/frappe-gantt.css"),
 			transform: scopeFrappeGanttCss,
@@ -170,6 +175,8 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const context = await esbuild.context({
+	// React-targeting libraries (Gantt Beta) run on Preact; see scripts/ui-runtime-aliases.mjs.
+	alias: UI_RUNTIME_ALIASES,
 	banner: {
 		js: banner,
 	},

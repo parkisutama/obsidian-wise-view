@@ -1,12 +1,19 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { UI_RUNTIME_ALIASES } from "./scripts/ui-runtime-aliases.mjs";
 
 export default defineConfig({
 	resolve: {
-		alias: {
+		alias: [
 			// The obsidian package ships types only; tests run against a test double.
-			obsidian: fileURLToPath(new URL("./tests/fixtures/obsidian.ts", import.meta.url)),
-		},
+			{ find: "obsidian", replacement: fileURLToPath(new URL("./tests/fixtures/obsidian.ts", import.meta.url)) },
+			// React-targeting libraries (Gantt Beta) run on Preact, as in the production build. Exact
+			// matches only, so `react` never rewrites `react/jsx-runtime` as a path prefix.
+			...Object.entries(UI_RUNTIME_ALIASES).map(([find, replacement]) => ({
+				find: new RegExp(`^${find}$`),
+				replacement,
+			})),
+		],
 	},
 	test: {
 		include: ["tests/**/*.test.{ts,mjs}"],

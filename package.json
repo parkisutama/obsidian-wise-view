@@ -53,8 +53,10 @@
 		"vitest": "^5.0.1"
 	},
 	"dependencies": {
+		"@jaeungkim/gantt-chart": "1.5.1",
 		"frappe-gantt": "^1.2.2",
 		"fullcalendar": "^7.1.0",
+		"preact": "^10.29.8",
 		"temporal-polyfill": "^1.0.5"
 	}
 }

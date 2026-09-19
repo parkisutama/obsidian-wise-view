@@ -19,8 +19,8 @@ Phase 0 in a real vault, on desktop, in a popout window, and on mobile.
 **Acceptance criteria:**
 
 - [x] `tasks/gantt-beta/spike-report.md` marks each interaction works / broken / workaround.
-- [~] Bundle size delta (`main.js`, `styles.css`) and console warnings recorded — `styles.css` +24 KB
-  recorded; `main.js` delta and console review carried into GBETA-002 and GBETA-017.
+- [~] Bundle size delta (`main.js`, `styles.css`) and console warnings recorded — sizes recorded
+  (`main.js` about +100 KB, see GBETA-002; `styles.css` +24 KB); console review carried into GBETA-017.
 - [~] Popout-window behavior recorded — moved to GBETA-017.
 
 **Verification:** Manual, in a real vault; the report is the deliverable. Spike code is not merged.
@@ -35,6 +35,10 @@ Phase 0 in a real vault, on desktop, in a popout window, and on mobile.
 
 ### GBETA-002: Dependencies, build alias, CSS merge, notices
 
+**Status:** Complete (2026-09-19). Production `main.js` without the library imported: 542,922
+bytes (spike with the library: 644,308 bytes, so about +100 KB once GBETA-004 imports it).
+`styles.css`: 117,438 bytes including the unmodified library stylesheet.
+
 **Description:** Add `@jaeungkim/gantt-chart` (exact `1.5.1`) and `preact` as dependencies;
 configure esbuild aliases and pnpm `peerDependencyRules`; merge the library stylesheet through
 `createCssMergePlugin` without transformation; add `THIRD_PARTY_NOTICES.md` entries (library,
@@ -42,9 +46,11 @@ its bundled `zustand`, `dayjs`) and a provenance ledger entry with the pinned ve
 
 **Acceptance criteria:**
 
-- [ ] `pnpm run build && pnpm run verify:artifacts` pass.
-- [ ] A test asserts the production bundle contains no `react-dom` implementation (alias applied).
-- [ ] `FORBIDDEN_DEPENDENCIES` guard still passes unchanged.
+- [x] `pnpm run build && pnpm run verify:artifacts` pass.
+- [x] A test asserts the production bundle contains no `react-dom` implementation (alias applied) —
+  `tests/ui-runtime-bundle.test.mjs` bundles the library with the same alias module the production
+  build uses; `main.js` itself only includes the library from GBETA-004 on.
+- [x] `FORBIDDEN_DEPENDENCIES` guard still passes unchanged.
 
 **Verification:** `pnpm run check && pnpm run build && pnpm run verify:artifacts`
 
