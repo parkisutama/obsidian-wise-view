@@ -27,7 +27,7 @@ export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions 
 	return {
 		start: r.getPropertyId('ganttBetaStart'), end: r.getPropertyId('ganttBetaEnd'), label: r.getPropertyId('ganttBetaLabel'),
 		parent: r.getPropertyId('ganttBetaParent'), order: r.getPropertyId('ganttBetaOrder'), progress: r.getPropertyId('ganttBetaProgress'),
-		colorBy: r.getPropertyId('ganttBetaColorBy'), dependsOn: r.getPropertyId('ganttBetaDependsOn') ?? r.getPropertyId('ganttBetaDependencyFS'),
+		colorBy: r.getPropertyId('ganttBetaColorBy'), dependsOn: r.getPropertyId('ganttBetaDependencyFS') ?? r.getPropertyId('ganttBetaDependsOn'),
 		scale: r.getEnum('ganttBetaScale', GANTT_BETA_SCALES, 'month'), showNonWorkingDays: r.getBoolean('ganttBetaShowNonWorkingDays', true),
 		workingWeekdays: r.getString('ganttBetaWorkingWeekdays', '1,2,3,4,5'), holidays: r.getOptionalString('ganttBetaHolidays') ?? '',
 		snapToWorkingDays: r.getBoolean('ganttBetaSnapToWorkingDays', false), firstDayOfWeek: r.getNumber('ganttBetaFirstDayOfWeek', 1),
@@ -56,7 +56,7 @@ export function getGanttBetaViewOptions(_config: BasesViewConfig): BasesAllOptio
 		{ type: 'group', displayName: 'Properties', items: [
 			property('ganttBetaStart', 'Start date'), property('ganttBetaEnd', 'End date'), property('ganttBetaLabel', 'Label'),
 			property('ganttBetaParent', 'Parent (phase)'), property('ganttBetaOrder', 'Order'), property('ganttBetaProgress', 'Progress'),
-			property('ganttBetaColorBy', 'Color by'), property('ganttBetaDependsOn', 'Depends on'),
+			property('ganttBetaColorBy', 'Color by'), property('ganttBetaDependencyFS', 'Depends on'),
 		] },
 		{ type: 'group', displayName: 'Timeline', items: [
 			{ type: 'dropdown', key: 'ganttBetaScale', displayName: 'Scale', default: 'month', options: { day: 'Day', week: 'Week', month: 'Month', quarter: 'Quarter', year: 'Year' } },

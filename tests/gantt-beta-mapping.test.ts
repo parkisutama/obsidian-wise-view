@@ -32,7 +32,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 	it('defines every spec §3.6 option under Gantt-Beta-specific keys', () => {
 		const serialized = JSON.stringify(getGanttBetaViewOptions({} as never));
 		for (const key of [
-			'Start', 'End', 'Label', 'Parent', 'Order', 'Progress', 'ColorBy', 'DependsOn',
+			'Start', 'End', 'Label', 'Parent', 'Order', 'Progress', 'ColorBy', 'DependencyFS',
 			'Scale', 'ShowNonWorkingDays', 'WorkingWeekdays', 'Holidays', 'SnapToWorkingDays', 'FirstDayOfWeek', 'ZoomOnWheel', 'InfiniteScroll',
 			'ScrollToToday', 'Phases', 'ShowTaskList', 'ShowRowNumbers', 'ShowDetail', 'ShowProgress', 'ShowTooltip', 'RowHeight',
 			'ReadOnly', 'AllowMove', 'AllowResize', 'AllowProgress', 'AllowLinkCreate', 'AllowLinkDelete', 'AllowReorder', 'AllowTaskCreate',
@@ -51,7 +51,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 		])], options({
 			ganttBetaStart: 'note.start', ganttBetaEnd: 'note.end', ganttBetaLabel: 'note.label', ganttBetaProgress: 'note.progress',
 			ganttBetaColorBy: 'note.color', ganttBetaParent: 'note.parent', ganttBetaOrder: 'note.order',
-			ganttBetaDependsOn: 'note.depends', ganttBetaReadOnly: false,
+			ganttBetaDependencyFS: 'note.depends', ganttBetaReadOnly: false,
 		}), services);
 		const task = result.tasks.find(item => item.id === 'Tasks/A.md')!;
 		expect(task).toMatchObject({ id: 'Tasks/A.md', name: 'Custom A', startDate: '2026-01-31', endDate: '2026-02-03',
@@ -61,10 +61,12 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 		]);
 	});
 
-	it('reads the previous FS and move-dependencies keys as a compatibility fallback', () => {
+	it('keeps the stable FS config key while presenting the relation as Depends on', () => {
 		const value = options({ ganttBetaDependencyFS: 'note.fs', ganttBetaMoveDependencies: true });
 		expect(value.dependsOn).toBe('note.fs');
 		expect(value.dependencyShift).toBe('maintain-gap');
+		const schema = JSON.stringify(getGanttBetaViewOptions({} as never));
+		expect(schema).toContain('"key":"ganttBetaDependencyFS","displayName":"Depends on"');
 	});
 
 	it('uses basename, supplies one scale step for missing end, and lists missing-start entries', () => {
