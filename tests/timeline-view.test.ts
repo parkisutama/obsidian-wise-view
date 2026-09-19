@@ -33,6 +33,25 @@ describe('Timeline renderer', () => {
 		expect(layout.bars[0]?.left).toBeGreaterThan(0);
 	});
 
+	it('uses the same inclusive range for bar width, edge labels, and tooltip', () => {
+		const host = document.createElement('div');
+		const today = dateOnlyFromParts(2026, 9, 19)!;
+		const model = buildTimelineModel([
+			timelineSnapshot('Framework.md', {
+				'note.start': date('2026-09-20'),
+				'note.end': date('2026-09-21'),
+			}),
+		], options, today);
+		const renderer = new TimelineRenderer(host);
+		const layout = renderer.render(model, today, 'day');
+		const bar = host.querySelector<HTMLButtonElement>('.wise-view-timeline__bar[data-note-path="Framework.md"]')!;
+		expect(layout.bars[0]?.width).toBe(126);
+		expect(host.querySelector('.wise-view-timeline__date-label--start')?.textContent).toContain('20');
+		expect(host.querySelector('.wise-view-timeline__date-label--end')?.textContent).toContain('21');
+		expect(bar.title).toBe('Framework — 2026-09-20 – 2026-09-21');
+		renderer.dispose();
+	});
+
 	it('renders ticks, grid rows, today marker, and accessible bars', () => {
 		const host = document.createElement('div');
 		const today = dateOnlyFromParts(2026, 1, 2)!;

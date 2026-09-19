@@ -23,8 +23,8 @@ export function getTimelineViewOptions(): BasesAllOptions[] {
 			type: 'group',
 			displayName: 'Properties',
 			items: [
-				{ type: 'property', key: 'startDate', displayName: 'Start date', placeholder: 'Select property...' },
-				{ type: 'property', key: 'endDate', displayName: 'End date', placeholder: 'Same as start date' },
+				{ type: 'property', key: 'start', displayName: 'Start date', placeholder: 'Select property...' },
+				{ type: 'property', key: 'end', displayName: 'End date', placeholder: 'Same as start date' },
 				{ type: 'property', key: 'titleBy', displayName: 'Title', placeholder: 'File name' },
 				{ type: 'property', key: 'colorBy', displayName: 'Color by', placeholder: 'No category color' },
 				{ type: 'property', key: 'groupBy', displayName: 'Group by', placeholder: 'Ungrouped' },

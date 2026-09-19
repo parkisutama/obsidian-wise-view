@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { BasesViewConfig } from "obsidian";
 import { ViewConfigReader } from "../src/platform/bases/ViewConfigReader";
 import { areAllCssOnly, classifyOption, createViewOptionSchema } from "../src/platform/bases/viewOptionTypes";
+import { readTimelineOptions } from "../src/views/timeline/timelineOptions";
 
 function makeConfig(values: Record<string, unknown>): BasesViewConfig {
 	return {
@@ -61,6 +62,28 @@ describe("ViewConfigReader", () => {
 		const reader = new ViewConfigReader(makeConfig({}));
 		expect(reader.getString("anything", "caller-default")).toBe("caller-default");
 		expect(reader.getPropertyId("anything")).toBeNull();
+	});
+});
+
+describe("Timeline option compatibility", () => {
+	it("prefers upstream start/end keys", () => {
+		const options = readTimelineOptions(new ViewConfigReader(makeConfig({
+			start: "note.upstreamStart",
+			end: "note.upstreamEnd",
+			startDate: "note.legacyStart",
+			endDate: "note.legacyEnd",
+		})));
+		expect(options.startProperty).toBe("note.upstreamStart");
+		expect(options.endProperty).toBe("note.upstreamEnd");
+	});
+
+	it("keeps early Wise View startDate/endDate configurations readable", () => {
+		const options = readTimelineOptions(new ViewConfigReader(makeConfig({
+			startDate: "note.start",
+			endDate: "note.end",
+		})));
+		expect(options.startProperty).toBe("note.start");
+		expect(options.endProperty).toBe("note.end");
 	});
 });
 

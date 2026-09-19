@@ -35,6 +35,7 @@ export function createTimelineHarness(): TimelineHarness {
 	const hovers: Array<Record<string, unknown>> = [];
 	let frontmatterWrites = 0;
 	const frontmatterUpdates: Array<Record<string, unknown>> = [];
+	const frontmatter: Record<string, unknown> = { start: '2026-01-01', end: '2026-01-03' };
 	const file = new TFile('Notes/Alpha.md') as TFile & {
 		extension: string;
 		parent: { path: string };
@@ -54,8 +55,8 @@ export function createTimelineHarness(): TimelineHarness {
 	const entry = {
 		file,
 		getValue(id: string) {
-			if (id === 'note.start') return new DateValue('2026-01-01');
-			if (id === 'note.end') return new DateValue('2026-01-03');
+			if (id === 'note.start' && typeof frontmatter.start === 'string') return new DateValue(frontmatter.start);
+			if (id === 'note.end' && typeof frontmatter.end === 'string') return new DateValue(frontmatter.end);
 			if (id === 'note.title') return new StringValue('Alpha title');
 			return null;
 		},
@@ -68,8 +69,8 @@ export function createTimelineHarness(): TimelineHarness {
 		},
 	};
 	const config: Record<string, unknown> = {
-		startDate: 'note.start',
-		endDate: 'note.end',
+		start: 'note.start',
+		end: 'note.end',
 		titleBy: 'note.title',
 		zoom: 'month',
 	};
@@ -84,9 +85,8 @@ export function createTimelineHarness(): TimelineHarness {
 		fileManager: {
 			processFrontMatter: async (_file: TFile, update: (frontmatter: Record<string, unknown>) => void) => {
 				frontmatterWrites += 1;
-				const frontmatter: Record<string, unknown> = {};
 				update(frontmatter);
-				frontmatterUpdates.push(frontmatter);
+				frontmatterUpdates.push({ ...frontmatter });
 			},
 		},
 	};

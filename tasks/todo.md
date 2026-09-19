@@ -779,6 +779,23 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 - [ ] Desktop/mobile/popout native acceptance recorded.
 - [ ] Human accepts Timeline before Card Core expansion.
 
+### T034H: Reconcile Timeline property keys and canonical ranges — done (automated portion)
+
+**Description:** Correct the native discrepancy where a legacy/mixed Timeline configuration could omit the end property and an optimistic drag could continue displaying dates that were not present in Markdown.
+
+**Acceptance criteria:**
+
+- [x] Timeline registers the upstream-compatible `start` and `end` option keys while continuing to read early Wise View `startDate` and `endDate` configurations.
+- [x] Bar width, left label, right label, and hover tooltip share one inclusive start/end contract.
+- [x] A Bases data refresh always wins over optimistic drag geometry, so the UI cannot indefinitely disagree with Markdown.
+- [x] Interaction tests perform a real write/read round-trip before accepting moved or resized geometry.
+
+**Verification:** focused Timeline, registry, and configuration tests plus typecheck. Native T034C verification remains required.
+
+**Dependencies:** T034G and maintainer native evidence on 2026-09-19.
+
+**Likely files:** Timeline options/registration/renderer/Base adapter, Timeline fixtures/tests, and this task record.
+
 ### T034D: Design a shared centered details window — future cross-view backlog
 
 **Description:** Capture the Keep Bases View-style **Show details** context action as a reusable, optional Wise View interaction instead of duplicating modal/window behavior per view. This task is design-only until the human approves the contract and target views.

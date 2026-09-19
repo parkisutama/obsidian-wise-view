@@ -64,7 +64,7 @@ export class BasesTimelineView extends BasesView {
 		const properties = timelineRequestedProperties(options);
 		const snapshots = this.data.data.map(entry => createEntrySnapshot(entry, properties));
 		const today = localToday();
-		this.renderer.render(buildTimelineModel(snapshots, options, today), today, options.zoom, options.wrapTitles);
+		this.renderer.render(buildTimelineModel(snapshots, options, today), today, options.zoom, options.wrapTitles, true);
 	}
 
 	onunload(): void {

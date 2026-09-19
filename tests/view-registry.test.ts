@@ -120,7 +120,7 @@ describe("ViewRegistry", () => {
 
 	it("exposes schema-agnostic Timeline property and zoom options", () => {
 		const serialized = JSON.stringify(getTimelineViewOptions());
-		for (const key of ["startDate", "endDate", "titleBy", "colorBy", "groupBy", "zoom", "wrapTitles"]) {
+		for (const key of ["start", "end", "titleBy", "colorBy", "groupBy", "zoom", "wrapTitles"]) {
 			expect(serialized).toContain(`\"key\":\"${key}\"`);
 		}
 		expect(serialized).not.toContain("status");

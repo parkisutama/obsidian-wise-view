@@ -17,11 +17,17 @@ export interface TimelineOptions {
 
 export const TIMELINE_ZOOMS: readonly TimelineZoom[] = ['day', 'week', 'biweek', 'month', 'quarter', 'year', 'fiveyear'];
 
+function compatibleProperty(config: ViewConfigReader, key: string, legacyKey: string): BasesPropertyId | null {
+	return config.getPropertyId(key) ?? config.getPropertyId(legacyKey);
+}
+
 /** Reads only explicit Bases view options; no workflow property is guessed or defaulted. */
 export function readTimelineOptions(config: ViewConfigReader): TimelineOptions {
 	return {
-		startProperty: config.getPropertyId('startDate'),
-		endProperty: config.getPropertyId('endDate'),
+		// `start`/`end` are the upstream Timeline keys. Keep the early Wise View
+		// `startDate`/`endDate` keys readable so existing Bases do not break.
+		startProperty: compatibleProperty(config, 'start', 'startDate'),
+		endProperty: compatibleProperty(config, 'end', 'endDate'),
 		titleProperty: config.getPropertyId('titleBy'),
 		colorProperty: config.getPropertyId('colorBy'),
 		groupProperty: config.getPropertyId('groupBy'),

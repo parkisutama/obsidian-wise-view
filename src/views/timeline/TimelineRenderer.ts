@@ -219,7 +219,16 @@ export class TimelineRenderer {
 		this.emptyEl = containerEl.createDiv({ cls: 'wise-view-timeline__empty' });
 	}
 
-	render(model: TimelineModel, today: DateOnlyValue, zoom: TimelineZoom, wrapTitles = this.wrapTitles): TimelineLayout {
+	render(
+		model: TimelineModel,
+		today: DateOnlyValue,
+		zoom: TimelineZoom,
+		wrapTitles = this.wrapTitles,
+		reconcilePending = false,
+	): TimelineLayout {
+		// An onDataUpdated model is the canonical vault state. Never let an old
+		// optimistic drag continue to override dates that Bases read back.
+		if (reconcilePending) this.pendingRanges.clear();
 		this.currentModel = model;
 		this.currentToday = today;
 		this.wrapTitles = wrapTitles;
@@ -399,9 +408,9 @@ export class TimelineRenderer {
 		if (!drag.moved) return;
 		this.suppressBarClick = true;
 		this.pendingRanges.set(drag.path, { startDay: drag.start, endDay: drag.end });
-		const success = await this.actions.onRangeChange?.(drag.path, drag.start, drag.end);
-		if (success === false) this.pendingRanges.delete(drag.path);
-		if (success === false && this.currentModel && this.currentToday && this.activeZoom) {
+		const success = await this.actions.onRangeChange?.(drag.path, drag.start, drag.end) ?? false;
+		if (!success) this.pendingRanges.delete(drag.path);
+		if (!success && this.currentModel && this.currentToday && this.activeZoom) {
 			this.render(this.currentModel, this.currentToday, this.activeZoom, this.wrapTitles);
 		}
 	}
