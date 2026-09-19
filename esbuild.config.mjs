@@ -78,12 +78,10 @@ function scopeFrappeGanttCss(css) {
 const FIRST_PARTY_CSS = [
 	"src/styles/foundations/common.css",
 	"src/styles/components/settings.css",
-	"src/styles/components/card.css",
 	"src/styles/views/swimlane.css",
 	"src/styles/views/calendar.css",
 	"src/styles/views/gantt.css",
 	"src/styles/views/timeline.css",
-	"src/styles/views/grid.css",
 ].map((p) => path.resolve(p));
 
 // Merge first-party sources, imported CSS, and Frappe Gantt's stylesheet (which nothing

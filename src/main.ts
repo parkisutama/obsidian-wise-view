@@ -31,12 +31,11 @@ import {
   createTimelineViewRegistration,
 } from './views/timeline';
 
-// Grid (src/views/grid) is implemented but unregistered as of 2026-09-19: native testing
-// surfaced repeated, hard-to-diagnose CSS Grid layout failures (oversized covers, then
-// flattened cards) even after direct fixes, and the maintainer paused further Dynamic Views
-// adoption for Grid/Masonry rather than keep guessing blind. The code stays in the tree —
-// unregistering only removes it from the Bases view picker — pending a decision on how to
-// resume (see docs/architecture/upstream-provenance.md and tasks/plan.md's amendment).
+// A Grid view (adopting Dynamic Views) was attempted and removed on 2026-09-19: native testing
+// surfaced repeated, hard-to-diagnose CSS Grid layout failures (oversized covers, then flattened
+// cards) even after direct fixes, so the maintainer stopped guessing and removed it rather than
+// ship or keep patching it blind. See docs/architecture/upstream-provenance.md's Dynamic Views
+// entry for the history if this is revisited.
 
 /** Command-palette commands scoped to the currently active Gantt view, if any. */
 function buildGanttCommands() {

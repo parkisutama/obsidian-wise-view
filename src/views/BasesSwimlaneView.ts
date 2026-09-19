@@ -27,7 +27,7 @@ import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAd
 import { openPath, triggerHoverPreview as dispatchHoverPreview } from '../platform/navigation/NavigationService';
 import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
 import { getContrastColor } from '../utils/colorUtils';
-import { resolveCoverImageSrc } from '../platform/dom/CardRenderer';
+import { resolveCoverImageSrc } from '../platform/dom/CoverImageResolver';
 
 
 export const BASES_SWIMLANE_VIEW_ID = 'wise-view-swimlane';
@@ -1834,8 +1834,9 @@ export class BasesSwimlaneView extends BasesView {
     });
   }
 
-  /** T037: moved to the shared CardRenderer (resolveCoverImageSrc) so Grid/Masonry/Feed/Keep get the same
-   * wikilink/alias/relative-path/extension-guess/vault-wide-fallback resolution Swimlane already had. */
+  /** Extracted to CoverImageResolver.ts (formerly a shared Card Core module; now Swimlane's only
+   * consumer after Grid was removed) for the wikilink/alias/relative-path/extension-guess/
+   * vault-wide-fallback resolution this method already had. */
   private resolveImagePath(path: string): string | null {
     return resolveCoverImageSrc(this.plugin.app, path);
   }
