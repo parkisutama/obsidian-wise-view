@@ -55,7 +55,7 @@ Every phase ends in a working plugin and a human checkpoint. Existing view behav
 | Descriptor registry and lifecycle runtime | Calendar, Gantt, Swimlane | all later views | registry and cleanup tests; no registration duplication |
 | Ordered regular-CSS pipeline | all existing views | all later views | deterministic build; no Sass dependency |
 | Entry snapshots, config, color, navigation, scheduler | all existing views | all later views | existing fixtures pass using shared services |
-| Temporal Core and linear virtual rows | Calendar/Gantt contract tests | Timeline | Timeline works read-only with large grouped fixtures |
+| Temporal Core and linear virtual rows | Calendar/Gantt contract tests | Timeline | Timeline handles large grouped fixtures; approved date edits stay behind the mutation capability |
 | Card model and renderer | Swimlane cards | Grid | Grid renders through shared card handles |
 | Content preview and dynamic linear virtualization | Grid card shell | Feed | Feed renders visible read-only previews without editor leaves |
 | Pure masonry geometry, measurement, and scroll anchors | Card renderer | Masonry | bounded mounted cards and stable resize/return position |
@@ -150,7 +150,7 @@ shared-component-to-new-view slice.
 - Use native screenshot comparison to close temporal header/grid, toolbar, sidebar, scheduled,
   and unscheduled presentation gaps before Timeline is accepted.
 
-Calendar and Gantt tests prove date semantics before Timeline consumes them. Timeline remains read-only.
+Calendar and Gantt tests prove date semantics before Timeline consumes them. Timeline initially shipped read-only; the approved T034E-T034F amendment adds only configured start/end quick scheduling and bar move/resize through the mutation capability.
 Passing shared navigation interactions does not imply visual acceptance: Page Preview and the file
 context menu can pass while the Timeline surface still requires fidelity work.
 

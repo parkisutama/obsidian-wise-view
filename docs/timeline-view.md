@@ -36,7 +36,7 @@ Timeline sengaja tidak menebak tanggal lokal seperti `tomorrow` atau `31/03/2026
 | **End date** | Tanggal selesai inklusif. Kosong berarti rentang satu unit dari tanggal mulai. |
 | **Title** | Label bar. Kosong atau tidak tersedia memakai nama file. |
 | **Color by** | Nilai kategori yang dipetakan melalui color resolver bersama. |
-| **Group by** | Membagi note menjadi section. Kosong memakai Ungrouped. |
+| **Group by** | Membagi note menjadi section. Kosong berarti tidak ada header group buatan. |
 | **Zoom** | Tujuh skala dari Day sampai Five years. |
 
 Nilai akhir `ongoing` didukung dan diselesaikan terhadap tanggal hari ini untuk visualisasi.
@@ -52,11 +52,12 @@ Rentang terbalik dinormalisasi untuk tampilan tanpa menulis perubahan ke note.
 - Tombol **Today** membawa posisi horizontal ke hari ini.
 - `Ctrl/Cmd+wheel` atau pinch dua jari mengganti zoom dengan tanggal di bawah pointer tetap terjangkar.
 - Hover pada row Unscheduled menampilkan ghost bar beserta rentang tanggal; klik ghost untuk menulis properti start/end yang dikonfigurasi.
+- Drag bar untuk menggeser seluruh rentang; drag handle kiri/kanan untuk mengubah start atau end.
 - Pilihan zoom dan posisi scroll dipertahankan saat data Base diperbarui.
 
 Timeline tidak menyediakan status/priority workflow, recurrence, dependency editing, atau perubahan
-group. Satu-satunya write yang dimiliki Timeline adalah quick scheduling dari row Unscheduled ke
-properti start/end yang dipilih pengguna, melalui mutation gateway Wise View.
+group. Write Timeline dibatasi pada quick scheduling serta drag/resize start/end yang dipilih
+pengguna, melalui mutation gateway Wise View.
 
 ## Unscheduled dan data tidak valid
 
@@ -85,7 +86,7 @@ Wise View mengadopsi perilaku Timeline upstream secara penuh untuk navigasi temp
 item yang belum terjadwal, tetapi tetap memisahkan workflow task yang tidak agnostik:
 
 - tidak memiliki status atau urutan priority bawaan;
-- melakukan quick scheduling hanya ke properti start/end yang dikonfigurasi;
+- melakukan quick scheduling dan bar drag/resize hanya ke properti start/end yang dikonfigurasi;
 - tidak menulis group, status, priority, recurrence, atau dependency;
 - memakai Temporal Core, navigation service, dan virtualization platform Wise View;
 - memisahkan model murni, renderer DOM, dan adapter Obsidian Bases.

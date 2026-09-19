@@ -27,6 +27,10 @@ for unscheduled rows despite configured start/end properties, and non-functional
 The maintainer clarified that Timeline is for listing and placing unscheduled work in time; Gantt
 remains the future home for schedule dragging and dependency-line visualization.
 
+A third comparison clarified that Timeline itself must support direct bar move and start/end resize
+after placement. Gantt remains distinct because it will add dependency-line visualization and its
+own dependency-aware scheduling semantics.
+
 ## Passed native checks
 
 - [x] Ctrl-hover preview works.
@@ -52,6 +56,9 @@ These checks validate shared navigation integration only. They do not accept the
 | Time density | Month view compresses titles into narrow fragments | Upstream-equivalent pixels per day and viewport-relative domain padding |
 | Quick scheduling | Hovering an unscheduled row exposes no placement action | Dated ghost bar under the pointer that writes configured start/end properties on activation |
 | Gesture zoom | `Ctrl+wheel` does not change the scale | Step zoom around the pointer while preventing application/page zoom |
+| Scheduled editing | Placed bars cannot move or resize | Drag moves the range; left/right handles resize configured start/end dates |
+| Open-ended domain | Grid stops after a finite rendered range or pane resize | Reflow to the actual viewport and extend the domain as scrolling nears either edge |
+| Grouping | Synthetic Ungrouped and Unscheduled headers appear without Group by | No group header unless Group by is configured; unscheduled rows stay in their actual group/order |
 
 ## Required follow-up
 

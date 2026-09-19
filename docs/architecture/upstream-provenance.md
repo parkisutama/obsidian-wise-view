@@ -38,13 +38,13 @@ repository listed here beyond what its **Reuse mode** and **Excluded** rows perm
   - upstream `src/timeline-view.ts` -> Wise View `src/views/timeline/TimelineRenderer.ts` and,
     only where lifecycle wiring is necessary, `src/views/timeline/BasesTimelineView.ts`;
     permitted scope is toolbar/sidebar controls, temporal header/grid, today indicator, edge
-    navigation, scroll-anchor behavior, pointer/pinch zoom, and quick scheduling through the
-    configured start/end mutation capability;
+    navigation, scroll-anchor behavior, pointer/pinch zoom, quick scheduling, and bar drag/resize
+    through the configured start/end mutation capability;
   - upstream `styles.css` -> Wise View `src/styles/views/timeline.css`; permitted scope is the
     corresponding layout, ghost-bar, and presentation rules.
 - **Must remain excluded:** `PRIORITY_LEVELS`, `PRIORITY_RANK`, `STATUS_ORDER`, workflow group
-  sorting, group/status drops, priority editing, bar drag/resize, arbitrary property writes, and
-  hardcoded task property defaults. Quick scheduling may write only configured start/end dates.
+  sorting, group/status drops, priority editing, arbitrary property writes, and hardcoded task
+  property defaults. Quick scheduling and bar drag/resize may write only configured start/end dates.
 - **Attribution required:** adapted TypeScript files carry an SPDX/copyright adaptation header;
   adapted CSS carries a preserved attribution header; the upstream MIT text is included in
   `THIRD_PARTY_NOTICES.md`.

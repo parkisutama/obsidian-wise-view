@@ -730,6 +730,27 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** L
 
+### T034F: Complete Timeline editing and layout parity — done (automated portion)
+
+**Description:** Apply the next native comparison by adopting upstream bar move/resize, non-synthetic grouping, open-ended domain extension, stable Today alignment, recoverable sidebar collapse, and readable titles.
+
+**Acceptance criteria:**
+
+- [x] The domain reflows to the pane width and extends near either horizontal edge without losing the visible date anchor.
+- [x] Today scroll keeps the header badge, grid line, and current-day cell centered on the same coordinate.
+- [x] Scheduled bars drag as a range and resize from either edge, writing only configured start/end properties through the mutation gateway.
+- [x] No Ungrouped or Unscheduled header is synthesized when Group by is empty; unscheduled items remain rows in their configured group/order.
+- [x] Sidebar collapse always exposes a usable reopen control; full titles are available by tooltip and optional two-line wrapping.
+- [x] Bar labels are left aligned and remain readable for narrow ranges.
+
+**Verification:** focused Timeline/model/registry/architecture tests passed; `pnpm run check` passed (29 files, 261 tests). Build and artifact verification complete before commit; another native T034C comparison remains required.
+
+**Dependencies:** T034E and maintainer native feedback on 2026-09-19.
+
+**Likely files:** Timeline model/renderer/options/CSS, mutation adapter wiring, tests, Timeline documentation and acceptance record.
+
+**Estimated scope:** L
+
 ### Checkpoint E: Timeline
 
 - [x] Automated gates pass.

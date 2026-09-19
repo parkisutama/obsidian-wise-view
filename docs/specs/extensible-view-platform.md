@@ -157,7 +157,7 @@ Wise View remains `GPL-3.0-only`.
 
 - task status, priority, recurrence, hierarchy, or dependency business logic;
 - introducing a required frontmatter schema;
-- Timeline bar drag/resize, priority editing, or group/status writes; quick scheduling is the sole approved Timeline mutation and must use the mutation capability;
+- Timeline priority editing or group/status writes; quick scheduling and explicit bar drag/resize are approved Timeline date mutations and must use the configured start/end mutation capability;
 - Feed inline editing or embedding source-mode Markdown editors;
 - Keep pin/unpin, recolor, delete, or popup editing actions;
 - Dynamic Views checkbox mutation, file creation, randomization commands, external thumbnail fetches, image viewer, slideshow, or Style Settings integration;
