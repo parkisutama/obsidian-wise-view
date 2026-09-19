@@ -50,8 +50,19 @@ export function normalizeValue(value: Value | null | undefined): NormalizedValue
 	try {
 		if (value == null || value instanceof NullValue) return MISSING_VALUE;
 		if (value instanceof DateValue) {
-			const text = value.toString();
-			return { kind: 'date', value: text, hasTime: /T\d{2}:\d{2}/.test(text) };
+			// DateValue.toString() can serialize a date-only value (no time-of-day entered) as a
+			// UTC-anchored instant, which shifts the calendar day by one in any positive-UTC-
+			// offset timezone once read back. dateOnly().toString() strips the time portion
+			// first, so its calendar day is always trustworthy. Only trust the fuller string's
+			// time-of-day when it still names the *same* calendar day as dateOnly() — if the day
+			// itself differs, that is the shift artifact, not a real time-of-day, so fall back to
+			// the safe date-only string entirely (matches the established, date-only-safe
+			// pattern in ganttUtils.ts's parseObsidianDate).
+			const dateOnlyText = value.dateOnly().toString();
+			const fullText = value.toString();
+			const sameCalendarDay = fullText.slice(0, 10) === dateOnlyText.slice(0, 10);
+			const hasTime = sameCalendarDay && fullText !== dateOnlyText;
+			return { kind: 'date', value: hasTime ? fullText : dateOnlyText, hasTime };
 		}
 		// LinkValue extends StringValue; check it first.
 		if (value instanceof LinkValue) return normalizeLinkText(value.toString());

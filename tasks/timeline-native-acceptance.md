@@ -66,6 +66,20 @@ rows painted an opaque white strip, and a stale Bases refresh could visually und
 These are tracked by T034G. The date mutation gateway is already shared with Gantt; gesture geometry
 cannot be shared directly because Gantt delegates it to Frappe while Timeline owns its DOM renderer.
 
+## Fifth comparison (2026-09-19, post-T034H)
+
+A native screenshot of `Framework Dokumentasi` (frontmatter `start: 2026-09-20`, `end:
+2026-09-21`) showed the bar's hover tooltip reading `Framework Dokumentasi — 2026-09-20 –
+2026-09-20`: the end date collapsed onto the start date, and the maintainer reported the left/
+right/hover date indicators disagreeing with the actual range, with no corresponding change
+reaching Markdown. Root cause: the shared `entrySnapshotAdapter.normalizeValue()` boundary (T018)
+used the real `DateValue.toString()` directly, which can serialize a date-only property as a
+UTC-anchored instant — landing on the previous calendar day once read back in a positive-UTC-
+offset timezone (Indonesia is UTC+7). Fixed under T034I by preferring `DateValue.dateOnly()`'s
+calendar day whenever it disagrees with `toString()`'s, matching the pattern `ganttUtils.ts`
+already used. This was Timeline-only in practice because Timeline is currently the sole
+production consumer of `entrySnapshotAdapter`.
+
 ## Required follow-up
 
 - T034A owns toolbar, sidebar, temporal header/grid, today presentation, and scroll synchronization.

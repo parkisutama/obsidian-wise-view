@@ -796,6 +796,24 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Likely files:** Timeline options/registration/renderer/Base adapter, Timeline fixtures/tests, and this task record.
 
+### T034I: Fix UTC day-shift in the shared date normalization boundary — done
+
+**Description:** A native screenshot on 2026-09-19 showed `Framework Dokumentasi` (frontmatter `start: 2026-09-20`, `end: 2026-09-21`) rendering its hover tooltip as `2026-09-20 – 2026-09-20` — the end date collapsed onto the start date. Root cause: `entrySnapshotAdapter.normalizeValue()` used the real Obsidian `DateValue.toString()` directly for a `date` value. For a date-only property (no time entered), that can serialize as a UTC-anchored instant, which lands on the previous calendar day once read back in any positive-UTC-offset timezone (e.g. Indonesia, UTC+7) — exactly reproducing the reported symptom. `DateValue.dateOnly().toString()` strips the time portion and is immune to the shift; `ganttUtils.ts`'s `parseObsidianDate` already used that pattern, but the newer shared `entrySnapshotAdapter` (T018) did not.
+
+Because Timeline is currently the only production consumer of `entrySnapshotAdapter` (Calendar/Gantt/Swimlane still read `Value`s directly rather than through `EntrySnapshot`), the bug was confined to Timeline, but it affects every date this boundary ever normalizes, so it would have surfaced in any future view built on it too.
+
+**Acceptance criteria:**
+
+- [x] `normalizeValue()` trusts `dateOnly()`'s calendar day whenever it disagrees with `toString()`'s, not only when the two strings are byte-identical (a byte-diff-only check misses a shift that also changes the calendar day, not just adds a time suffix).
+- [x] A genuine same-day datetime (time-of-day actually set by the user) is still preserved as `hasTime: true` with its fuller string.
+- [x] A regression test reproduces the exact shift (a `DateValue` subclass whose `toString()` reports a different, UTC-shifted calendar day than `dateOnly()`) and proves the adapter recovers the correct day.
+
+**Verification:** `pnpm run check` (29 files, 265 tests) and a production build/artifact verification, both passed.
+
+**Dependencies:** T018 (the code being fixed), reported against T034H's build.
+
+**Likely files:** `src/platform/bases/entrySnapshotAdapter.ts`, `tests/entry-snapshot.test.ts`.
+
 ### T034D: Design a shared centered details window — future cross-view backlog
 
 **Description:** Capture the Keep Bases View-style **Show details** context action as a reusable, optional Wise View interaction instead of duplicating modal/window behavior per view. This task is design-only until the human approves the contract and target views.

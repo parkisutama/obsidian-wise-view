@@ -63,6 +63,22 @@ describe("normalizeValue", () => {
 		});
 	});
 
+	it("prefers the date-only calendar day when toString() reports a UTC-shifted day (positive-offset timezone artifact)", () => {
+		// Reproduces a real bug: Obsidian's real DateValue.toString() can serialize a date-only
+		// property (no time entered by the user) as a UTC instant, which lands on the *previous*
+		// calendar day once read back in a positive-UTC-offset timezone (e.g. end: 2026-09-21
+		// stringifying as "2026-09-20T17:00:00.000Z"). dateOnly() is unaffected because it never
+		// carries a time to shift. The adapter must trust dateOnly()'s day whenever the two
+		// disagree, not just when the strings are byte-identical.
+		class ShiftedDateValue extends DateValue {
+			toString(): string {
+				return "2026-09-20T17:00:00.000Z";
+			}
+		}
+		const shifted = new ShiftedDateValue("2026-09-21") as never;
+		expect(normalizeValue(shifted)).toEqual({ kind: "date", value: "2026-09-21", hasTime: false });
+	});
+
 	it("normalizes a formula-produced number", () => {
 		expect(normalizeValue(new NumberValue(42) as never)).toEqual({ kind: "number", value: 42 });
 	});
