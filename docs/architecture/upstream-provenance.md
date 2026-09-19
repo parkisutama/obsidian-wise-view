@@ -1,13 +1,14 @@
 # Upstream provenance ledger
 
 Status: Active  
-Specification: [Extensible view platform](../specs/extensible-view-platform.md)
+Specification: [Code quality, organization, and performance](../specs/code-quality-and-performance.md)
 
-This ledger records every upstream repository assessed for the extensible view platform
-program, the exact snapshot inspected, its license, the reuse mode Wise View applies to it,
-and what is explicitly excluded. It is the source of truth `pnpm run verify:artifacts` and
-`THIRD_PARTY_NOTICES.md` are reconciled against (T059). No task may copy source from a
-repository listed here beyond what its **Reuse mode** and **Excluded** rows permit.
+This ledger records every upstream repository assessed for Wise View's adopted-view work (the
+now-retired extensible-view-platform program, and any future adoption work), the exact snapshot
+inspected, its license, the reuse mode Wise View applies to it, and what is explicitly excluded.
+It is the source of truth `pnpm run verify:artifacts` and `THIRD_PARTY_NOTICES.md` are reconciled
+against. No task may copy source from a repository listed here beyond what its **Reuse mode** and
+**Excluded** rows permit.
 
 ## Reuse mode definitions
 
@@ -133,18 +134,21 @@ copied.
   `src/styles/components/card.css` as design evidence, matching an existing upstream pattern
   rather than adapting or copying either file. No file-level row is added because no file was
   adapted; per the reuse-mode definitions above, design-evidence use alone needs no attribution.
-- **2026-09-19 status: Grid adoption paused.** Even after both fixes above, native testing found
-  a further CSS Grid regression (every card flattening to a uniform strip, traced to
-  `content-visibility: auto` misfiring in Obsidian's Bases scroll container). After three rounds
-  of native-testing failures, the maintainer unregistered Grid (`src/main.ts`) rather than keep
-  patching it blind, and paused Masonry (also a Dynamic Views candidate) rather than repeat the
-  same approach on a second view. See `tasks/plan.md`'s Phase 5/6 amendment and
-  `tasks/todo.md`'s T040/Checkpoint F for the full history. A future rework should reconsider
-  whether Dynamic Views' own grid/masonry CSS (which carries many defensive rules — iOS
-  `contain`/`overflow-clip-margin` workarounds, subgrid group sections, measurement lanes — none
-  of which this program ported) needs a more conservative, incrementally-verified adoption than
-  the two large jumps attempted here, independent of the license terms below (which remain
-  favorable and unaffected by this pause).
+- **2026-09-19 status: Grid removed; this adoption is closed unless revived.** Even after both
+  fixes above, native testing found a further CSS Grid regression (every card flattening to a
+  uniform strip, traced to `content-visibility: auto` misfiring in Obsidian's Bases scroll
+  container). After three rounds of native-testing failures, the maintainer removed Grid entirely
+  — `src/views/grid/`, `src/core/cards/` (`CardItem`/`CardMapper`), `src/core/layouts/GridLayout.ts`,
+  `src/platform/dom/GridCollection.ts` and its old `CardRenderer.ts`, and `src/styles/components/card.css`
+  — rather than keep patching it blind or leave dead code in the tree. `resolveCoverImageSrc` (the
+  one piece Swimlane depends on) survives, moved to `src/platform/dom/CoverImageResolver.ts`. The
+  extensible-view-platform program's spec/plan/todo were also retired in favor of a code-quality
+  and performance-focused spec (see `docs/specs/`). A future Grid/Masonry attempt starts fresh
+  under that new spec rather than resuming this one — reconsider whether Dynamic Views' own
+  grid/masonry CSS (which carries many defensive rules — iOS `contain`/`overflow-clip-margin`
+  workarounds, subgrid group sections, measurement lanes — none of which this attempt ported)
+  needs a more conservative, incrementally-verified adoption than the two large jumps attempted
+  here, independent of the license terms below (which remain favorable and unaffected by this).
 - **Attribution required:** yes, once a file-level entry above is added. Because this upstream
   project is GPL-3.0-or-later, Wise View (GPL-3.0-only) selects GPL version 3 for the
   combined distribution per specification §5.2; the upstream license and attribution must

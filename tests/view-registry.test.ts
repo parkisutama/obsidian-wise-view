@@ -10,7 +10,6 @@ import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/v
 import { BASES_GANTT_VIEW_ID, createGanttViewRegistration } from "../src/views/BasesGanttView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { BASES_TIMELINE_VIEW_ID, createTimelineViewRegistration, getTimelineViewOptions } from "../src/views/timeline";
-import { BASES_GRID_VIEW_ID, createGridViewRegistration, getGridViewOptions } from "../src/views/grid";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import WiseViewPlugin from "../src/main";
 
@@ -63,13 +62,12 @@ describe("ViewRegistry", () => {
 		expect(registry.list().map((d) => d.id)).toEqual(["wise-view-a", "wise-view-b"]);
 	});
 
-	it("expresses Calendar, Gantt, Swimlane, Timeline, and Grid without view-specific registry branching", () => {
+	it("expresses Calendar, Gantt, Swimlane, and Timeline without view-specific registry branching", () => {
 		const registry = new ViewRegistry();
 		const calendar = createCalendarViewRegistration(plugin);
 		const gantt = createGanttViewRegistration(plugin);
 		const swimlane = createSwimlaneViewRegistration(plugin);
 		const timeline = createTimelineViewRegistration(plugin);
-		const grid = createGridViewRegistration(plugin);
 
 		registry.register({
 			id: BASES_CALENDAR_VIEW_ID,
@@ -107,43 +105,17 @@ describe("ViewRegistry", () => {
 			hover: { display: "Swimlane", defaultMod: true },
 			capabilities: { legacyMutation: true },
 		});
-		registry.register({
-			id: BASES_GRID_VIEW_ID,
-			name: grid.name,
-			icon: grid.icon,
-			factory: grid.factory,
-			options: grid.options,
-			hover: { display: "Grid", defaultMod: true },
-		});
 
 		expect(registry.list().map((d) => d.id)).toEqual([
 			BASES_CALENDAR_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
 			BASES_GANTT_VIEW_ID,
 			BASES_SWIMLANE_VIEW_ID,
-			BASES_GRID_VIEW_ID,
 		]);
 		for (const descriptor of registry.list()) {
 			expect(descriptor.hover?.display).toBeTruthy();
 		}
 		expect(registry.get(BASES_TIMELINE_VIEW_ID)?.capabilities?.legacyMutation).toBe(true);
-		expect(registry.get(BASES_GRID_VIEW_ID)?.capabilities?.legacyMutation).toBeUndefined();
-	});
-
-	it("exposes schema-agnostic Grid property options and never grants it legacy mutation", () => {
-		const serialized = JSON.stringify(getGridViewOptions());
-		for (const key of ["titleBy", "subtitleBy", "coverBy", "tagsBy", "colorBy", "groupProperty", "minCardWidth", "gap"]) {
-			expect(serialized).toContain(`\"key\":\"${key}\"`);
-		}
-		expect(serialized).not.toContain("status");
-		expect(serialized).not.toContain("priority");
-	});
-
-	it("never uses a Bases-reserved view-config key for a Grid option either", () => {
-		const reserved = new Set(["type", "name", "filters", "groupBy", "order", "summaries"]);
-		const keys = JSON.stringify(getGridViewOptions()).match(/"key":"([^"]+)"/g)?.map((m) => m.slice(7, -1)) ?? [];
-		expect(keys.length).toBeGreaterThan(0);
-		for (const key of keys) expect(reserved.has(key)).toBe(false);
 	});
 
 	it("exposes schema-agnostic Timeline property and zoom options", () => {
@@ -190,8 +162,6 @@ describe("WiseViewPlugin.onload view registration", () => {
 
 		await realPlugin.onload();
 
-		// Grid (BASES_GRID_VIEW_ID) is implemented but unregistered as of 2026-09-19 — see
-		// src/main.ts's comment and tasks/plan.md's amendment. Intentionally absent below.
 		expect(registeredViews).toEqual([
 			BASES_SWIMLANE_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
