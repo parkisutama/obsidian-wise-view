@@ -6,6 +6,12 @@ Specification: [Extensible view platform](../docs/specs/extensible-view-platform
 
 Tasks are dependency ordered. Each task must be completed in one focused session, stay within approximately five files, and leave the repository buildable. File lists are forecasts and must be corrected in the task record if implementation discovers a different boundary.
 
+**2026-09-19 scope and sequencing amendment:** Keep (T051-T055, old Phase 8) is descoped from
+this task list — it gets its own future specification, plan, and tasks. Masonry (T046-T050) now
+executes right after Grid (T035-T040) and before Feed (T041-T045); task IDs are unchanged, only
+phase numbers and execution order moved. See `tasks/plan.md` and
+`docs/specs/extensible-view-platform.md` §1a for the full rationale.
+
 ## Phase 0: Approval, provenance, and baseline
 
 ### T001: Approve the architecture specification — done
@@ -101,7 +107,7 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 ### Checkpoint A
 
 - [x] `pnpm run check`
-- [x] Baseline behavior and native-only gaps reviewed by the maintainer (blanket approval given 2026-09-18; native acceptance itself remains deferred to Checkpoint J per T061).
+- [x] Baseline behavior and native-only gaps reviewed by the maintainer (blanket approval given 2026-09-18; native acceptance itself remains deferred to Checkpoint I per T061).
 - [x] Human approval to start refactoring (blanket approval given 2026-09-18; flagged for re-confirmation only on new findings).
 
 ## Phase 1: Plugin shell and lifecycle foundation
@@ -982,15 +988,15 @@ covered code path moved.
 
 **Estimated scope:** S (reduced from M — see scope decision above)
 
-### T038: Implement Grid layout and offscreen policy
+### T038: Implement Grid layout and offscreen policy — done
 
 **Description:** Add pure grid column calculations plus batched mounting/content-visibility control for grouped and ungrouped card collections.
 
 **Acceptance criteria:**
 
-- [ ] Columns respond deterministically to pane width, minimum width, and gap.
-- [ ] Large fixtures do not synchronously mount all rich card content.
-- [ ] Group and path ordering remains the Bases order.
+- [x] Columns respond deterministically to pane width, minimum width, and gap.
+- [x] Large fixtures do not synchronously mount all rich card content (5,000-item fixture proves only `batchSize` renders synchronously).
+- [x] Group and path ordering remains the Bases order (DOM order always matches the given item order, including placeholders).
 
 **Verification:** `pnpm run test -- grid-layout && pnpm run typecheck`
 
@@ -1000,15 +1006,15 @@ covered code path moved.
 
 **Estimated scope:** M
 
-### T039: Implement the Grid view adapter
+### T039: Implement the Grid view adapter — done
 
 **Description:** Connect Bases snapshots, Grid options, grouping, CardRenderer, and GridCollection into a read-only Bases view.
 
 **Acceptance criteria:**
 
-- [ ] Adapter contains orchestration, not duplicate card/property logic.
-- [ ] Identical updates take the render fast path.
-- [ ] Group collapse/resize/update preserve stable path identity.
+- [x] Adapter contains orchestration, not duplicate card/property logic (mapping via `CardMapper`, grouping via `GridModel`, rendering via `CardRenderer`/`GridCollection`).
+- [x] Identical updates take the render fast path (first view wired to T022's `RenderScheduler`; a no-op `onDataUpdated()` does not rebuild mounted cards).
+- [x] Group collapse/resize/update preserve stable path identity (`GridCollection`'s path-keyed diffing reuses handles across collapse/expand and resize).
 
 **Verification:** `pnpm run test -- grid-view && pnpm run typecheck`
 
@@ -1018,17 +1024,17 @@ covered code path moved.
 
 **Estimated scope:** M
 
-### T040: Register, style, and document Grid
+### T040: Register, style, and document Grid — done (automated portion)
 
 **Description:** Add Grid descriptor, regular CSS, documentation, provenance, and integration acceptance.
 
 **Acceptance criteria:**
 
-- [ ] Grid is registered with a unique Wise View ID.
-- [ ] Card styles are shared; Grid CSS contains layout rules only.
-- [ ] Documentation identifies adopted Dynamic Views concepts and omitted extras.
+- [x] Grid is registered with a unique Wise View ID (`wise-view-grid`), no legacy mutation capability granted.
+- [x] Card styles are shared (`components/card.css`); Grid CSS (`views/grid.css`) contains only column/group/content-visibility layout rules.
+- [x] Documentation (`docs/grid-view.md`) identifies adopted Dynamic Views design-evidence concepts and explicitly lists omitted extras (status/priority workflow, checkbox writes, settings framework, 1.13-only APIs).
 
-**Verification:** `pnpm run check:ci`; native Grid acceptance.
+**Verification:** `pnpm run check` (35 files, 334 tests); production build and artifact verification passed. `pnpm run check:ci` and native Grid acceptance remain for a release-readiness checkpoint.
 
 **Dependencies:** T039, T002.
 
@@ -1042,7 +1048,117 @@ covered code path moved.
 - [ ] Large Grid update behavior recorded.
 - [ ] Human accepts Grid before preview infrastructure expands.
 
-## Phase 6: Preview and linear virtualization to Feed
+## Phase 6: Masonry strategy to Masonry
+
+**Sequencing note (2026-09-19):** Masonry now ships immediately after Grid, before Feed, so the
+shared Card Core used by Swimlane, Grid, and Masonry is proven across two layout strategies
+before Feed's preview/virtualization layer builds on top of it. Task IDs are unchanged (T046-T050
+still name Masonry) — only execution order moved. See `tasks/plan.md`'s scope and sequencing
+amendment.
+
+### T046: Implement pure masonry geometry
+
+**Description:** Add validated column-count/card-width calculations, shortest-column placement, incremental placement, and stable-column repositioning.
+
+**Acceptance criteria:**
+
+- [ ] Layout functions have no DOM or Obsidian dependency.
+- [ ] Narrow/zero widths and invalid gaps are safely clamped.
+- [ ] Column assignments and container heights are deterministic.
+
+**Verification:** `pnpm run test -- masonry-layout && pnpm run typecheck`
+
+**Dependencies:** T035, T038 (reuse `GridLayout`'s column-math patterns where they apply).
+
+**Likely files:** `src/core/layouts/MasonryLayout.ts`, `tests/masonry-layout.test.ts`
+
+**Estimated scope:** S
+
+### T047: Implement masonry measurement cache and scroll anchors
+
+**Description:** Add composite height keys, offscreen/lightweight measurement, estimate fallback, path anchors, and width/config invalidation.
+
+**Acceptance criteria:**
+
+- [ ] Cache keys include every dimension-affecting input.
+- [ ] Measurement concurrency is bounded.
+- [ ] A resized layout can restore the visible anchor path and offset.
+
+**Verification:** `pnpm run test -- masonry-measurement && pnpm run typecheck`
+
+**Dependencies:** T036, T046.
+
+**Likely files:** `src/platform/dom/MasonryMeasurementCache.ts`, `src/core/layouts/MasonryAnchor.ts`, `tests/masonry-measurement.test.ts`, `tests/masonry-anchor.test.ts`
+
+**Estimated scope:** M
+
+### T048: Implement virtual masonry collection
+
+**Description:** Mount only viewport/overscan cards, position them from pure geometry, dispose unmounted handles, and coalesce scroll/resize updates.
+
+**Acceptance criteria:**
+
+- [ ] Mounted card count is bounded for 5,000 items.
+- [ ] Resize cancels prior work/animations instead of stacking it.
+- [ ] Async content cannot mutate an unmounted card.
+
+**Verification:** `pnpm run test -- virtual-masonry && pnpm run typecheck`
+
+**Dependencies:** T036, T047, T022.
+
+**Likely files:** `src/platform/dom/VirtualMasonryCollection.ts`, `src/platform/dom/MasonryMeasurementCache.ts`, `tests/virtual-masonry.test.ts`, `tests/fixtures/obsidian.ts`
+
+**Estimated scope:** M
+
+### T049: Implement the Masonry view adapter
+
+**Description:** Connect grouped snapshots, card options, CardRenderer, and VirtualMasonryCollection into a read-only view.
+
+**Acceptance criteria:**
+
+- [ ] Adapter has no duplicate placement or card-rendering algorithm.
+- [ ] Grouped/ungrouped order and collapse state are stable.
+- [ ] Identical updates take the render fast path.
+
+**Verification:** `pnpm run test -- masonry-view && pnpm run typecheck`
+
+**Dependencies:** T018-T022, T048.
+
+**Likely files:** `src/views/masonry/BasesMasonryView.ts`, `src/views/masonry/masonryOptions.ts`, `tests/masonry-view.test.ts`, `tests/fixtures/masonry.ts`
+
+**Estimated scope:** M
+
+### T050: Register, style, document, and license Masonry
+
+**Description:** Add the descriptor, regular CSS, documentation, provenance, and native acceptance for Masonry.
+
+**Acceptance criteria:**
+
+- [ ] Masonry uses the same CardRenderer as Grid and Swimlane (or documents, per view, why a
+  piece of card logic stays separate — see the T037 precedent).
+- [ ] CSS contains layout/transition rules rather than duplicated card presentation.
+- [ ] Documentation states supported Dynamic Views subset.
+
+**Verification:** `pnpm run check:ci`; native resize/scroll acceptance.
+
+**Dependencies:** T049, T002.
+
+**Likely files:** `src/views/masonry/index.ts`, `src/styles/views/masonry.css`, `src/viewRegistry.ts`, `docs/masonry-view.md`, `THIRD_PARTY_NOTICES.md`
+
+**Estimated scope:** M
+
+### Checkpoint G: Masonry
+
+- [ ] Bounded mounting and resize-anchor evidence recorded.
+- [ ] No duplicate CardRenderer implementation (or a documented, deferred exception per view).
+- [ ] Any Grid/Masonry/Swimlane card-logic divergence found during this phase is recorded in
+  `docs/architecture/upstream-provenance.md` or a `tasks/todo.md` deferred-finding note.
+- [ ] Human accepts Masonry before Feed work.
+
+## Phase 7: Preview and linear virtualization to Feed
+
+Feed now follows Masonry (see the Phase 6 sequencing note) so its preview/virtualization layer
+builds on a Card Core already proven by two layout strategies (Grid and Masonry), not just one.
 
 ### T041: Implement ContentPreviewService
 
@@ -1134,111 +1250,18 @@ covered code path moved.
 
 **Estimated scope:** M
 
-### Checkpoint G: Feed
+### Checkpoint H: Feed
 
 - [ ] Feed contains no editor leaf or React dependency.
 - [ ] Async preview cancellation and scroll-anchor evidence recorded.
-- [ ] Human accepts Feed before Masonry work.
+- [ ] Human accepts Feed before cross-view hardening (Phase 8).
 
-## Phase 7: Masonry strategy to Masonry
+## Appendix (descoped, not a numbered phase): Keep design intent
 
-### T046: Implement pure masonry geometry
-
-**Description:** Add validated column-count/card-width calculations, shortest-column placement, incremental placement, and stable-column repositioning.
-
-**Acceptance criteria:**
-
-- [ ] Layout functions have no DOM or Obsidian dependency.
-- [ ] Narrow/zero widths and invalid gaps are safely clamped.
-- [ ] Column assignments and container heights are deterministic.
-
-**Verification:** `pnpm run test -- masonry-layout && pnpm run typecheck`
-
-**Dependencies:** T035.
-
-**Likely files:** `src/core/layouts/MasonryLayout.ts`, `tests/masonry-layout.test.ts`
-
-**Estimated scope:** S
-
-### T047: Implement masonry measurement cache and scroll anchors
-
-**Description:** Add composite height keys, offscreen/lightweight measurement, estimate fallback, path anchors, and width/config invalidation.
-
-**Acceptance criteria:**
-
-- [ ] Cache keys include every dimension-affecting input.
-- [ ] Measurement concurrency is bounded.
-- [ ] A resized layout can restore the visible anchor path and offset.
-
-**Verification:** `pnpm run test -- masonry-measurement && pnpm run typecheck`
-
-**Dependencies:** T041, T046.
-
-**Likely files:** `src/platform/dom/MasonryMeasurementCache.ts`, `src/core/layouts/MasonryAnchor.ts`, `tests/masonry-measurement.test.ts`, `tests/masonry-anchor.test.ts`
-
-**Estimated scope:** M
-
-### T048: Implement virtual masonry collection
-
-**Description:** Mount only viewport/overscan cards, position them from pure geometry, dispose unmounted handles, and coalesce scroll/resize updates.
-
-**Acceptance criteria:**
-
-- [ ] Mounted card count is bounded for 5,000 items.
-- [ ] Resize cancels prior work/animations instead of stacking it.
-- [ ] Async content cannot mutate an unmounted card.
-
-**Verification:** `pnpm run test -- virtual-masonry && pnpm run typecheck`
-
-**Dependencies:** T036, T047, T022.
-
-**Likely files:** `src/platform/dom/VirtualMasonryCollection.ts`, `src/platform/dom/MasonryMeasurementCache.ts`, `tests/virtual-masonry.test.ts`, `tests/fixtures/obsidian.ts`
-
-**Estimated scope:** M
-
-### T049: Implement the Masonry view adapter
-
-**Description:** Connect grouped snapshots, card options, CardRenderer, preview service, and VirtualMasonryCollection into a read-only view.
-
-**Acceptance criteria:**
-
-- [ ] Adapter has no duplicate placement or card-rendering algorithm.
-- [ ] Grouped/ungrouped order and collapse state are stable.
-- [ ] Identical updates take the render fast path.
-
-**Verification:** `pnpm run test -- masonry-view && pnpm run typecheck`
-
-**Dependencies:** T018-T022, T048.
-
-**Likely files:** `src/views/masonry/BasesMasonryView.ts`, `src/views/masonry/masonryOptions.ts`, `tests/masonry-view.test.ts`, `tests/fixtures/masonry.ts`
-
-**Estimated scope:** M
-
-### T050: Register, style, document, and license Masonry
-
-**Description:** Add the descriptor, regular CSS, documentation, provenance, and native acceptance for Masonry.
-
-**Acceptance criteria:**
-
-- [ ] Masonry uses the same CardRenderer and preview service as prior views.
-- [ ] CSS contains layout/transition rules rather than duplicated card presentation.
-- [ ] Documentation states supported Dynamic Views subset.
-
-**Verification:** `pnpm run check:ci`; native resize/scroll acceptance.
-
-**Dependencies:** T049, T002.
-
-**Likely files:** `src/views/masonry/index.ts`, `src/styles/views/masonry.css`, `src/viewRegistry.ts`, `docs/masonry-view.md`, `THIRD_PARTY_NOTICES.md`
-
-**Estimated scope:** M
-
-### Checkpoint H: Masonry
-
-- [ ] Bounded mounting and resize-anchor evidence recorded.
-- [ ] No duplicate CardRenderer/preview implementation.
-- [ ] Human accepts Masonry before Keep preset work.
-
-## Phase 8: Preset and sectioning to Keep
+Keep is descoped from this plan and moved to its own future specification, plan, and task list
+(see `tasks/plan.md`'s scope and sequencing amendment and `docs/specs/extensible-view-platform.md`
+§1a). Tasks T051-T055 below are kept here only as a design-intent reference for that future task
+list; they are **not** committed scope in this program and must not be started under this plan.
 
 ### T051: Define declarative card presets and property-driven sections
 
@@ -1330,13 +1353,9 @@ covered code path moved.
 
 **Estimated scope:** M
 
-### Checkpoint I: Keep
+(No checkpoint letter is assigned to Keep — it is deferred to Keep's own future plan, not part of this program.)
 
-- [ ] Keep is demonstrably a preset/adapter on shared card and masonry code.
-- [ ] No pin/color/delete/popup mutation exists.
-- [ ] Human accepts Keep feature scope.
-
-## Phase 9: Cross-view hardening and release readiness
+## Phase 8: Cross-view hardening and release readiness
 
 ### T056: Complete cross-view keyboard and accessibility behavior
 
@@ -1350,7 +1369,7 @@ covered code path moved.
 
 **Verification:** `pnpm run test -- accessibility`; native keyboard-only pass.
 
-**Dependencies:** T034, T040, T045, T050, T055.
+**Dependencies:** T034, T040, T045, T050.
 
 **Likely files:** `src/platform/navigation/NavigationService.ts`, `src/platform/dom/CardRenderer.ts`, `tests/accessibility.test.ts`, `tests/fixtures/obsidian.ts`
 
@@ -1362,7 +1381,7 @@ covered code path moved.
 
 **Acceptance criteria:**
 
-- [ ] Timeline, Feed, Masonry, and Keep mounted-node counts are bounded.
+- [ ] Timeline, Feed, and Masonry mounted-node counts are bounded.
 - [ ] Grid performs bounded batches/offscreen gating.
 - [ ] Mount/update/unload cycles leave zero tracked resources.
 
@@ -1404,7 +1423,7 @@ covered code path moved.
 
 **Verification:** `pnpm run build && pnpm run verify:artifacts && pnpm run test -- verify-build-artifacts`
 
-**Dependencies:** T055, T002.
+**Dependencies:** T050, T002.
 
 **Likely files:** `docs/architecture/upstream-provenance.md`, `THIRD_PARTY_NOTICES.md`, `scripts/verify-build-artifacts.mjs`, `tests/verify-build-artifacts.test.mjs`, `scripts/license-banner.mjs`
 
@@ -1412,7 +1431,7 @@ covered code path moved.
 
 ### T060: Update product and developer documentation
 
-**Description:** Document all eight views, architecture boundaries, configuration, compatibility, migration notes, performance behavior, and read-only differences from upstream sources.
+**Description:** Document all seven views, architecture boundaries, configuration, compatibility, migration notes, performance behavior, and read-only differences from upstream sources.
 
 **Acceptance criteria:**
 
@@ -1446,10 +1465,11 @@ covered code path moved.
 
 **Estimated scope:** S
 
-### Checkpoint J: Complete
+### Checkpoint I: Complete
 
 - [ ] `pnpm run check:ci`
-- [ ] Eight view types registered and documented.
+- [ ] Seven view types (Calendar, Gantt, Swimlane, Timeline, Grid, Masonry, Feed) registered and documented.
 - [ ] SPEC Definition of Done checked item by item.
 - [ ] Native acceptance approved.
 - [ ] Release decision made by the maintainer.
+- [ ] Keep's design-intent notes (Phase 8, descoped, above) are handed off as input to its own future spec/plan, not silently dropped.

@@ -14,6 +14,31 @@ The refactor must preserve existing behavior while extracting narrowly scoped ca
 
 This specification is the source of truth for the architecture and product boundaries. Implementation must not begin until the specification and its decision gates are approved.
 
+## 1a. Scope amendment (2026-09-19)
+
+The maintainer descoped **Keep Bases View** from this specification and its delivery plan. Keep
+gets its own specification, plan, and task list once Grid, Masonry, and Feed are implemented and
+accepted — Keep's own approach (reuse the shared card/masonry platform, or build a standalone
+component if reverse-engineering its behavior turns out incompatible) is independent of this
+program's remaining scope, and deciding it now would be premature. Every "Keep" reference
+elsewhere in this document, in `tasks/plan.md`, and in `tasks/todo.md` records design intent
+useful for that future spec; none of it is committed scope here.
+
+The maintainer also reordered delivery: **Masonry now ships immediately after Grid, before
+Feed**, so the shared card/layout components used by Swimlane, Grid, and Masonry are proven
+compatible (or deliberately kept independent per view, following the T037 precedent) before
+Feed's preview/linear-virtualization layer is added on top of that settled platform. This
+changes execution order only — task IDs, dependency edges, and the capability contracts in §9 and
+`tasks/plan.md` are otherwise unchanged; `tasks/plan.md` records the corresponding phase renumbering.
+
+This specification's remaining committed scope is therefore: Calendar, Gantt, Swimlane (existing,
+behavior-preserved), Timeline (accepted), Grid (accepted; native acceptance pending), Masonry, and
+Feed. Function and correctness take priority over full component unification across Grid,
+Masonry, and Swimlane: where sharing a component risks destabilizing existing behavior (as with
+Swimlane's card rendering in T037), keeping per-view logic separate inside the shared component
+remains acceptable, and the unification opportunity is recorded as deferred refactor work rather
+than blocking a task.
+
 ## 2. Product principles
 
 Wise View remains:
@@ -34,9 +59,9 @@ Existing write behavior in Calendar, Gantt, and Swimlane is preserved during beh
 The specification proceeds with these assumptions:
 
 1. All views are integrated into the existing `wise-view` plugin; Wise View does not require the source plugins to be installed at runtime.
-2. The five new registrations are Timeline, Grid, Masonry, Feed, and Keep.
-3. Grid and Masonry are separate Bases view types. Keep is an opinionated presentation preset backed by the same card and masonry platform, not a second masonry implementation.
-4. Newly added views are read-only by default. The 2026-09-19 Timeline amendment permits quick scheduling into the configured start/end properties only; Feed inline editing, Keep pin/color/delete actions, and Dynamic Views checkbox mutation remain excluded.
+2. The new registrations committed in this specification are Timeline, Grid, Masonry, and Feed. Keep is descoped to its own future specification (see §1a); design intent about it recorded below is not committed scope here.
+3. Grid and Masonry are separate Bases view types. (Keep, when specified separately, is expected to be an opinionated presentation preset backed by the same card and masonry platform, not a second masonry implementation — see §1a.)
+4. Newly added views are read-only by default. The 2026-09-19 Timeline amendment permits quick scheduling into the configured start/end properties only; Feed inline editing and Dynamic Views checkbox mutation remain excluded.
 5. Wise View continues to use imperative DOM and Obsidian `Component` lifecycle primitives. React, ReactDOM, TanStack Virtual, Sass, Tailwind, and other UI runtimes are not added.
 6. Authoring uses modular regular CSS. The build still emits one root `styles.css` file.
 7. The minimum supported Obsidian version is corrected to 1.10.2 because the existing code already calls `BasesView.createFileForView`, introduced in Obsidian 1.10.2. No Obsidian 1.13-only API may be used without a separate compatibility decision.
@@ -551,11 +576,11 @@ Development:      pnpm run dev
 
 The program is complete when all of the following are true:
 
-1. Eight stable view types are registered: Calendar, Gantt, Swimlane, Timeline, Grid, Masonry, Feed, and Keep.
+1. Seven stable view types are registered: Calendar, Gantt, Swimlane, Timeline, Grid, Masonry, and Feed. (Keep is descoped to a separate future spec — see §1a.)
 2. All new views use normalized path-keyed models and never retain `BasesEntry` across updates.
 3. Direct property parsing, hover dispatch, Pretty Properties lookup, and unmanaged lifecycle code are not duplicated in new view adapters.
 4. Existing three views consume the shared foundation where applicable and retain their approved behavior.
-5. Timeline uses Temporal Core; Grid uses Card Core; Feed adds Preview plus linear virtualization; Masonry adds the masonry strategy; Keep is a preset on the same masonry/card platform.
+5. Timeline uses Temporal Core; Grid uses Card Core; Masonry adds the masonry strategy on the same Card Core; Feed adds Preview plus linear virtualization.
 6. New views contain no direct vault/frontmatter/editor mutation API calls.
 7. New views remain useful without status, priority, or task-specific fields.
 8. CSS is authored as modular regular CSS and deterministically emitted as one licensed `styles.css` artifact.
