@@ -22,6 +22,24 @@ repository listed here beyond what its **Reuse mode** and **Excluded** rows perm
 - **Copied** — used verbatim (rare, e.g. vendored CSS); requires SPDX/copyright header and a
   `THIRD_PARTY_NOTICES.md` entry.
 
+## Adaptation depth policy (2026-09-19)
+
+The maintainer approved full per-file source adaptation — not just design-evidence-only
+reimplementation — for every remaining upstream candidate below, on the same terms already
+applied to Bases Timeline: strict per-file attribution (SPDX/copyright header, a
+`THIRD_PARTY_NOTICES.md` entry, and a file-level provenance row here), and continued
+enforcement of each candidate's **Excluded** feature list. This changes how much of a
+candidate's *source* a task may adapt; it does not expand *which features* are in scope — the
+feature boundaries the specification and each row's **Excluded** list already set (status/
+priority workflows, checkbox writes, network thumbnails, the image viewer, dependency
+semantics, etc.) are unchanged and still enforced task by task.
+
+This does not apply to Keep Bases View: it remains bundle-only (see its row), so there is no
+readable upstream TypeScript source this policy could extend adaptation to. Keep stays a
+behavioral reimplementation from public requirements; a courtesy "inspired by Keep Bases View"
+mention in its own documentation is welcome but not a license requirement, since no source is
+copied.
+
 ## Ledger
 
 ### Bases Timeline
@@ -74,32 +92,46 @@ repository listed here beyond what its **Reuse mode** and **Excluded** rows perm
 - **Repository:** <https://github.com/edrickleong/obsidian-feed-bases>
 - **Commit:** `a753c21332b6ca07f7ffdf43fb2c50e013579e55`
 - **License:** MIT
-- **Reuse mode:** Design evidence only / behaviorally reimplemented.
+- **Reuse mode:** Full behavioral adaptation approved by the maintainer on 2026-09-19 (same
+  terms as Bases Timeline); implementation remains modular rather than copying the file
+  wholesale. A React-based file cannot be adapted as-is regardless — see Excluded — so adapting
+  it still means porting its logic into Wise View's imperative-DOM approach, not copy-pasting.
 - **Useful design evidence:** linear virtualization, dynamic measurement, feed presentation.
 - **Excluded:** the React stack, private TanStack cache access, internal
   `new WorkspaceLeaf(app)` construction, embedded editable Markdown views.
-- **File-level provenance:** none yet. Record here if a Feed task (T041-T045) adapts a
-  specific upstream file.
-- **Attribution required:** only if a file-level entry above is added.
+- **File-level provenance:** none yet. A Feed task (T041-T045) records a row here, naming the
+  specific upstream file(s) and resulting Wise View file(s), before adapting anything beyond
+  design evidence.
+- **Attribution required:** yes, once a file-level entry above is added — adapted TypeScript
+  carries an SPDX/copyright adaptation header and the upstream MIT text is included in
+  `THIRD_PARTY_NOTICES.md`. Reading the source for design evidence only, without adapting a
+  specific file, still requires no attribution.
 
 ### Dynamic Views
 
 - **Repository:** <https://github.com/churnish/dynamic-views>
 - **Commit:** `7af74541825440bdb581023b0f795b41190c6817`
 - **License:** GPL-3.0-or-later
-- **Reuse mode:** Design evidence only / behaviorally reimplemented.
+- **Reuse mode:** Full behavioral adaptation approved by the maintainer on 2026-09-19 (same
+  terms as Bases Timeline). Adaptation depth increases; the feature scope in **Excluded**
+  below does not — this project still adopts only the listed core patterns, not the full
+  settings/media subsystem the spec's risk table already warns is "much larger than Wise
+  View."
 - **Useful design evidence:** normalized `CardData`, data transform, content cache, render
   hashes, pure masonry layout, scroll anchors, popout safety, shared renderer, extensive
   tests.
 - **Excluded:** wholesale import, 1.13-only API assumptions, the Sass pipeline, automatic
   `.base` cleanup, network thumbnails, the image viewer/slideshow, checkbox writes, and the
   broad settings framework.
-- **File-level provenance:** none yet. Record here if a Card Core/Grid/Masonry/Keep task
-  adapts a specific upstream file.
-- **Attribution required:** only if a file-level entry above is added. Because this upstream
+- **File-level provenance:** none yet. A Card Core/Grid/Masonry task records a row here,
+  naming the specific upstream file(s) and resulting Wise View file(s), before adapting
+  anything beyond design evidence.
+- **Attribution required:** yes, once a file-level entry above is added. Because this upstream
   project is GPL-3.0-or-later, Wise View (GPL-3.0-only) selects GPL version 3 for the
   combined distribution per specification §5.2; the upstream license and attribution must
-  remain visible in any adapted file's header and in `THIRD_PARTY_NOTICES.md`.
+  remain visible in any adapted file's header and in `THIRD_PARTY_NOTICES.md`. Reading the
+  source for design evidence only, without adapting a specific file, still requires no
+  attribution.
 
 ## Existing bundled dependencies (already licensed, not part of this program's new adoption)
 

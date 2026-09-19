@@ -4,10 +4,16 @@
 
 - Date: 2026-09-19
 - Environment: Obsidian desktop on Windows
-- Result: visual fidelity rejected again after T034A-T034B; full attributed interaction adoption requested under T034E
-- Authority: maintainer-provided native screenshots and observations
+- Result: **Accepted.** Desktop fidelity and interaction confirmed correct after T034H-T034M.
+  Mobile was tested and works but is visually cramped; the maintainer explicitly deferred
+  mobile UI/UX polish to a later cross-view pass rather than blocking Phase 5 on it. Popout
+  window acceptance (dragging the Timeline tab into its own OS window) was not tested and
+  remains open, non-blocking.
+- Authority: maintainer-provided native screenshots, observations, and explicit acceptance on
+  2026-09-19.
 
-Automated tests remain separate evidence. This record does not claim mobile or popout acceptance.
+Automated tests remain separate evidence. Popout-window acceptance specifically remains
+unclaimed; deferred mobile polish is tracked as technical debt, not a defect.
 
 ## Evidence received
 
@@ -38,8 +44,17 @@ own dependency-aware scheduling semantics.
 - [x] Right-click opens the shared file menu.
 - [x] The menu contains Open, Open in new tab, Open to the right, Open above, Open below, Open to
   the left, and Open in new window.
+- [x] **Desktop layout and interaction, accepted 2026-09-19.**
+- [x] **Mobile, tested 2026-09-19** — functional, but visually cramped; UI/UX polish explicitly
+  deferred to a later cross-view mobile pass covering every Wise View surface at once, not a
+  Timeline-specific defect.
+- [ ] **Popout window** (dragging the Timeline tab out into its own OS window) — not yet
+  tested. Note this is a different thing from "Page Preview" above: Page Preview is the
+  Ctrl/Cmd-hover content tooltip (already confirmed working); a popout is a whole separate
+  Obsidian window. Non-blocking for Phase 5, but still open.
 
-These checks validate shared navigation integration only. They do not accept the Timeline layout.
+Right-click/Open-menu/Page-Preview checks validate shared navigation integration. Desktop
+layout/interaction and mobile functionality are now separately accepted as of 2026-09-19.
 
 ## Visual and behavioral gaps
 
@@ -89,11 +104,22 @@ timeline that tracked nothing. Fixed under T034J: the toolbar/sidebar/chart chro
 entirely (only the "Configure a start date property…" message remains) whenever no start
 property is configured.
 
+## Seventh comparison — acceptance (2026-09-19, post-T034M)
+
+Following T034J (unconfigured-state chrome), T034K (bordered-pill bars, translucent group
+rows), T034L (the `groupBy` reserved-key parse failure), and T034M (center on today at
+creation), the maintainer confirmed: desktop layout and interaction are correct, and mobile is
+functional (cramped, polish explicitly deferred to a later cross-view pass). **Timeline is
+accepted.** Popout-window acceptance was not tested and stays open as a non-blocking item.
+Phase 5 (Card Core/Grid) may begin.
+
 ## Required follow-up
 
 - T034A owns toolbar, sidebar, temporal header/grid, today presentation, and scroll synchronization.
 - T034B owns configured versus unscheduled semantics and scheduled-bar presentation.
-- T034C repeats desktop/mobile/popout acceptance and records the human decision.
+- ~~T034C repeats desktop/mobile/popout acceptance and records the human decision.~~ Superseded
+  by the seventh comparison above: desktop/mobile are accepted; popout remains open and
+  non-blocking, tracked separately rather than gating Checkpoint E.
 - T034E supersedes the earlier read-only Timeline restriction for quick scheduling and zoom fidelity.
 
 Checkpoint E remains open. Phase 5 must not begin until the maintainer accepts Timeline or

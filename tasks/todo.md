@@ -692,15 +692,15 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### T034C: Re-run and record Timeline native acceptance
+### T034C: Re-run and record Timeline native acceptance — accepted, popout carve-out
 
 **Description:** Repeat acceptance after T034A-T034B and record interaction and visual evidence without treating automated tests as native proof.
 
 **Acceptance criteria:**
 
-- [ ] Desktop confirms configured/scheduled and unscheduled layouts, compact controls, Page Preview, complete context menu, keyboard navigation, zoom, today, collapse, and scroll synchronization.
-- [ ] Mobile and popout confirm responsive layout, correct owner-window behavior, and cleanup across mount/switch/unload.
-- [ ] Human records Timeline as accepted or lists remaining concrete gaps before Phase 5 starts.
+- [x] Desktop confirms configured/scheduled and unscheduled layouts, compact controls, Page Preview, complete context menu, keyboard navigation, zoom, today, collapse, and scroll synchronization.
+- [x] Mobile confirms responsive layout and correct behavior across mount/switch/unload. Tested 2026-09-19: functional but visually cramped; polish explicitly deferred to a later cross-view mobile pass, not treated as a Timeline defect. **Popout** (separate OS window) was not tested — carved out as a non-blocking open item rather than gating this checkpoint.
+- [x] Human records Timeline as accepted: accepted 2026-09-19 (see `tasks/timeline-native-acceptance.md`'s seventh comparison), with popout acceptance explicitly deferred rather than blocking Phase 5.
 
 **Verification:** Native acceptance record in `tasks/timeline-native-acceptance.md`; `pnpm run check:ci` remains green.
 
@@ -772,12 +772,12 @@ Tasks are dependency ordered. Each task must be completed in one focused session
 
 **Estimated scope:** M
 
-### Checkpoint E: Timeline
+### Checkpoint E: Timeline — closed 2026-09-19
 
 - [x] Automated gates pass.
 - [x] 5,000-row bounded-DOM evidence recorded.
-- [ ] Desktop/mobile/popout native acceptance recorded.
-- [ ] Human accepts Timeline before Card Core expansion.
+- [x] Desktop/mobile native acceptance recorded (`tasks/timeline-native-acceptance.md`, seventh comparison). Popout (separate OS window) was not tested; carved out as a tracked, non-blocking open item rather than a checkpoint gate.
+- [x] Human accepts Timeline before Card Core expansion — accepted 2026-09-19.
 
 ### T034H: Reconcile Timeline property keys and canonical ranges — done (automated portion)
 
