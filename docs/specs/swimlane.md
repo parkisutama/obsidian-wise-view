@@ -78,3 +78,18 @@ single class, in the order they appear:
 3. `pnpm run check` passes; no behavior regression is found in native testing of the existing
    Swimlane feature set (drag-and-drop, cover display modes, badges, freeze headers).
 4. `ROADMAP.md`'s Swimlane row is updated to **Done (native-accepted YYYY-MM-DD)**.
+
+## 7. Implementation notes (2026-09-19)
+
+- **Ordering decision:** the alphabetical default for column/swimlane keys is **preserved
+  unchanged** (`orderKeys` in `src/views/swimlane/ordering.ts`, covered by
+  `tests/swimlane-ordering.test.ts`). Changing it to defer to Bases' sort remains a maintainer
+  decision (plan Gate 1) and was not made here.
+- **Extracted:** `options.ts`, `ordering.ts`, `values.ts`, `types.ts`, `cardRenderer.ts`,
+  `dragAndDrop.ts` under `src/views/swimlane/`. `BasesSwimlaneView.ts` went from ~2,770 to ~1,300
+  lines; column/swimlane layout rendering, keyboard navigation, and virtual scroll remain in it.
+- **Removed:** the unused `createGenericBadge`.
+- **Known quirk kept verbatim:** `reorderKeys` with a target not in the list (or dragging a key
+  onto itself) inserts at a fallback index rather than no-oping. Fix separately with a regression
+  test per §5.3.
+- **Pending:** native acceptance (SW-006) and the ROADMAP row update.
