@@ -483,13 +483,18 @@ properties, and a missing template. Record any Frappe-visible side effect of sha
 
 ### GBETA-017: Native acceptance (desktop and mobile)
 
+**Status:** Accepted by maintainer decision 2026-09-20, with mobile, popout window, keyboard, console,
+holiday shading, and the new progress colors not yet verified (waived, listed in
+[native-acceptance.md](native-acceptance.md)). Not a full pass; the waived areas are follow-ups to check
+before the next release.
+
 **Description:** Full native pass of spec §3 on desktop, mobile, and a popout window.
 
 **Acceptance criteria:**
 
-- [ ] `tasks/gantt-beta/native-acceptance.md` complete.
-- [ ] No open data-loss/corruption bug.
-- [ ] `ROADMAP.md` Gantt Beta row updated.
+- [x] `tasks/gantt-beta/native-acceptance.md` records the maintainer decision and lists what is unverified.
+- [x] No open data-loss/corruption bug.
+- [x] `ROADMAP.md` Gantt Beta row updated.
 
 **Verification:** Native testing; `pnpm run check`.
 
@@ -501,18 +506,22 @@ properties, and a missing template. Record any Frappe-visible side effect of sha
 
 ### GBETA-018: Stability gate decision
 
+**Status:** Complete 2026-09-20. The maintainer approved replacing Frappe Gantt; the decision, its
+waivers, and the removal workstream ([spec](../../docs/specs/gantt-frappe-removal.md),
+[plan](../gantt-frappe-removal/plan.md), [tasks](../gantt-frappe-removal/todo.md)) are recorded.
+
 **Description:** Evaluate spec §11 with the maintainer. If met, record the decision in the spec
 and create the "Gantt Frappe removal" workstream docs (spec/plan/tasks) and ROADMAP row.
 
 **Acceptance criteria:**
 
-- [ ] Decision recorded in `docs/specs/gantt-beta.md` §11.
-- [ ] If approved, removal workstream docs exist and are linked from `ROADMAP.md`.
+- [x] Decision recorded in `docs/specs/gantt-beta.md` §11.
+- [x] If approved, removal workstream docs exist and are linked from `ROADMAP.md`.
 
 **Verification:** Documentation review.
 
 **Dependencies:** GBETA-017.
 
-**Likely files:** `docs/specs/gantt-beta.md`, `ROADMAP.md`, `docs/specs/gantt-frappe-removal.md` (new)
+**Likely files:** `docs/specs/gantt-beta.md`, `ROADMAP.md`, `docs/specs/gantt-frappe-removal.md`
 
 **Estimated scope:** S

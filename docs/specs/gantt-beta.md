@@ -1,6 +1,6 @@
 # Spec: Gantt Beta — a phase-aware Gantt view built on `@jaeungkim/gantt-chart`
 
-Status: Approved 2026-09-19 — Gate 1 passed (desktop spike)
+Status: Accepted 2026-09-20 — replaces Frappe Gantt (see §11); removal tracked in gantt-frappe-removal.md
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
@@ -328,6 +328,19 @@ Then a new workstream ("Gantt Frappe removal") is created with its own spec/plan
 `frappe-gantt`, `BasesGanttView.ts`, its CSS scoping in `esbuild.config.mjs`, its notices and
 provenance entries, the `wise-view-gantt` registration, and document how users switch their
 `.base` views (D3).
+
+### Decision (2026-09-20)
+
+The maintainer approved replacing Frappe Gantt. This is an explicit waiver, not a full pass of the gate:
+
+- §10 is met, and no open bug loses or corrupts property data.
+- Native acceptance passed on desktop for most flows (no issues found). Mobile and the popout window
+  were **not** verified, and the gate's "works, or accepted as a documented limitation" is met only
+  as an accepted, documented risk: the popout limitation is in §5, and mobile is unknown.
+- Keyboard, console, holiday shading, and the new progress colors are also unverified. All of them
+  are listed in `tasks/gantt-beta/native-acceptance.md` and are to be checked before the next release.
+
+The removal workstream is [gantt-frappe-removal.md](gantt-frappe-removal.md).
 
 ## 12. Follow-ups (not planned)
 

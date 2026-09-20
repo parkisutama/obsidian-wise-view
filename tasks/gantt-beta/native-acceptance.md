@@ -138,3 +138,27 @@ library, sedangkan nilai final terlihat setelah pointer dilepas.
 
 - [x] Seluruh kegagalan/penyimpangan di atas sudah dicatat.
 - [x] Maintainer menyetujui Gate 2 dan GBETA-012 dapat ditutup (2026-09-20: “saat ini sudah bisa lanjut”).
+
+## Persetujuan akhir (GBETA-017)
+
+Tanggal: 2026-09-20
+
+Keputusan maintainer: uji native dinyatakan cukup untuk melanjutkan. Maintainer melaporkan sebagian
+besar alur sudah dicek di desktop dan tidak menemukan ketidaknyamanan atau ketidaksesuaian. Hasil per
+alur tidak dirinci satu per satu di sini.
+
+Belum diverifikasi dan sengaja ditunda oleh maintainer (bukan lulus):
+
+| Area | Status | Risiko |
+| --- | --- | --- |
+| Mobile (sentuhan, tahan 400 ms untuk menggeser, toolbar) | Belum diuji | Perilaku di layar sentuh tidak diketahui |
+| Popout window | Belum diuji | Library memakai `document` global; drag mungkin tidak jalan (lihat spec §5) |
+| Navigasi dan edit lewat keyboard | Belum diuji | Aksesibilitas keyboard tidak terbukti |
+| Konsol (warning atau error) | Belum diperiksa | Ada peringatan yang tidak terlihat |
+| Arsiran hari libur dan snap ke hari kerja | Belum dikonfirmasi | Opsi kalender kerja belum terbukti |
+| Warna progress di kedua tema setelah perbaikan kontras | Belum dilihat | Kontras terburuk terhitung 2.62, belum dilihat langsung |
+
+Tidak ada bug kehilangan atau kerusakan data yang diketahui terbuka. Dua bug penyimpanan yang ditemukan
+(zona waktu pada Date & time, dan kurung wikilink yang terus bertambah) sudah diperbaiki dan punya
+test regresi.
+
