@@ -129,5 +129,5 @@ perubahan Duration menghitung dan menulis End melalui jalur mutation yang sama.
 
 ### Persetujuan maintainer
 
-- [ ] Seluruh kegagalan/penyimpangan di atas sudah dicatat.
-- [ ] Maintainer menyetujui Gate 2 dan GBETA-012 dapat ditutup.
+- [x] Seluruh kegagalan/penyimpangan di atas sudah dicatat.
+- [x] Maintainer menyetujui Gate 2 dan GBETA-012 dapat ditutup (2026-09-20: “saat ini sudah bisa lanjut”).

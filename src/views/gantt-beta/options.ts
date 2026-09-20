@@ -9,6 +9,16 @@ export type GanttBetaScale = typeof GANTT_BETA_SCALES[number];
 export const GANTT_BETA_DEPENDENCY_SHIFTS = ['none', 'overlap', 'maintain-gap'] as const;
 export type GanttBetaDependencyShift = typeof GANTT_BETA_DEPENDENCY_SHIFTS[number];
 
+export function readCollapsedIds(value: unknown): string[] {
+	if (typeof value !== 'string' || value.length === 0) return [];
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return Array.isArray(parsed) ? [...new Set(parsed.filter((id): id is string => typeof id === 'string'))] : [];
+	} catch {
+		return [];
+	}
+}
+
 export interface GanttBetaOptions {
 	start: BasesPropertyId | null; end: BasesPropertyId | null; label: BasesPropertyId | null;
 	parent: BasesPropertyId | null; order: BasesPropertyId | null; progress: BasesPropertyId | null;
@@ -20,6 +30,7 @@ export interface GanttBetaOptions {
 	readOnly: boolean; allowMove: boolean; allowResize: boolean; allowProgress: boolean;
 	allowLinkCreate: boolean; allowLinkDelete: boolean; allowReorder: boolean; allowTaskCreate: boolean;
 	dependencyShift: GanttBetaDependencyShift; writePhaseDates: boolean; templatePath: string; targetFolder: string; titleFormat: string;
+	collapsedIds: string[];
 }
 
 export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions {
@@ -45,6 +56,7 @@ export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions 
 		writePhaseDates: r.getBoolean('ganttBetaWritePhaseDates', false),
 		templatePath: r.getOptionalString('ganttBetaTemplatePath') ?? '', targetFolder: r.getOptionalString('ganttBetaTargetFolder') ?? '',
 		titleFormat: r.getString('ganttBetaTitleFormat', 'New note {{date}}'),
+		collapsedIds: readCollapsedIds(r.getOptionalString('ganttBetaCollapsedIds')),
 	};
 }
 

@@ -2,13 +2,41 @@
 /* Copyright (C) 2026 Parkis Utama */
 
 .bases-gantt-beta-view {
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	min-height: 0;
 	background: var(--background-primary);
 	color: var(--text-normal);
 }
 
-.bases-gantt-beta-view > .gantt-container {
+.gantt-beta-toolbar {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: var(--size-2-1) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.gantt-beta-toolbar__scale {
+	min-width: 7rem;
+}
+
+.gantt-beta-toolbar__button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	width: auto;
+	padding-inline: var(--size-2-2);
+}
+
+.gantt-beta-chart {
+	min-height: 0;
+	flex: 1 1 auto;
+}
+
+.gantt-beta-chart > .gantt-container {
 	--gantt-font-sans: var(--font-interface);
 	--gantt-background: var(--background-primary);
 	--gantt-foreground: var(--text-normal);
@@ -35,6 +63,16 @@
 	--gantt-bar-color-hover: var(--interactive-accent-hover);
 	--gantt-bar-text-color: var(--text-on-accent);
 	--gantt-progress-color: var(--interactive-accent-hover);
+}
+
+@media (max-width: 600px) {
+	.gantt-beta-toolbar__label {
+		display: none;
+	}
+
+	.gantt-beta-toolbar__button {
+		padding-inline: var(--size-2-1);
+	}
 }
 
 .gantt-beta-empty {

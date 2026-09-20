@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentChild, VNode } from 'preact';
+import type { GanttHandle } from '@jaeungkim/gantt-chart';
 import { DateValue } from './fixtures/obsidian';
 import { BasesGanttBetaView, BASES_GANTT_BETA_VIEW_ID, createGanttBetaViewRegistration } from '../src/views/gantt-beta';
 import type { ChartRender } from '../src/views/gantt-beta/chartHost';
@@ -13,6 +14,8 @@ interface Harness {
 	view: BasesGanttBetaView;
 	host: HTMLElement;
 	renders: ComponentChild[];
+	configWrites: Array<[string, unknown]>;
+	handle: { [K in keyof GanttHandle]: ReturnType<typeof vi.fn> };
 	setConfig(key: string, value: unknown): void;
 	/** Simulates Bases delivering a new result set (new group objects) for the same entries. */
 	refreshData(): void;
@@ -22,10 +25,17 @@ function mount(configOverrides: Record<string, unknown> = {}, mutations: Granted
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 	const renders: ComponentChild[] = [];
+	const configWrites: Array<[string, unknown]> = [];
+	const handle = {
+		scrollToDate: vi.fn(), scrollToToday: vi.fn(), scrollToTask: vi.fn(), setScale: vi.fn(), zoomToFit: vi.fn(),
+		getScrollElement: vi.fn().mockReturnValue(null), openDetail: vi.fn(), closeDetail: vi.fn(), addTask: vi.fn(),
+	};
 	const renderChart: ChartRender = (node, container) => {
 		renders.push(node);
 		container.replaceChildren();
 		if (node !== null && node !== undefined && node !== false) {
+			const ref = (node as VNode & { ref?: (value: GanttHandle | null) => void }).ref;
+			ref?.(handle);
 			const marker = document.createElement('div');
 			marker.dataset.preactTree = 'mounted';
 			container.appendChild(marker);
@@ -37,12 +47,16 @@ function mount(configOverrides: Record<string, unknown> = {}, mutations: Granted
 	const values: Record<string, unknown> = { ganttBetaStart: 'note.start', ...configOverrides };
 	entry.getValue = (id: string) => id === 'note.start' ? new DateValue('2026-01-01') : null;
 	const app = { metadataCache: { getFirstLinkpathDest: () => null }, vault: { getAbstractFileByPath: () => null } };
-	const controller = { app, config: { get: (key: string) => values[key], getAsPropertyId: (key: string) => values[key] ?? null, getOrder: () => [], getDisplayName: (id: string) => id }, data: { groupedData: [{ entries: [entry], hasKey: () => false }] } };
+	const controller = { app, config: {
+		get: (key: string) => values[key],
+		set: (key: string, value: unknown) => { values[key] = value; configWrites.push([key, value]); },
+		getAsPropertyId: (key: string) => values[key] ?? null, getOrder: () => [], getDisplayName: (id: string) => id,
+	}, data: { groupedData: [{ entries: [entry], hasKey: () => false }] } };
 	const plugin = { app, settings: { valueStyles: {} } };
 	const view = new BasesGanttBetaView(controller as never, host, plugin as never, renderChart, mutations);
 	view.onDataUpdated();
 	return {
-		view, host, renders,
+		view, host, renders, configWrites, handle,
 		setConfig: (key, value) => { values[key] = value; },
 		refreshData: () => { (view as unknown as { data: unknown }).data = { groupedData: [{ entries: [entry], hasKey: () => false }] }; },
 	};
@@ -149,6 +163,39 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		expect(formats.week?.tooltip(date)).toBe('YYYY-MM-DD');
 		expect(date.format).toHaveBeenCalledWith('YYYY-MM-DD');
 		harness.view.onunload();
+	});
+
+	it('drives toolbar actions through the chart ref and persists scale changes', () => {
+		const harness = mount({ ganttBetaReadOnly: false, ganttBetaAllowTaskCreate: true }, { fileCreate: { createNote: vi.fn() } });
+		const select = harness.host.querySelector<HTMLSelectElement>('[aria-label="Timeline scale"]')!;
+		select.value = 'week';
+		select.dispatchEvent(new Event('change'));
+		harness.host.querySelector<HTMLButtonElement>('[aria-label="Today"]')!.click();
+		harness.host.querySelector<HTMLButtonElement>('[aria-label="Zoom to fit"]')!.click();
+		harness.host.querySelector<HTMLButtonElement>('[aria-label="Add task"]')!.click();
+
+		expect(harness.handle.setScale).toHaveBeenCalledWith('week');
+		expect(harness.handle.scrollToToday).toHaveBeenCalledOnce();
+		expect(harness.handle.zoomToFit).toHaveBeenCalledOnce();
+		expect(harness.handle.addTask).toHaveBeenCalledOnce();
+		expect(harness.configWrites).toContainEqual(['ganttBetaScale', 'week']);
+		harness.view.onunload();
+	});
+
+	it('tracks wheel scale and persists controlled collapse state across a remount', () => {
+		const harness = mount();
+		(lastProps(harness).onScaleChange as (scale: string) => void)('day');
+		(lastProps(harness).onCollapsedChange as (ids: string[]) => void)(['Phase.md']);
+
+		expect(harness.host.querySelector<HTMLSelectElement>('[aria-label="Timeline scale"]')?.value).toBe('day');
+		expect(harness.configWrites).toContainEqual(['ganttBetaScale', 'day']);
+		expect(harness.configWrites).toContainEqual(['ganttBetaCollapsedIds', '["Phase.md"]']);
+		harness.view.onunload();
+
+		const reopened = mount({ ganttBetaScale: 'day', ganttBetaCollapsedIds: '["Phase.md"]' });
+		expect(lastProps(reopened)).toMatchObject({ defaultScale: 'day', collapsedIds: ['Phase.md'] });
+		expect(reopened.host.querySelector<HTMLSelectElement>('[aria-label="Timeline scale"]')?.value).toBe('day');
+		reopened.view.onunload();
 	});
 
 	it('remounts the chart on a failed write, because the library ignores a re-passed identical array', async () => {

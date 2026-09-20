@@ -18,6 +18,7 @@ import { GanttBetaChartHost, type ChartRender, type GanttBetaChartModel } from '
 import { ganttBetaRequestedProperties, readGanttBetaOptions } from './options';
 import type { GanttBetaOptions } from './options';
 import { mapSnapshotsToGanttTasks } from './taskMapping';
+import { GanttBetaToolbar } from './toolbar';
 import { GanttBetaWriteBack } from './writeBack';
 
 export const BASES_GANTT_BETA_VIEW_ID = 'wise-view-gantt-beta';
@@ -26,6 +27,7 @@ export class BasesGanttBetaView extends BasesView {
 	type = BASES_GANTT_BETA_VIEW_ID;
 	private readonly runtime: ViewRuntime;
 	private readonly chart: GanttBetaChartHost;
+	private readonly toolbar: GanttBetaToolbar;
 	private reportedCycles = new Set<string>();
 	private lastGroups: unknown = null;
 	private lastNonCssConfig = '';
@@ -35,6 +37,7 @@ export class BasesGanttBetaView extends BasesView {
 	private currentStartType: GanttPropertyDateType = 'date';
 	private creationFolder = '';
 	private readonly echoGate: EchoGate;
+	private activeScale: GanttBetaOptions['scale'] | null = null;
 
 	constructor(
 		controller: QueryController,
@@ -46,7 +49,17 @@ export class BasesGanttBetaView extends BasesView {
 		super(controller);
 		this.runtime = new ViewRuntime(containerEl);
 		this.containerEl.addClass('bases-gantt-beta-view');
-		this.chart = this.runtime.own(new GanttBetaChartHost(containerEl, this.runtime, renderChart));
+		const toolbarEl = containerEl.createDiv();
+		const chartEl = containerEl.createDiv({ cls: 'gantt-beta-chart' });
+		this.chart = this.runtime.own(new GanttBetaChartHost(chartEl, this.runtime, renderChart));
+		this.toolbar = new GanttBetaToolbar(toolbarEl, this.runtime, {
+			onScale: scale => this.setScale(scale),
+			onToday: () => this.chart.scrollToToday(),
+			onZoomToFit: () => this.chart.zoomToFit(),
+			onAddTask: () => this.chart.addTask(),
+			onCollapseAll: () => this.setCollapsed(this.parentIds()),
+			onExpandAll: () => this.setCollapsed([]),
+		});
 		this.echoGate = new EchoGate({
 			setTimeout: (handler, ms) => this.runtime.setTimeout(handler, ms),
 			clearTimeout: id => this.runtime.win.clearTimeout(id),
@@ -60,6 +73,7 @@ export class BasesGanttBetaView extends BasesView {
 		if (this.echoGate.hold()) return;
 		const options = readGanttBetaOptions(this.config);
 		this.currentOptions = options;
+		this.containerEl.style.setProperty('--gantt-row-height', `${options.rowHeight}px`);
 		const nonCssConfig = JSON.stringify({ ...options, rowHeight: undefined });
 		if (this.lastGroups === this.data.groupedData && this.lastNonCssConfig === nonCssConfig && this.lastModel) {
 			this.lastModel = { ...this.lastModel, rowHeight: options.rowHeight };
@@ -110,6 +124,7 @@ export class BasesGanttBetaView extends BasesView {
 		}
 		const writer = this.writer;
 		const editable = !options.readOnly;
+		const canAddTask = editable && options.allowTaskCreate && Boolean(options.start && this.mutations.fileCreate);
 		const showTime = mutationProperties.start?.type === 'datetime' || mutationProperties.end?.type === 'datetime';
 		const formats: GanttProps['formats'] = {
 			[options.scale]: { tooltip: (date: { format(pattern: string): string }) => date.format(showTime ? 'YYYY-MM-DD HH:mm' : 'YYYY-MM-DD') },
@@ -118,6 +133,9 @@ export class BasesGanttBetaView extends BasesView {
 			tasks: mapped.tasks, unscheduledCount: mapped.unscheduled.length, rowHeight: options.rowHeight,
 			props: {
 				defaultScale: options.scale, readOnly: options.readOnly, hierarchy: options.phases, showTaskList: options.showTaskList,
+				collapsedIds: options.collapsedIds,
+				onScaleChange: scale => this.persistScale(scale),
+				onCollapsedChange: ids => this.setCollapsed(ids),
 				formats,
 				showRowNumbers: options.showRowNumbers, showDetail: options.showDetail, showTooltip: options.showTooltip,
 				showNonWorkingDays: options.showNonWorkingDays,
@@ -131,7 +149,7 @@ export class BasesGanttBetaView extends BasesView {
 				allowLinkCreate: editable && options.allowLinkCreate && Boolean(options.dependsOn && this.mutations.dependency),
 				allowLinkDelete: editable && options.allowLinkDelete && Boolean(options.dependsOn && this.mutations.dependency),
 				allowReorder: editable && options.allowReorder && Boolean((options.order || options.parent) && this.mutations.property),
-				allowTaskCreate: editable && options.allowTaskCreate && Boolean(options.start && this.mutations.fileCreate),
+				allowTaskCreate: canAddTask,
 				onTasksChange: tasks => void writer.onTasksChange(tasks),
 				onDependencyCreate: change => writer.onDependencyCreate(change),
 				onDependencyDelete: change => writer.onDependencyDelete(change),
@@ -143,6 +161,41 @@ export class BasesGanttBetaView extends BasesView {
 		this.lastNonCssConfig = nonCssConfig;
 		this.lastModel = model;
 		this.chart.update(model);
+		if (this.activeScale === null) this.activeScale = options.scale;
+		else if (this.activeScale !== options.scale) {
+			this.activeScale = options.scale;
+			this.chart.setScale(options.scale);
+		}
+		this.toolbar.update(this.activeScale, canAddTask);
+	}
+
+	private setScale(scale: GanttBetaOptions['scale']): void {
+		this.chart.setScale(scale);
+		this.persistScale(scale);
+	}
+
+	private persistScale(scale: GanttBetaOptions['scale']): void {
+		this.activeScale = scale;
+		this.toolbar.update(scale, Boolean(this.lastModel?.props.allowTaskCreate));
+		if (this.config.get('ganttBetaScale') !== scale) this.config.set('ganttBetaScale', scale);
+	}
+
+	private parentIds(): string[] {
+		if (!this.lastModel) return [];
+		const ids = new Set(this.lastModel.tasks.map(task => task.parentId).filter((id): id is string => id !== null));
+		return this.lastModel.tasks.map(task => task.id).filter(id => ids.has(id));
+	}
+
+	private setCollapsed(ids: string[]): void {
+		if (!this.lastModel) return;
+		this.lastModel = { ...this.lastModel, props: { ...this.lastModel.props, collapsedIds: ids } };
+		this.chart.update(this.lastModel);
+		this.persistCollapsed(ids);
+	}
+
+	private persistCollapsed(ids: string[]): void {
+		const value = JSON.stringify(ids);
+		if (this.config.get('ganttBetaCollapsedIds') !== value) this.config.set('ganttBetaCollapsedIds', value);
 	}
 
 	private revertTaskArray(tasks: Task[]): void {

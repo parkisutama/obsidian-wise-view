@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
-import { ReactGanttChart, type GanttProps, type Task } from '@jaeungkim/gantt-chart';
+import { ReactGanttChart, type GanttHandle, type GanttProps, type GanttScaleKey, type Task } from '@jaeungkim/gantt-chart';
 import { h, type ComponentChild } from 'preact';
 import { render } from 'preact/compat';
 import type { ViewRuntime } from '../../platform/dom/ViewRuntime';
@@ -27,6 +27,7 @@ export class GanttBetaChartHost {
 	private disposed = false;
 	private model: GanttBetaChartModel | null = null;
 	private remountKey = 0;
+	private handle: GanttHandle | null = null;
 
 	constructor(
 		private readonly containerEl: HTMLElement,
@@ -59,12 +60,29 @@ export class GanttBetaChartHost {
 		}
 		this.renderChart(h(ReactGanttChart, {
 			key: this.remountKey,
+			ref: (handle: GanttHandle | null) => { this.handle = handle; },
 			tasks: this.model.tasks,
 			height: '100%',
 			width: '100%',
 			theme: this.theme,
 			...this.model.props,
 		}), this.containerEl);
+	}
+
+	setScale(scale: GanttScaleKey): void {
+		this.handle?.setScale(scale);
+	}
+
+	scrollToToday(): void {
+		this.handle?.scrollToToday();
+	}
+
+	zoomToFit(): void {
+		this.handle?.zoomToFit();
+	}
+
+	addTask(): void {
+		this.handle?.addTask();
 	}
 
 	/** Row height is a CSS-only update; unchanged task/prop references do not repaint Preact. */
@@ -93,6 +111,7 @@ export class GanttBetaChartHost {
 		if (this.disposed) return;
 		this.disposed = true;
 		this.observer.disconnect();
+		this.handle = null;
 		this.renderChart(null, this.containerEl);
 	}
 }

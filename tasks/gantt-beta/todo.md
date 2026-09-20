@@ -304,8 +304,8 @@ dates) and record results for the maintainer.
 
 **Acceptance criteria:**
 
-- [ ] Results recorded in `tasks/gantt-beta/native-acceptance.md` (write-back section).
-- [ ] Maintainer approval recorded.
+- [x] Results recorded in `tasks/gantt-beta/native-acceptance.md` (write-back section).
+- [x] Maintainer approval recorded.
 
 **Verification:** Manual.
 
@@ -325,10 +325,10 @@ driven by the chart `ref`; persist scale (`onScaleChange`) and collapsed ids
 
 **Acceptance criteria:**
 
-- [ ] Scale and collapse state survive closing and reopening the `.base` file.
-- [ ] The visible scale indicator/picker updates after Ctrl/Cmd + wheel and picker changes update
+- [x] Scale and collapse state survive closing and reopening the `.base` file.
+- [x] The visible scale indicator/picker updates after Ctrl/Cmd + wheel and picker changes update
   the chart without reopening view settings.
-- [ ] Toolbar actions tested through the ref API.
+- [x] Toolbar actions tested through the ref API.
 
 **Verification:** `pnpm run test -- gantt-beta && pnpm run typecheck`
 
