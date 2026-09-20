@@ -10,6 +10,7 @@ const ZONED_DATE = /(?:Z|[+-]\d{2}:\d{2})$/i;
 const DURATION = /^\s*(\d+(?:\.\d+)?)\s*([mhd])\s*$/i;
 
 export interface GanttDetailEntry {
+	dateProperties: { start: string | null; end: string | null };
 	dateTypes: { start: GanttPropertyDateType; end: GanttPropertyDateType };
 	propertyNames: ReadonlyMap<string, string>;
 	values: ReadonlyMap<string, NormalizedValue>;
@@ -17,13 +18,15 @@ export interface GanttDetailEntry {
 }
 
 export interface GanttDetailPanelOptions {
-	canEditDates: boolean;
+	canEditEnd: boolean;
 	canEditDependencies: boolean;
 	canEditProgress: boolean;
+	canEditStart: boolean;
 	dependsOnProperty: string | null;
 	entry: GanttDetailEntry | null;
 	localTimeZone: string;
 	onOpenNote: (path: string) => void;
+	onExactDateUpdate: (taskId: string) => void;
 	onRemoveDependency: (taskId: string, dependency: TaskDependency) => boolean;
 	progressProperty: string | null;
 }
@@ -71,7 +74,10 @@ function valueText(value: NormalizedValue | undefined): string {
 
 function hasZonedDate(entry: GanttDetailEntry | null): boolean {
 	if (!entry) return false;
-	return [...entry.values.values()].some(value => value.kind === 'date' && value.hasTime && ZONED_DATE.test(value.value));
+	return [entry.dateProperties.start, entry.dateProperties.end].some(property => {
+		const value = property ? entry.values.get(property) : undefined;
+		return value?.kind === 'date' && value.hasTime && ZONED_DATE.test(value.value);
+	});
 }
 
 function field(label: string, control: ComponentChild): ComponentChild {
@@ -87,11 +93,15 @@ export function renderGanttDetail(
 	const entry = options.entry;
 	const startType = entry?.dateTypes.start ?? 'date';
 	const endType = entry?.dateTypes.end ?? startType;
-	const editableDates = options.canEditDates && !task.readOnly;
+	const editableStart = options.canEditStart && !task.readOnly && task.allowMove !== false;
+	const editableEnd = options.canEditEnd && !task.readOnly && task.allowResize !== false;
 	const updateDate = (boundary: 'start' | 'end', value: string) => {
 		const type = boundary === 'start' ? startType : endType;
 		const next = chartDate(value, type, boundary);
-		if (next) props.update(boundary === 'start' ? { startDate: next } : { endDate: next });
+		if (next) {
+			options.onExactDateUpdate(task.id);
+			props.update(boundary === 'start' ? { startDate: next } : { endDate: next });
+		}
 	};
 	const dependencies = task.dependencies ?? [];
 	const duration = durationLabel(task.startDate, task.endDate);
@@ -102,19 +112,22 @@ export function renderGanttDetail(
 		h('div', { class: 'gantt-beta-detail__fields' },
 			field('Start', h('input', {
 				type: startType === 'date' ? 'date' : 'datetime-local', value: inputDate(task.startDate, startType, 'start'),
-				disabled: !editableDates, onChange: (event: Event) => updateDate('start', (event.currentTarget as HTMLInputElement).value),
+				disabled: !editableStart, onChange: (event: Event) => updateDate('start', (event.currentTarget as HTMLInputElement).value),
 			})),
 			field('End', h('input', {
 				type: endType === 'date' ? 'date' : 'datetime-local', value: inputDate(task.endDate, endType, 'end'),
-				disabled: !editableDates, onChange: (event: Event) => updateDate('end', (event.currentTarget as HTMLInputElement).value),
+				disabled: !editableEnd, onChange: (event: Event) => updateDate('end', (event.currentTarget as HTMLInputElement).value),
 			})),
 			field('Duration', h('input', {
-				type: 'text', value: duration, disabled: !editableDates, 'aria-label': 'Duration',
+				type: 'text', value: duration, disabled: !editableEnd, 'aria-label': 'Duration',
 				onChange: (event: Event) => {
 					const input = event.currentTarget as HTMLInputElement;
 					const endDate = durationEnd(task.startDate, input.value, endType);
 					input.setCustomValidity(endDate ? '' : startType === 'date' && endType === 'date' ? 'Use whole days, for example 2d.' : 'Use minutes, hours, or days, for example 90m, 2h, or 1d.');
-					if (endDate) props.update({ endDate });
+					if (endDate) {
+						options.onExactDateUpdate(task.id);
+						props.update({ endDate });
+					}
 				},
 			})),
 			options.progressProperty ? field('Progress', h('input', {

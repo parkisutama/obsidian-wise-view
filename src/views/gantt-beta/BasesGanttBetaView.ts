@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Parkis Utama
 
 import { BasesView, Notice, type QueryController } from 'obsidian';
-import type { GanttProps, GanttTaskDraft, Task } from '@jaeungkim/gantt-chart';
+import type { GanttDetailRenderProps, GanttProps, GanttTaskDraft, Task, TaskDependency } from '@jaeungkim/gantt-chart';
 import type WiseViewPlugin from '../../main';
 import type { NormalizedValue } from '../../core/entries/NormalizedValue';
 import { writeGanttDate, type GanttPropertyDateType } from '../../core/gantt/dates';
@@ -14,6 +14,7 @@ import { ViewRuntime } from '../../platform/dom/ViewRuntime';
 import type { GrantedMutations } from '../../platform/mutations/grants';
 import { NoteTemplateService } from '../../services/NoteTemplateService';
 import { EchoGate } from './echoGate';
+import { renderGanttDetail, type GanttDetailEntry } from './detailPanel';
 import { GanttBetaChartHost, type ChartRender, type GanttBetaChartModel } from './chartHost';
 import { ganttBetaRequestedProperties, readGanttBetaOptions } from './options';
 import type { GanttBetaOptions } from './options';
@@ -87,13 +88,16 @@ export class BasesGanttBetaView extends BasesView {
 		this.currentOptions = options;
 		this.containerEl.style.setProperty('--gantt-row-height', `${options.rowHeight}px`);
 		this.setTodayOffset(options.scale);
-		const nonCssConfig = JSON.stringify({ ...options, rowHeight: undefined });
+		const visibleProperties = this.config.getOrder();
+		const nonCssConfig = JSON.stringify({ ...options, rowHeight: undefined, visibleProperties });
 		if (this.lastGroups === this.data.groupedData && this.lastNonCssConfig === nonCssConfig && this.lastModel) {
 			this.lastModel = { ...this.lastModel, rowHeight: options.rowHeight };
 			this.chart.update(this.lastModel);
 			return;
 		}
-		const groups = createEntrySnapshotGroups(this.data.groupedData, ganttBetaRequestedProperties(options));
+		const groups = createEntrySnapshotGroups(this.data.groupedData, ganttBetaRequestedProperties(options, visibleProperties));
+		const entries = groups.flatMap(group => group.entries);
+		const entriesByPath = new Map(entries.map(entry => [entry.path, entry]));
 		this.creationFolder = groups.flatMap(group => group.entries)[0]?.folder ?? '';
 		const grouped = this.data.groupedData.length > 1 || Boolean(this.data.groupedData[0]?.hasKey());
 		const mapped = mapSnapshotsToGanttTasks(groups, options, {
@@ -143,6 +147,31 @@ export class BasesGanttBetaView extends BasesView {
 		const formats: GanttProps['formats'] = {
 			[options.scale]: { tooltip: (date: { format(pattern: string): string }) => date.format(showTime ? 'YYYY-MM-DD HH:mm' : 'YYYY-MM-DD') },
 		};
+		const dateTypes = mutationProperties.dateTypes;
+		const propertyNames = new Map(visibleProperties.map(property => [property, this.config.getDisplayName(property)]));
+		const timezone = (this.runtime.win as Window & { Intl?: typeof Intl }).Intl?.DateTimeFormat().resolvedOptions().timeZone ?? 'Local time';
+		const detailEntry = (path: string): GanttDetailEntry | null => {
+			const entry = entriesByPath.get(path);
+			const types = dateTypes.get(path);
+			return entry && types ? {
+				dateProperties: { start: options.start, end: options.end }, dateTypes: types,
+				propertyNames, values: entry.values, visibleProperties,
+			} : null;
+		};
+		const removeDependency = (taskId: string, dependency: TaskDependency): boolean => writer.onDependencyDelete({
+			predecessorId: dependency.targetId, successorId: taskId, type: dependency.type,
+		});
+		const renderDetail = (detailProps: GanttDetailRenderProps) => renderGanttDetail(detailProps, {
+			canEditStart: editable && options.allowMove && Boolean(options.start && this.mutations.date),
+			canEditEnd: editable && options.allowResize && Boolean(options.end && this.mutations.date),
+			canEditProgress: editable && options.allowProgress && Boolean(options.progress && this.mutations.property),
+			canEditDependencies: editable && options.allowLinkDelete && Boolean(options.dependsOn && this.mutations.dependency),
+			dependsOnProperty: options.dependsOn, progressProperty: options.progress, entry: detailEntry(detailProps.task.id),
+			localTimeZone: timezone,
+			onOpenNote: path => { if (entriesByPath.has(path)) void this.app.workspace.openLinkText(path, '', false); },
+			onExactDateUpdate: taskId => writer.onExactDateUpdate(taskId),
+			onRemoveDependency: removeDependency,
+		});
 		const model: GanttBetaChartModel = {
 			tasks: mapped.tasks, unscheduledCount: mapped.unscheduled.length, rowHeight: options.rowHeight,
 			props: {
@@ -152,6 +181,7 @@ export class BasesGanttBetaView extends BasesView {
 				onCollapsedChange: ids => this.setCollapsed(ids),
 				formats,
 				showRowNumbers: options.showRowNumbers, showDetail: options.showDetail, showTooltip: options.showTooltip,
+				...(options.showDetail ? { renderDetail } : {}),
 				showNonWorkingDays: options.showNonWorkingDays,
 				workingWeekdays: options.workingWeekdays.split(',').map(Number).filter(day => day >= 0 && day <= 6),
 				holidays: options.holidays.split(',').map(value => value.trim()).filter(Boolean), firstDayOfWeek: options.firstDayOfWeek,

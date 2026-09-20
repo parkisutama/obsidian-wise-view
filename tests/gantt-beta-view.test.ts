@@ -2,8 +2,9 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentChild, VNode } from 'preact';
+import { render as renderPreact } from 'preact/compat';
 import type { GanttHandle } from '@jaeungkim/gantt-chart';
-import { DateValue } from './fixtures/obsidian';
+import { DateValue, StringValue } from './fixtures/obsidian';
 import { BasesGanttBetaView, BASES_GANTT_BETA_VIEW_ID, createGanttBetaViewRegistration } from '../src/views/gantt-beta';
 import { localTodayOffsetPx } from '../src/views/gantt-beta/BasesGanttBetaView';
 import type { ChartRender } from '../src/views/gantt-beta/chartHost';
@@ -16,13 +17,18 @@ interface Harness {
 	host: HTMLElement;
 	renders: ComponentChild[];
 	configWrites: Array<[string, unknown]>;
+	openLinkText: ReturnType<typeof vi.fn>;
 	handle: { [K in keyof GanttHandle]: ReturnType<typeof vi.fn> };
 	setConfig(key: string, value: unknown): void;
 	/** Simulates Bases delivering a new result set (new group objects) for the same entries. */
 	refreshData(): void;
 }
 
-function mount(configOverrides: Record<string, unknown> = {}, mutations: GrantedMutations = {}): Harness {
+function mount(
+	configOverrides: Record<string, unknown> = {},
+	mutations: GrantedMutations = {},
+	entryValues: Record<string, DateValue | StringValue | null> = {},
+): Harness {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 	const renders: ComponentChild[] = [];
@@ -42,22 +48,25 @@ function mount(configOverrides: Record<string, unknown> = {}, mutations: Granted
 			container.appendChild(marker);
 		}
 	};
-	const entry: { file: { path: string; basename: string; extension: string; parent: null; stat: { ctime: number; mtime: number } }; getValue(id: string): DateValue | null } = {
+	const entry: { file: { path: string; basename: string; extension: string; parent: null; stat: { ctime: number; mtime: number } }; getValue(id: string): DateValue | StringValue | null } = {
 		file: { path: 'A.md', basename: 'A', extension: 'md', parent: null, stat: { ctime: 1, mtime: 2 } }, getValue: () => null,
 	};
 	const values: Record<string, unknown> = { ganttBetaStart: 'note.start', ...configOverrides };
-	entry.getValue = (id: string) => id === 'note.start' ? new DateValue('2026-01-01') : null;
-	const app = { metadataCache: { getFirstLinkpathDest: () => null }, vault: { getAbstractFileByPath: () => null } };
+	entry.getValue = (id: string) => entryValues[id] ?? (id === 'note.start' ? new DateValue('2026-01-01') : null);
+	const openLinkText = vi.fn().mockResolvedValue(undefined);
+	const app = { metadataCache: { getFirstLinkpathDest: () => null }, vault: { getAbstractFileByPath: () => null }, workspace: { openLinkText } };
 	const controller = { app, config: {
 		get: (key: string) => values[key],
 		set: (key: string, value: unknown) => { values[key] = value; configWrites.push([key, value]); },
-		getAsPropertyId: (key: string) => values[key] ?? null, getOrder: () => [], getDisplayName: (id: string) => id,
+		getAsPropertyId: (key: string) => values[key] ?? null,
+		getOrder: () => (values.__order as string[] | undefined) ?? [],
+		getDisplayName: (id: string) => id === 'note.owner' ? 'Owner' : id,
 	}, data: { groupedData: [{ entries: [entry], hasKey: () => false }] } };
 	const plugin = { app, settings: { valueStyles: {} } };
 	const view = new BasesGanttBetaView(controller as never, host, plugin as never, renderChart, mutations);
 	view.onDataUpdated();
 	return {
-		view, host, renders, configWrites, handle,
+		view, host, renders, configWrites, handle, openLinkText,
 		setConfig: (key, value) => { values[key] = value; },
 		refreshData: () => { (view as unknown as { data: unknown }).data = { groupedData: [{ entries: [entry], hasKey: () => false }] }; },
 	};
@@ -207,6 +216,29 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		expect(harness.host.style.getPropertyValue('--gantt-local-today-offset')).toBe(
 			`${localTodayOffsetPx('week', new Date().getTimezoneOffset())}px`,
 		);
+		harness.view.onunload();
+	});
+
+	it('wires the custom detail renderer to ordered visible-property snapshots and note navigation', () => {
+		const harness = mount({
+			ganttBetaShowDetail: true, __order: ['note.owner'],
+		}, {}, { 'note.owner': new StringValue('Parkis') });
+		const props = lastProps(harness);
+		expect(props.renderDetail).toBeTypeOf('function');
+		const update = vi.fn();
+		const detail = (props.renderDetail as (value: unknown) => ComponentChild)({
+			task: { ...(props.tasks as Array<Record<string, unknown>>)[0], name: 'A' },
+			scale: 'week', update, close: vi.fn(),
+		});
+		const detailHost = document.createElement('div');
+		renderPreact(detail, detailHost);
+		expect(detailHost.querySelector('.gantt-beta-detail__property-value')?.textContent).toBe('Parkis');
+		(detailHost.querySelector('.gantt-beta-detail__title') as HTMLButtonElement).click();
+		expect(harness.openLinkText).toHaveBeenCalledWith('A.md', '', false);
+		const rendersBeforePropertyChange = harness.renders.length;
+		harness.setConfig('__order', []);
+		harness.view.onDataUpdated();
+		expect(harness.renders).toHaveLength(rendersBeforePropertyChange + 1);
 		harness.view.onunload();
 	});
 

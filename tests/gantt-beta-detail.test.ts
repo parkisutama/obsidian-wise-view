@@ -16,19 +16,20 @@ function mount(taskValue: Task, overrides: Partial<GanttDetailPanelOptions> = {}
 	const close = vi.fn();
 	const open = vi.fn();
 	const remove = vi.fn().mockReturnValue(true);
+	const exactDate = vi.fn();
 	const options: GanttDetailPanelOptions = {
-		canEditDates: true, canEditDependencies: true, canEditProgress: true,
+		canEditStart: true, canEditEnd: true, canEditDependencies: true, canEditProgress: true,
 		dependsOnProperty: 'note.depends_on', progressProperty: 'note.progress', localTimeZone: 'Asia/Jakarta',
 		entry: {
-			dateTypes: { start: 'date', end: 'date' },
+			dateProperties: { start: 'note.start', end: 'note.end' }, dateTypes: { start: 'date', end: 'date' },
 			propertyNames: new Map([['note.status', 'Status'], ['note.owner', 'Owner']]),
 			values: new Map([['note.status', { kind: 'text', value: 'Doing' }], ['note.owner', { kind: 'text', value: 'Parkis' }]]),
 			visibleProperties: ['note.owner', 'note.status'],
 		},
-		onOpenNote: open, onRemoveDependency: remove, ...overrides,
+		onOpenNote: open, onExactDateUpdate: exactDate, onRemoveDependency: remove, ...overrides,
 	};
 	render(renderGanttDetail({ task: taskValue as never, scale: 'week', update, close } as GanttDetailRenderProps, options), host);
-	return { host, update, close, open, remove };
+	return { host, update, close, open, remove, exactDate };
 }
 
 afterEach(() => document.body.replaceChildren());
@@ -43,13 +44,14 @@ describe('Gantt Beta detail panel (GBETA-014)', () => {
 		duration.value = '3d';
 		duration.dispatchEvent(new Event('change', { bubbles: true }));
 		expect(h.update).toHaveBeenCalledWith({ endDate: '2026-09-23T00:00:00.000Z' });
+		expect(h.exactDate).toHaveBeenCalledWith('Task.md');
 		expect([...h.host.querySelectorAll('.gantt-beta-detail__property-name')].map(node => node.textContent)).toEqual(['Owner', 'Status']);
 	});
 
 	it('keeps minute precision and discloses local time only for zoned input', () => {
 		const zoned = mount(task({ startDate: '2026-09-20T09:15', endDate: '2026-09-20T10:45' }), {
 			entry: {
-				dateTypes: { start: 'datetime', end: 'datetime' }, propertyNames: new Map(), visibleProperties: [],
+				dateProperties: { start: 'note.start', end: 'note.end' }, dateTypes: { start: 'datetime', end: 'datetime' }, propertyNames: new Map(), visibleProperties: [],
 				values: new Map([['note.start', { kind: 'date', value: '2026-09-20T02:15:00Z', hasTime: true }]]),
 			},
 		});
@@ -60,7 +62,7 @@ describe('Gantt Beta detail panel (GBETA-014)', () => {
 
 		const floating = mount(task({ startDate: '2026-09-20T09:15', endDate: '2026-09-20T10:45' }), {
 			entry: {
-				dateTypes: { start: 'datetime', end: 'datetime' }, propertyNames: new Map(), visibleProperties: [],
+				dateProperties: { start: 'note.start', end: 'note.end' }, dateTypes: { start: 'datetime', end: 'datetime' }, propertyNames: new Map(), visibleProperties: [],
 				values: new Map([['note.start', { kind: 'date', value: '2026-09-20T09:15', hasTime: true }]]),
 			},
 		});

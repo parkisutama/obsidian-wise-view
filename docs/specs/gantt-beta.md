@@ -142,6 +142,10 @@ Rules:
   scroll, selection, collapse state, or the open detail panel.
 - **Order values.** Reordering renumbers the affected siblings with gaps (10, 20, 30, …) and only
   writes notes whose value changed.
+- **Detail edits.** The custom detail panel calls the chart's `update` function, so Start, End,
+  Duration, Progress, and dependency removal reach the same task-array diff and capability batch
+  as gestures. Exact date fields and Duration bypass gesture-scale snapping but retain range
+  validation and dependency scheduling.
 
 ### 3.5 Dependency schedule policy (D6)
 

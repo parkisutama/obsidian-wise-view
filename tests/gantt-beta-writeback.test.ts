@@ -166,6 +166,18 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		);
 	});
 
+	it('keeps an exact detail-panel date edit independent of the visible resolution', async () => {
+		const h = harness({ scale: 'month' });
+		h.writer.replaceBaseline([task('Tasks/A.md', { startDate: '2026-10-01', endDate: '2026-10-03' })]);
+		h.writer.onExactDateUpdate('Tasks/A.md');
+
+		await h.writer.onTasksChange([task('Tasks/A.md', { startDate: '2026-10-01', endDate: '2026-10-04' })]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-10-01', 'note.end', '2026-10-03',
+		);
+	});
+
 	it('snaps coarser Date & time movement by calendar month without changing the hour', async () => {
 		const h = harness({ scale: 'quarter' });
 		h.writer.replaceProperties({

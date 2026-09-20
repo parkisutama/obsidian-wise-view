@@ -142,6 +142,7 @@ export class GanttBetaWriteBack {
 	private writePhaseDates: boolean;
 	private scale: GanttBetaScale;
 	private pendingDependencyChange = false;
+	private readonly pendingExactDateTasks = new Set<string>();
 
 	constructor(tasks: Task[], private readonly options: GanttBetaWriteBackOptions) {
 		this.baseline = tasks;
@@ -181,6 +182,10 @@ export class GanttBetaWriteBack {
 
 	onDependencyDelete(change: GanttDependencyChange): boolean {
 		return this.onDependencyCreate(change);
+	}
+
+	onExactDateUpdate(taskId: string): void {
+		this.pendingExactDateTasks.add(taskId);
 	}
 
 	onTaskMove(change: GanttTaskMoveChange): boolean {
@@ -225,12 +230,15 @@ export class GanttBetaWriteBack {
 		const epoch = this.epoch;
 		const allowDependencyChange = this.pendingDependencyChange;
 		this.pendingDependencyChange = false;
+		const exactDateTasks = new Set(this.pendingExactDateTasks);
+		this.pendingExactDateTasks.clear();
 		const dateNormalizedTasks = nextTasks.map(task => {
 			const types = this.properties.dateTypes?.get(task.id);
 			const startType = types?.start ?? this.properties.start?.type;
 			const endType = types?.end ?? this.properties.end?.type;
 			const baseline = this.baseline.find(candidate => candidate.id === task.id);
-			const snapped = startType ? snapTask(task, baseline, { start: startType, end: endType ?? startType }, this.scale) : task;
+			const snapped = startType && !exactDateTasks.has(task.id)
+				? snapTask(task, baseline, { start: startType, end: endType ?? startType }, this.scale) : task;
 			const startDate = startType ? canonicalDate(snapped.startDate, startType, 'start') : snapped.startDate;
 			const endDate = endType ? canonicalDate(snapped.endDate, endType, 'end') : snapped.endDate;
 			return startDate === task.startDate && endDate === task.endDate ? task : { ...task, startDate, endDate };

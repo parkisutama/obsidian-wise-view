@@ -103,7 +103,7 @@ export function getGanttBetaViewOptions(_config: BasesViewConfig): BasesAllOptio
 	];
 }
 
-export function ganttBetaRequestedProperties(options: GanttBetaOptions): BasesPropertyId[] {
+export function ganttBetaRequestedProperties(options: GanttBetaOptions, visibleProperties: readonly BasesPropertyId[] = []): BasesPropertyId[] {
 	return [...new Set([options.start, options.end, options.label, options.parent, options.order, options.progress, options.colorBy,
-		options.dependsOn].filter((id): id is BasesPropertyId => id !== null))];
+		options.dependsOn, ...visibleProperties].filter((id): id is BasesPropertyId => id !== null))];
 }

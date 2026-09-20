@@ -340,6 +340,11 @@ driven by the chart `ref`; persist scale (`onScaleChange`) and collapsed ids
 
 ### GBETA-014: Detail panel renderer
 
+**Status:** Complete (2026-09-20). Custom detail rendering uses the chart's `update` callback for
+Start, End, Duration, and Progress; dependency removal is authorized by the existing dependency
+callback before the same task-array write path runs. Visible Base properties retain configured
+order, and timezone context is limited to zoned Start/End source values.
+
 **Description:** `renderDetail` showing note title (opens the note), editable start/end,
 editable Duration (recomputes End), progress, Depends on links (removable), and the Base's
 visible properties read-only. Date fields use day precision; Date & time fields retain hour and
@@ -349,10 +354,10 @@ preserved on write.
 
 **Acceptance criteria:**
 
-- [ ] Edits write through the same paths as gestures (no second write path).
-- [ ] Visible properties follow the Base's property order.
-- [ ] Date never exposes a hidden hour; Date & time exposes hour/minute and editable Duration.
-- [ ] Zoned input displays the local timezone context; unzoned local-floating input does not add
+- [x] Edits write through the same paths as gestures (no second write path).
+- [x] Visible properties follow the Base's property order.
+- [x] Date never exposes a hidden hour; Date & time exposes hour/minute and editable Duration.
+- [x] Zoned input displays the local timezone context; unzoned local-floating input does not add
   a misleading timezone label.
 
 **Verification:** `pnpm run test -- gantt-beta-detail`
