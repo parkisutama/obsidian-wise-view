@@ -17,8 +17,8 @@ Tema: light dan dark
 | Group by Bases | Lulus | Group native menjadi fase tingkat atas bersama hierarchy Parent. |
 | Progress | Lulus dengan catatan | Nilai terbaca dan tooltip menunjukkan persentase, tetapi fill kurang terlihat pada sebagian warna. |
 | Color by | Lulus | Warna kategori diterapkan pada bar; kontras progress bergantung pada warna. |
-| Ctrl/Cmd + wheel | Lulus dengan catatan | Scale berubah, tetapi belum ada indikator/picker scale yang terlihat dan tersinkron. |
-| Today marker | Gagal | Pada 2026-09-20 sebelum 07.00 WIB marker menunjuk 2026-09-19 karena library memakai UTC. GBETA-016 harus menggantinya dengan marker tanggal lokal. |
+| Ctrl/Cmd + wheel | Lulus; perbaikan tersedia | Picker sekarang terlihat, tersinkron, dan memakai nama resolusi Hours/Days/Weeks/Months/Quarters; perlu konfirmasi native build terbaru. |
+| Today marker | Gagal; perbaikan tersedia | Marker UTC kini digeser ke wall-clock lokal sesuai offset runtime; perlu konfirmasi native build terbaru. |
 | Tooltip | Perlu perbaikan | Tooltip library dan tooltip lain dapat bertumpuk saat hover. |
 | Detail panel | Parsial sesuai tahap | Panel library muncul; renderer detail Wise View belum diimplementasikan. |
 | Move/resize/dependency drawing | Belum diuji | View masih sengaja dipaksa read-only sampai GBETA-009–GBETA-011 selesai. |

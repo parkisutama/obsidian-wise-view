@@ -5,6 +5,7 @@ import type { ComponentChild, VNode } from 'preact';
 import type { GanttHandle } from '@jaeungkim/gantt-chart';
 import { DateValue } from './fixtures/obsidian';
 import { BasesGanttBetaView, BASES_GANTT_BETA_VIEW_ID, createGanttBetaViewRegistration } from '../src/views/gantt-beta';
+import { localTodayOffsetPx } from '../src/views/gantt-beta/BasesGanttBetaView';
 import type { ChartRender } from '../src/views/gantt-beta/chartHost';
 import type { GrantedMutations } from '../src/platform/mutations/grants';
 
@@ -167,7 +168,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 
 	it('drives toolbar actions through the chart ref and persists scale changes', () => {
 		const harness = mount({ ganttBetaReadOnly: false, ganttBetaAllowTaskCreate: true }, { fileCreate: { createNote: vi.fn() } });
-		const select = harness.host.querySelector<HTMLSelectElement>('[aria-label="Timeline scale"]')!;
+		const select = harness.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')!;
 		select.value = 'week';
 		select.dispatchEvent(new Event('change'));
 		harness.host.querySelector<HTMLButtonElement>('[aria-label="Today"]')!.click();
@@ -187,15 +188,26 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		(lastProps(harness).onScaleChange as (scale: string) => void)('day');
 		(lastProps(harness).onCollapsedChange as (ids: string[]) => void)(['Phase.md']);
 
-		expect(harness.host.querySelector<HTMLSelectElement>('[aria-label="Timeline scale"]')?.value).toBe('day');
+		expect(harness.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')?.value).toBe('day');
 		expect(harness.configWrites).toContainEqual(['ganttBetaScale', 'day']);
 		expect(harness.configWrites).toContainEqual(['ganttBetaCollapsedIds', '["Phase.md"]']);
 		harness.view.onunload();
 
 		const reopened = mount({ ganttBetaScale: 'day', ganttBetaCollapsedIds: '["Phase.md"]' });
 		expect(lastProps(reopened)).toMatchObject({ defaultScale: 'day', collapsedIds: ['Phase.md'] });
-		expect(reopened.host.querySelector<HTMLSelectElement>('[aria-label="Timeline scale"]')?.value).toBe('day');
+		expect(reopened.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')?.value).toBe('day');
 		reopened.view.onunload();
+	});
+
+	it('labels scales by visible resolution and shifts the UTC marker to local wall time', () => {
+		const harness = mount({ ganttBetaScale: 'week' });
+		const select = harness.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')!;
+		expect([...select.options].map(option => option.textContent)).toEqual(['Hours', 'Days', 'Weeks', 'Months', 'Quarters']);
+		expect(localTodayOffsetPx('week', -420)).toBe(21);
+		expect(harness.host.style.getPropertyValue('--gantt-local-today-offset')).toBe(
+			`${localTodayOffsetPx('week', new Date().getTimezoneOffset())}px`,
+		);
+		harness.view.onunload();
 	});
 
 	it('remounts the chart on a failed write, because the library ignores a re-passed identical array', async () => {

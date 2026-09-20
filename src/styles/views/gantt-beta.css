@@ -65,6 +65,15 @@
 	--gantt-progress-color: var(--interactive-accent-hover);
 }
 
+/* The chart uses a UTC wall clock; our task dates are local-floating, so align "now" likewise. */
+.bases-gantt-beta-view .gantt-today-marker {
+	transform: translateX(var(--gantt-local-today-offset, 0px));
+}
+
+.bases-gantt-beta-view .gantt-today-dot {
+	transform: translate(calc(-50% + var(--gantt-local-today-offset, 0px)), 50%);
+}
+
 @media (max-width: 600px) {
 	.gantt-beta-toolbar__label {
 		display: none;

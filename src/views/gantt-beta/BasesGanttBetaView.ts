@@ -23,6 +23,18 @@ import { GanttBetaWriteBack } from './writeBack';
 
 export const BASES_GANTT_BETA_VIEW_ID = 'wise-view-gantt-beta';
 
+const PIXELS_PER_MINUTE: Record<GanttBetaOptions['scale'], number> = {
+	day: 12 / 60,
+	week: 18 / (6 * 60),
+	month: 18 / (24 * 60),
+	quarter: 28 / (7 * 24 * 60),
+	year: 28 / (28 * 24 * 60),
+};
+
+export function localTodayOffsetPx(scale: GanttBetaOptions['scale'], timezoneOffsetMinutes: number): number {
+	return -timezoneOffsetMinutes * PIXELS_PER_MINUTE[scale];
+}
+
 export class BasesGanttBetaView extends BasesView {
 	type = BASES_GANTT_BETA_VIEW_ID;
 	private readonly runtime: ViewRuntime;
@@ -74,6 +86,7 @@ export class BasesGanttBetaView extends BasesView {
 		const options = readGanttBetaOptions(this.config);
 		this.currentOptions = options;
 		this.containerEl.style.setProperty('--gantt-row-height', `${options.rowHeight}px`);
+		this.setTodayOffset(options.scale);
 		const nonCssConfig = JSON.stringify({ ...options, rowHeight: undefined });
 		if (this.lastGroups === this.data.groupedData && this.lastNonCssConfig === nonCssConfig && this.lastModel) {
 			this.lastModel = { ...this.lastModel, rowHeight: options.rowHeight };
@@ -176,8 +189,13 @@ export class BasesGanttBetaView extends BasesView {
 
 	private persistScale(scale: GanttBetaOptions['scale']): void {
 		this.activeScale = scale;
+		this.setTodayOffset(scale);
 		this.toolbar.update(scale, Boolean(this.lastModel?.props.allowTaskCreate));
 		if (this.config.get('ganttBetaScale') !== scale) this.config.set('ganttBetaScale', scale);
+	}
+
+	private setTodayOffset(scale: GanttBetaOptions['scale']): void {
+		this.containerEl.style.setProperty('--gantt-local-today-offset', `${localTodayOffsetPx(scale, new Date().getTimezoneOffset())}px`);
 	}
 
 	private parentIds(): string[] {

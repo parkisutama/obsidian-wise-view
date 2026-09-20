@@ -144,6 +144,45 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		);
 	});
 
+	it('validates a mixed Date & time start and Date end by the exclusive end boundary', async () => {
+		const h = harness();
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'date' },
+			dateTypes: new Map([['Tasks/A.md', { start: 'datetime', end: 'date' }]]),
+		});
+		h.writer.replaceBaseline([task('Tasks/A.md', {
+			startDate: '2026-10-01T12:00', endDate: '2026-10-02',
+		})]);
+
+		await h.writer.onTasksChange([task('Tasks/A.md', {
+			startDate: '2026-10-02T12:00', endDate: '2026-10-03',
+		})]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-10-02T12:00', 'note.end', '2026-10-02',
+		);
+		expect(h.notice).not.toHaveBeenCalled();
+	});
+
+	it('does not validate a moved phase summary when phase-date writing is disabled', async () => {
+		const before = [
+			task('Phase.md', { startDate: '2026-10-01', endDate: '2026-10-03' }),
+			task('Child.md', { parentId: 'Phase.md', sequence: '1.1' }),
+		];
+		const h = harness({ writePhaseDates: false, dependencyPolicy: 'maintain-gap' });
+		h.writer.replaceBaseline(before);
+
+		await h.writer.onTasksChange([
+			{ ...before[0]!, startDate: '2026-10-05', endDate: '2026-10-05' },
+			{ ...before[1]!, startDate: '2026-10-05', endDate: '2026-10-07' },
+		]);
+
+		expect(h.date.updateRange).toHaveBeenCalledOnce();
+		expect(h.date.updateRange).toHaveBeenCalledWith('Child.md', 'note.start', '2026-10-05', 'note.end', '2026-10-06');
+		expect(h.revertTasks).not.toHaveBeenCalled();
+		expect(h.notice).not.toHaveBeenCalled();
+	});
+
 	it('rejects a reversed task draft before note creation', async () => {
 		const createTask = vi.fn().mockResolvedValue(undefined);
 		const h = harness({ createTask });

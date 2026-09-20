@@ -15,7 +15,7 @@ export interface GanttBetaToolbarActions {
 }
 
 const SCALE_LABELS: Record<GanttBetaScale, string> = {
-	day: 'Day', week: 'Week', month: 'Month', quarter: 'Quarter', year: 'Year',
+	day: 'Hours', week: 'Days', month: 'Weeks', quarter: 'Months', year: 'Quarters',
 };
 
 /** Obsidian-native controls around the headless chart toolbar API. */
@@ -29,7 +29,7 @@ export class GanttBetaToolbar {
 		container.setAttribute('aria-label', 'Gantt controls');
 
 		this.scaleSelect = container.createEl('select', { cls: 'dropdown gantt-beta-toolbar__scale' });
-		this.scaleSelect.setAttribute('aria-label', 'Timeline scale');
+		this.scaleSelect.setAttribute('aria-label', 'Time resolution');
 		for (const scale of GANTT_BETA_SCALES) {
 			const option = this.scaleSelect.createEl('option', { text: SCALE_LABELS[scale] });
 			option.value = scale;

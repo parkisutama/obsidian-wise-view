@@ -154,7 +154,8 @@ fight over a `.base` file.
 
 - **Properties:** Start date, End date, Label, Parent (phase), Order, Progress, Color by,
   Depends on.
-- **Timeline:** Scale (day/week/month/quarter/year; also persisted when changed on the chart),
+- **Timeline:** Scale keys remain day/week/month/quarter/year, while the visible picker names
+  their actual resolution Hours/Days/Weeks/Months/Quarters; the key is also persisted when changed on the chart.
   Show non-working days, Working weekdays (multitext, default Mon–Fri), Holidays (multitext of
   `YYYY-MM-DD`), Snap to working days, First day of week, Zoom with Ctrl/Cmd + wheel,
   Infinite scroll, Scroll to today on open.
@@ -169,9 +170,11 @@ fight over a `.base` file.
 
 ### 3.7 UI
 
-- **Toolbar** (the library renders none): scale picker, Today, Zoom to fit, Add task (when
+- **Toolbar** (the library renders none): resolution picker, Today, Zoom to fit, Add task (when
   creation is enabled), collapse all / expand all. Built with Obsidian DOM helpers and
   `setIcon`, above the chart.
+- **Today marker:** the library's UTC wall-clock marker is shifted by the owning runtime's local
+  offset so it shares the same local-floating axis as Date & time properties.
 - **Theme:** `theme` prop set from `body.theme-dark` (observed), and `--gantt-*` tokens mapped to
   Obsidian CSS variables in `src/styles/views/gantt-beta.css`. The library stylesheet is merged
   through the existing CSS merge plugin without rewriting (it has no `:root` selectors).

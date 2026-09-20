@@ -51,10 +51,16 @@ function canonicalDate(value: string, type: 'date' | 'datetime', boundary: 'star
 	return stored ? (readGanttDate(stored, type, boundary) ?? value) : value;
 }
 
-function hasReversedRange(task: Task, type: 'date' | 'datetime'): boolean {
+function chartTime(value: string): number {
+	return Date.parse(`${value}${value.includes('T') && !/[zZ]|[+-]\d\d:\d\d$/.test(value) ? 'Z' : ''}`);
+}
+
+function hasReversedRange(task: Task, endType: 'date' | 'datetime'): boolean {
 	// Date tasks use an exclusive chart end, so equality would persist as an inclusive end one day
 	// before the start. Date & time tasks may intentionally be zero-duration milestones.
-	return type === 'date' ? task.endDate <= task.startDate : task.endDate < task.startDate;
+	const start = chartTime(task.startDate);
+	const end = chartTime(task.endDate);
+	return Number.isFinite(start) && Number.isFinite(end) && (endType === 'date' ? end <= start : end < start);
 }
 
 /**
@@ -129,7 +135,7 @@ export class GanttBetaWriteBack {
 			this.options.notice('Task creation is not available.');
 			return;
 		}
-		const type = this.properties.end ? (this.properties.start?.type ?? 'date') : null;
+		const type = this.properties.end?.type ?? null;
 		if (type && hasReversedRange({ ...draft, id: '', name: '', parentId: null, sequence: '' }, type)) {
 			this.options.notice('End must not be earlier than start.');
 			return;
@@ -175,14 +181,17 @@ export class GanttBetaWriteBack {
 
 	private async apply(nextTasks: Task[], sourceTasks: Task[] = nextTasks): Promise<void> {
 		const previous = this.baseline;
+		const ids = new Set(nextTasks.map(task => task.id));
+		const phaseIds = new Set(nextTasks.map(task => task.parentId).filter((id): id is string => id !== null && ids.has(id)));
 		const reversed = nextTasks.find(task => {
 			if (task.id.startsWith(SYNTHETIC_PHASE_PREFIX)) return false;
+			if (!this.writePhaseDates && phaseIds.has(task.id)) return false;
 			if (!this.properties.end) return false;
 			const baselineTask = previous.find(candidate => candidate.id === task.id);
 			if (baselineTask
 				&& baselineTask.startDate === task.startDate
 				&& baselineTask.endDate === task.endDate) return false;
-			const type = this.properties.dateTypes?.get(task.id)?.start ?? this.properties.start?.type;
+			const type = this.properties.dateTypes?.get(task.id)?.end ?? this.properties.end.type;
 			return type ? hasReversedRange(task, type) : false;
 		});
 		if (reversed) {
@@ -192,8 +201,6 @@ export class GanttBetaWriteBack {
 			return;
 		}
 		const scheduledTasks = applyGanttDependencyPolicy(previous, nextTasks, this.dependencyPolicy);
-		const ids = new Set(scheduledTasks.map(task => task.id));
-		const phaseIds = new Set(scheduledTasks.map(task => task.parentId).filter((id): id is string => id !== null && ids.has(id)));
 		const plan = buildGanttMutationPlan(diffGanttTasks(previous, scheduledTasks), {
 			...this.properties, phaseIds, writePhaseDates: this.writePhaseDates,
 		});
