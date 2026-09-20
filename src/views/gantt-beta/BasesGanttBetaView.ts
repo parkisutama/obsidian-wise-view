@@ -24,10 +24,11 @@ import { ganttBetaRequestedProperties, readGanttBetaOptions } from './options';
 import type { GanttBetaOptions } from './options';
 import { mapSnapshotsToGanttTasks } from './taskMapping';
 import { installGanttBetaNavigation } from './navigation';
+import { migrateLegacyOptions } from './legacyOptions';
 import { GanttBetaToolbar } from './toolbar';
 import { GanttBetaWriteBack } from './writeBack';
 
-export const BASES_GANTT_BETA_VIEW_ID = 'wise-view-gantt-beta';
+export const BASES_GANTT_VIEW_ID = 'wise-view-gantt';
 
 const PIXELS_PER_MINUTE: Record<GanttBetaOptions['scale'], number> = {
 	day: 12 / 60,
@@ -42,12 +43,13 @@ export function localTodayOffsetPx(scale: GanttBetaOptions['scale'], timezoneOff
 }
 
 export class BasesGanttBetaView extends BasesView {
-	type = BASES_GANTT_BETA_VIEW_ID;
+	type = BASES_GANTT_VIEW_ID;
 	private readonly runtime: ViewRuntime;
 	private readonly chart: GanttBetaChartHost;
 	private readonly toolbar: GanttBetaToolbar;
 	private reportedCycles = new Set<string>();
 	private reportedUnresolved = new Set<string>();
+	private legacyOptionsChecked = false;
 	private lastGroups: unknown = null;
 	private lastNonCssConfig = '';
 	private lastModel: GanttBetaChartModel | null = null;
@@ -75,7 +77,7 @@ export class BasesGanttBetaView extends BasesView {
 		this.chart = this.runtime.own(new GanttBetaChartHost(chartEl, this.runtime, renderChart));
 		installGanttBetaNavigation({
 			app: this.app, root: chartEl, runtime: this.runtime, hoverParent: this.plugin,
-			sourceId: BASES_GANTT_BETA_VIEW_ID, isNote: path => this.notePaths.has(path),
+			sourceId: BASES_GANTT_VIEW_ID, isNote: path => this.notePaths.has(path),
 		});
 		this.toolbar = new GanttBetaToolbar(toolbarEl, this.runtime, {
 			onScale: scale => this.setScale(scale),
@@ -96,6 +98,7 @@ export class BasesGanttBetaView extends BasesView {
 		if (!this.data?.groupedData) return;
 		// Bases echoes our own writes file by file; render once they have settled, from the latest data.
 		if (this.echoGate.hold()) return;
+		this.importLegacyOptions();
 		const options = readGanttBetaOptions(this.config);
 		this.currentOptions = options;
 		this.containerEl.style.setProperty('--gantt-row-height', `${options.rowHeight}px`);
@@ -257,7 +260,7 @@ export class BasesGanttBetaView extends BasesView {
 		this.activeScale = scale;
 		this.setTodayOffset(scale);
 		this.toolbar.update(scale, Boolean(this.lastModel?.props.allowTaskCreate));
-		if (this.config.get('ganttBetaScale') !== scale) this.config.set('ganttBetaScale', scale);
+		if (this.config.get('ganttScale') !== scale) this.config.set('ganttScale', scale);
 	}
 
 	private setTodayOffset(scale: GanttBetaOptions['scale']): void {
@@ -279,7 +282,21 @@ export class BasesGanttBetaView extends BasesView {
 
 	private persistCollapsed(ids: string[]): void {
 		const value = JSON.stringify(ids);
-		if (this.config.get('ganttBetaCollapsedIds') !== value) this.config.set('ganttBetaCollapsedIds', value);
+		if (this.config.get('ganttCollapsedIds') !== value) this.config.set('ganttCollapsedIds', value);
+	}
+
+	/**
+	 * A base saved by an earlier version of this view (the released Frappe Gantt, or a development build)
+	 * keeps its settings under other names. Copy them to the permanent keys once, and say so, so the option
+	 * panel matches what the chart shows.
+	 */
+	private importLegacyOptions(): void {
+		if (this.legacyOptionsChecked) return;
+		this.legacyOptionsChecked = true;
+		const imported = migrateLegacyOptions(this.config);
+		if (imported.length > 0) {
+			new Notice(`Gantt imported ${imported.length} setting${imported.length === 1 ? '' : 's'} from an earlier version of this view. ${this.config.get('ganttReadOnly') === false ? '' : ' The chart stays read-only until you turn off Read only.'}`);
+		}
 	}
 
 	private revertTaskArray(tasks: Task[]): void {

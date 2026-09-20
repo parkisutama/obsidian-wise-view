@@ -162,19 +162,19 @@ all-day events come from the new **All-day field** option instead of a fixed `al
 
 ## Migrating from the earlier Gantt view
 
-The earlier Frappe-based Gantt view (view type `wise-view-gantt`) was removed. A base that still uses
-it shows an unknown view type. To move it:
+The Frappe-based Gantt view was replaced. Its view type (`wise-view-gantt`) is reused, so a base saved with
+it opens in the new **Gantt** view; there is nothing to convert by hand.
 
-1. Open the base and add or switch the view to **Gantt**.
-2. Map Start date, End date, and optionally Label, Parent, Progress, Color by, and Depends on. Old
-   option names map as: `startDate` to Start date, `endDate` to End date, `label` to Label,
-   `dependencies` to Depends on, `parentProp` to Parent, `progress` to Progress, `colorBy` to Color by,
-   and `viewMode` to Scale.
-3. Turn off **Read only** if you want to edit from the chart.
-
-Not carried over: expected progress, the Hour / Quarter day / Half day scales, the right-click menu,
-the WBS sidebar (replaced by the task list and phases), the Gantt command-palette commands, and the
-"Gantt defaults" settings. Dependencies stay in the same property.
+- **Your settings are imported once**, on first open: start, end, label, dependencies, parent, progress,
+  color by, view mode, task list, note template and folder, and the "move dependent tasks" policy. A notice
+  says how many were imported.
+- **The chart is read-only until you turn off "Read only"** in the view options. The old view wrote on
+  drag; Gantt asks first. Dependencies stay in the same property.
+- **Not carried over:** expected progress, bar height, the Hour / Quarter day / Half day scales (imported as
+  Day), the right-click menu, the WBS sidebar (replaced by the task list and phases), the Gantt
+  command-palette commands, and the "Gantt defaults" settings.
+- If you tried a development build with view type `wise-view-gantt-beta`, change that type to
+  `wise-view-gantt` in the `.base` file; the beta id was never released.
 
 ## Known limitations
 

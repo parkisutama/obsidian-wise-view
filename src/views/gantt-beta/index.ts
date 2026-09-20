@@ -4,10 +4,10 @@
 import type { BasesViewRegistration, QueryController } from 'obsidian';
 import type WiseViewPlugin from '../../main';
 import type { GrantedMutations } from '../../platform/mutations/grants';
-import { BASES_GANTT_BETA_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
+import { BASES_GANTT_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
 import { getGanttBetaViewOptions } from './options';
 
-export { BASES_GANTT_BETA_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
+export { BASES_GANTT_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
 
 export function createGanttBetaViewRegistration(
 	plugin: WiseViewPlugin,

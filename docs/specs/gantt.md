@@ -110,7 +110,7 @@ additional way to reach the same mutation, not a replacement.
 ## 8. Freeze and follow-ups from Gantt Beta (2026-09-19)
 
 The maintainer froze this workstream in favor of Gantt Beta
-([gantt-beta.md](gantt-beta.md), view id `wise-view-gantt-beta`, built on
+([gantt-beta.md](gantt-beta.md), view id `wise-view-gantt-beta` at the time, now `wise-view-gantt`, built on
 `@jaeungkim/gantt-chart`). Frappe Gantt stays registered and receives bug fixes only until
 Gantt Beta passes its stability gate (gantt-beta.md §11), after which a separate removal
 workstream deletes it.

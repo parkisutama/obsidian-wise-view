@@ -22,7 +22,7 @@ function setup() {
 	const runtime = new ViewRuntime(root);
 	installGanttBetaNavigation({
 		app: app as never, root, runtime, hoverParent: hoverParent as never,
-		sourceId: 'wise-view-gantt-beta', isNote: path => !path.startsWith('wise-view-synthetic://'),
+		sourceId: 'wise-view-gantt', isNote: path => !path.startsWith('wise-view-synthetic://'),
 	});
 	return { root, trigger, openLinkText, hoverParent, runtime };
 }
@@ -37,7 +37,7 @@ describe('Gantt Beta navigation (GBETA-015)', () => {
 		bar.dispatchEvent(event);
 
 		expect(h.trigger).toHaveBeenCalledWith('hover-link', expect.objectContaining({
-			source: 'wise-view-gantt-beta', hoverParent: h.hoverParent, linktext: 'Tasks/A.md', targetEl: bar,
+			source: 'wise-view-gantt', hoverParent: h.hoverParent, linktext: 'Tasks/A.md', targetEl: bar,
 		}));
 	});
 

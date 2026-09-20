@@ -38,10 +38,10 @@ function timed<T>(run: () => T): { value: T; ms: number } {
 
 describe('Gantt Beta on a large Base (GBETA-016)', () => {
 	const options = readGanttBetaOptions({
-		get: (key: string) => ({ ganttBetaPhases: true, ganttBetaReadOnly: false } as Record<string, unknown>)[key],
+		get: (key: string) => ({ ganttPhases: true, ganttReadOnly: false } as Record<string, unknown>)[key],
 		getAsPropertyId: (key: string) => ({
-			ganttBetaStart: 'note.start', ganttBetaEnd: 'note.end', ganttBetaProgress: 'note.progress',
-			ganttBetaParent: 'note.parent', ganttBetaDependencyFS: 'note.dep',
+			ganttStart: 'note.start', ganttEnd: 'note.end', ganttProgress: 'note.progress',
+			ganttParent: 'note.parent', ganttDependencyFS: 'note.dep',
 		} as Record<string, string>)[key] ?? null,
 		getOrder: () => [], getDisplayName: (id: string) => id,
 	} as never);

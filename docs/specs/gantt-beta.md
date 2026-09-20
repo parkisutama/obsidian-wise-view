@@ -27,7 +27,7 @@ Gantt Beta meets the stability gate (§11), a separate workstream removes Frappe
 |---|---|---|
 | D1 | UI runtime | `preact/compat`, aliased for `react`, `react-dom`, and `react/jsx-runtime` at build time. `react`/`react-dom` stay forbidden in `package.json` (architecture guard unchanged). A spike proves compatibility before any other work (plan Phase 0). |
 | D2 | Write access | Approved: Gantt Beta may write, **only** through `src/platform/mutations` capabilities, never by calling `processFrontMatter`/`vault.modify` from `src/views/gantt-beta/`. Recorded as a precedent with plugin-compatibility consequences in [view-write-access.md](../architecture/view-write-access.md). |
-| D3 | View ID | `wise-view-gantt-beta`, permanent. It is not migrated onto `wise-view-gantt` when Frappe is removed; users switch their `.base` views manually (the removal workstream documents how). The display name may later drop "Beta"; the ID never changes. |
+| D3 | View ID | **Amended 2026-09-21.** The permanent id is `wise-view-gantt`, and stored option keys use the plain `gantt*` prefix (`ganttStart`, `ganttScale`, ...). The earlier decision (`wise-view-gantt-beta`, never released) was dropped because a permanent id and permanent option keys must not say "beta". Because `wise-view-gantt` was released for the Frappe view (1.0.2, 1.0.3), a base saved by that release opens in this view; its settings, and those of development builds (`ganttBeta*`), are imported once (§3.8). The id never changes again. |
 | D4 | Phases | A phase is a **parent note** referenced by the configured Parent property, **and** each Bases `Group by` group becomes a synthetic, read-only phase row. |
 | D5 | Dependency UX | One Bases-configured **Depends on** list-of-links property. Every stored edge is finish-to-start (FS). Users create/delete it through the line on the chart or the relation property; FS/SS/FF/SF codes are not exposed in the primary UX. |
 | D6 | Schedule response | A three-state **When predecessor moves** policy: do not shift; shift only to resolve overlap; or shift by the same delta and maintain the gap. Every automatic move preserves successor duration and is cycle-safe. |
@@ -42,7 +42,7 @@ Gantt Beta meets the stability gate (§11), a separate workstream removes Frappe
 
 ### 3.1 View registration
 
-- New descriptor in the `ViewRegistry`: id `wise-view-gantt-beta`, name `Gantt Beta`, its own
+- New descriptor in the `ViewRegistry`: id `wise-view-gantt`, name `Gantt`, its own
   icon, options, and hover source (`{ display: 'Gantt Beta', defaultMod: true }`).
 - Code lives in `src/views/gantt-beta/`. Pure mapping/scheduling logic lives in
   `src/core/gantt/` (no `obsidian` import — existing core guard).
@@ -231,6 +231,24 @@ fight over a `.base` file.
   configured property, as the Frappe view does.
 - **Mobile:** library touch model (400 ms hold to drag); toolbar collapses to icons.
 
+### 3.8 Importing settings saved by earlier versions (2026-09-21)
+
+Bases stores a view's options in the `.base` file under the option keys, so keys are as permanent as the
+id. Two earlier sources are imported once per view, by `src/views/gantt-beta/legacyOptions.ts`:
+
+| Source | Keys | Notes |
+|---|---|---|
+| Released Frappe Gantt (1.0.2, 1.0.3) | `startDate`, `endDate`, `label`, `dependencies`, `colorBy`, `progress`, `parentProp`, `viewMode`, `showWbsSidebar`, `showProgress`, `templatePath`, `targetFolder`, `titleFormat`, `persistDependencyDateChanges` | `viewMode` maps Day, Week, Month, Year to the same scale; the sub-day modes map to day. `persistDependencyDateChanges: true` becomes the "maintain gap" schedule policy. `barHeight`, `expectedProgress`, and `showExpectedProgress` have no equivalent and are not imported. |
+| Development builds | `ganttBeta*` | Each key maps to its `gantt*` twin; `ganttBetaDependsOn` and `ganttBetaMoveDependencies` map to Depends on and the schedule policy. |
+
+Rules: a key already set under its permanent name is never overwritten, the development-build name wins
+over the Frappe name, the old keys stay in the file untouched, nothing is written for a view that has no
+earlier settings, and a marker key (`ganttLegacyImported`) is written once so a value the user clears later
+is not brought back. A Notice says how many settings were imported, and that the chart stays read-only
+until **Read only** is turned off (read-only is the default, so a Frappe-era base cannot write until the
+user opts in). A development-build base saved with `type: wise-view-gantt-beta` must change its type to
+`wise-view-gantt`; that id was never released and is not registered.
+
 ## 4. Non-goals
 
 - Changing or removing the Frappe Gantt view, its option keys, or its ID (frozen, §9).
@@ -304,7 +322,7 @@ dependency editor for Frappe) is superseded by Gantt Beta's built-in link drawin
 
 ## 10. Definition of done (Gantt Beta workstream)
 
-1. Gantt Beta is registered as `wise-view-gantt-beta` and every §3 behavior works, including all
+1. Gantt is registered as `wise-view-gantt` and every §3 behavior works, including all
    §3.4 write paths.
 2. All options in §3.6 are exposed through Bases and persisted in the view config.
 3. Writes happen only through mutation capabilities; guard tests from §7 pass.

@@ -34,7 +34,7 @@ export interface ViewCapabilities {
  * View ids approved to declare `capabilities.mutations`. Each entry must have a matching section
  * in docs/architecture/view-write-access.md; adding one is a compatibility decision, not a refactor.
  */
-export const APPROVED_MUTATION_GRANT_VIEW_IDS: readonly string[] = ['wise-view-gantt-beta'];
+export const APPROVED_MUTATION_GRANT_VIEW_IDS: readonly string[] = ['wise-view-gantt'];
 
 /**
  * Everything needed to register one Bases view with Obsidian: the view registration itself,

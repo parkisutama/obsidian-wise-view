@@ -10,7 +10,7 @@ Tasks: [../../tasks/gantt-frappe-removal/todo.md](../../tasks/gantt-frappe-remov
 ## 1. Objective
 
 Delete the Frappe-based Gantt view (`wise-view-gantt`) and everything that exists only for it, and
-present the `@jaeungkim/gantt-chart` view (`wise-view-gantt-beta`) under the name **Gantt**. After
+present the `@jaeungkim/gantt-chart` view under the name **Gantt** and the id `wise-view-gantt` (amended 2026-09-21, R6). After
 this workstream the plugin has one Gantt view, one Gantt dependency, and no Frappe code, CSS, settings,
 commands, notices, or docs.
 
@@ -19,9 +19,10 @@ commands, notices, or docs.
 | # | Topic | Decision |
 |---|---|---|
 | R1 | Timing | Remove now, in this workstream, on `dev`. Nothing here has shipped to users from `dev`, so no deprecation release. |
-| R2 | Display name | The new view's display name becomes **Gantt** (registration name and hover source). Its ID stays `wise-view-gantt-beta` for ever (gantt-beta.md D3); the source folder stays `src/views/gantt-beta/`. |
-| R3 | Existing `.base` files | Hard removal, no shim and no alias. A `.base` view of type `wise-view-gantt` shows Obsidian's unknown-view state; the user picks **Gantt** and configures its properties. This follows gantt-beta.md D3. |
+| R2 | Display name | The new view's display name becomes **Gantt** (registration name and hover source). The id was first kept as `wise-view-gantt-beta`; R6 replaces that. The source folder stays `src/views/gantt-beta/`. |
+| R3 | Existing `.base` files | Originally: hard removal, so a `wise-view-gantt` base showed an unknown view. **Superseded by R6:** the id `wise-view-gantt` is reused, so those bases open in Gantt with their settings imported. |
 | R4 | Commands and settings | Frappe's command-palette commands (`gantt-scroll-today`, `gantt-create-note`, `gantt-view-*`) and the "Gantt defaults" settings section are removed with it. Gantt does not carry them over (gantt-beta.md D6). Saved `ganttDefaults` data is ignored on load, then dropped on the next save. |
+| R6 | Permanent id and keys | **2026-09-21.** The permanent id is `wise-view-gantt` and every stored option key drops the `Beta` prefix (`ganttStart`, ...). `wise-view-gantt-beta` was never released and is not registered. Settings saved by the released Frappe view and by development builds are imported once (gantt-beta.md §3.8), with Read only as the default so a legacy base cannot write until the user opts in. |
 | R5 | Attribution | `frappe-gantt` leaves the bundle, so its notice and banner entry go. The `obsidian-bases-gantt` attribution stays until a maintainer review confirms no adapted code remains (§5). |
 
 ## 3. Scope
@@ -59,16 +60,12 @@ commands, notices, or docs.
 
 ## 4. Migration note for users (README and release notes)
 
-1. Open the base whose Gantt view shows an unknown view type.
-2. Add or switch the view to **Gantt**.
-3. Set Start date, End date, and optionally Label, Parent, Progress, Color by, and Depends on.
-   The old option names map as: `startDate` to Start date, `endDate` to End date, `label` to Label,
-   `dependencies` to Depends on, `parentProp` to Parent, `progress` to Progress, `colorBy` to Color by,
-   `viewMode` to Scale.
-4. Not carried over: expected progress, Hour / Quarter day / Half day scales, the right-click menu,
-   the WBS sidebar (replaced by the task list and phases), and the Gantt command-palette commands.
-5. Dependencies stay in the same property. The old view wrote them as comma-separated links; Gantt
-   writes lists and reads both.
+1. Nothing to do for the view type: a base saved with `wise-view-gantt` opens in Gantt.
+2. Its Frappe-era settings are imported on first open (start, end, label, dependencies, parent, progress, color by, view mode, task list, template and folder, and the schedule policy), and a Notice says so.
+3. The chart is **read-only** until you turn off **Read only** in the view options. The old view wrote on drag; Gantt asks first.
+4. Not carried over: expected progress, bar height, Hour / Quarter day / Half day scales (imported as Day), the right-click menu, the WBS sidebar (replaced by the task list and phases), and the Gantt command-palette commands.
+5. Dependencies stay in the same property. The old view wrote them as comma-separated links; Gantt writes lists and reads both.
+6. A development-build base saved with `type: wise-view-gantt-beta` needs its type changed to `wise-view-gantt`.
 
 ## 5. Risks
 

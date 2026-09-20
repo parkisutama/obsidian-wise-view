@@ -25,7 +25,7 @@ import {
   createTimelineViewRegistration,
 } from './views/timeline';
 import {
-  BASES_GANTT_BETA_VIEW_ID,
+  BASES_GANTT_VIEW_ID,
   createGanttBetaViewRegistration,
 } from './views/gantt-beta';
 
@@ -59,7 +59,7 @@ export default class WiseViewPlugin extends Plugin {
     const calendar = createCalendarViewRegistration(this);
     const timeline = createTimelineViewRegistration(this);
     const ganttBeta = createGanttBetaViewRegistration(this,
-      () => this.viewRegistry.mutationsFor(BASES_GANTT_BETA_VIEW_ID, this.app));
+      () => this.viewRegistry.mutationsFor(BASES_GANTT_VIEW_ID, this.app));
 
     return [
       {
@@ -90,7 +90,7 @@ export default class WiseViewPlugin extends Plugin {
 		capabilities: { legacyMutation: true },
       },
       {
-        id: BASES_GANTT_BETA_VIEW_ID,
+        id: BASES_GANTT_VIEW_ID,
         name: ganttBeta.name,
         icon: ganttBeta.icon,
         factory: ganttBeta.factory,

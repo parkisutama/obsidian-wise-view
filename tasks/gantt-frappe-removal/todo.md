@@ -15,7 +15,7 @@ settings tab section, load-time merge), and the `legacyMutation` grant for it.
 
 **Acceptance criteria:**
 
-- [x] The plugin registers exactly one Gantt view, named "Gantt", with ID `wise-view-gantt-beta`.
+- [x] The plugin registers exactly one Gantt view, named "Gantt", with ID `wise-view-gantt-beta` (changed to `wise-view-gantt` by GFR-006).
 - [x] No Frappe command, setting, or hover source remains in `src/main.ts` or the settings tab.
 - [x] Saved `ganttDefaults` data loads without error and is not written back.
 - [x] Registry and architecture tests updated and passing.
@@ -75,6 +75,35 @@ notice entries, and the provenance ledger's Frappe rows and known-limitation sec
 
 **Likely files:** `package.json`, `pnpm-lock.yaml`, `esbuild.config.mjs`, `scripts/license-banner.mjs`,
 `THIRD_PARTY_NOTICES.md`, `docs/architecture/upstream-provenance.md`, `tests/architecture.test.ts`
+
+**Estimated scope:** M
+
+## Phase 3b: Permanent id and option keys
+
+### GFR-006: Make the id `wise-view-gantt` and drop "Beta" from every stored key
+
+**Status:** Complete 2026-09-21. The view id is `wise-view-gantt` and every option key is `gantt*`.
+Settings saved by the released Frappe view and by development builds are imported once
+(`legacyOptions.ts`, gantt-beta.md §3.8). `wise-view-gantt-beta` was never released and is not registered.
+
+**Description:** Reuse the released id, rename the stored option keys, and import older settings so a
+base saved by the Frappe release keeps its schedule instead of opening empty.
+
+**Acceptance criteria:**
+
+- [x] `BASES_GANTT_VIEW_ID` is `wise-view-gantt`; the scoped-write approval and hover source use it.
+- [x] No stored key contains "beta"; a test checks the key list against the option schema.
+- [x] A Frappe-era base and a development-build base are imported once, with the precedence, marker, and
+  no-op rules in gantt-beta.md §3.8, each covered by a test.
+- [x] Read only stays the default, so an imported legacy base cannot write until the user opts in.
+- [x] The user is told what was imported, and whether the chart is read-only.
+
+**Verification:** `pnpm run check`
+
+**Dependencies:** GFR-003.
+
+**Likely files:** `src/views/gantt-beta/legacyOptions.ts`, `src/views/gantt-beta/options.ts`,
+`src/viewRegistry.ts`, `tests/gantt-beta-legacy-options.test.ts`
 
 **Estimated scope:** M
 

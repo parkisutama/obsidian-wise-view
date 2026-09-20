@@ -5,7 +5,7 @@ import type { ComponentChild, VNode } from 'preact';
 import { render as renderPreact } from 'preact/compat';
 import type { GanttHandle } from '@jaeungkim/gantt-chart';
 import { DateValue, StringValue } from './fixtures/obsidian';
-import { BasesGanttBetaView, BASES_GANTT_BETA_VIEW_ID, createGanttBetaViewRegistration } from '../src/views/gantt-beta';
+import { BasesGanttBetaView, BASES_GANTT_VIEW_ID, createGanttBetaViewRegistration } from '../src/views/gantt-beta';
 import { localTodayOffsetPx } from '../src/views/gantt-beta/BasesGanttBetaView';
 import type { ChartRender } from '../src/views/gantt-beta/chartHost';
 import type { GrantedMutations } from '../src/platform/mutations/grants';
@@ -51,7 +51,7 @@ function mount(
 	const entry: { file: { path: string; basename: string; extension: string; parent: null; stat: { ctime: number; mtime: number } }; getValue(id: string): DateValue | StringValue | null } = {
 		file: { path: 'A.md', basename: 'A', extension: 'md', parent: null, stat: { ctime: 1, mtime: 2 } }, getValue: () => null,
 	};
-	const values: Record<string, unknown> = { ganttBetaStart: 'note.start', ...configOverrides };
+	const values: Record<string, unknown> = { ganttStart: 'note.start', ...configOverrides };
 	entry.getValue = (id: string) => entryValues[id] ?? (id === 'note.start' ? new DateValue('2026-01-01') : null);
 	const openLinkText = vi.fn().mockResolvedValue(undefined);
 	const app = { metadataCache: { getFirstLinkpathDest: () => null }, vault: { getAbstractFileByPath: () => null }, workspace: { openLinkText } };
@@ -84,7 +84,7 @@ afterEach(() => {
 describe('Gantt Beta skeleton (GBETA-004)', () => {
 	it('registers the permanent id and display name', () => {
 		const registration = createGanttBetaViewRegistration({} as never);
-		expect(BASES_GANTT_BETA_VIEW_ID).toBe('wise-view-gantt-beta');
+		expect(BASES_GANTT_VIEW_ID).toBe('wise-view-gantt');
 		expect(registration.name).toBe('Gantt');
 		expect(registration.factory).toBeTypeOf('function');
 	});
@@ -119,7 +119,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		const harness = mount();
 		const firstTasks = lastProps(harness).tasks;
 		const renderCount = harness.renders.length;
-		harness.setConfig('ganttBetaRowHeight', 64);
+		harness.setConfig('ganttRowHeight', 64);
 		harness.view.onDataUpdated();
 
 		expect(harness.host.style.getPropertyValue('--gantt-row-height')).toBe('64px');
@@ -144,7 +144,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 
 	it('enables only configured, granted edits and keeps callbacks on the same chart instance', async () => {
 		const updateRange = vi.fn().mockResolvedValue({ ok: true });
-		const harness = mount({ ganttBetaReadOnly: false }, { date: { updateRange } });
+		const harness = mount({ ganttReadOnly: false }, { date: { updateRange } });
 		const props = lastProps(harness);
 		// Resize edits the end date, so it stays off until an End property is configured.
 		expect(props).toMatchObject({ readOnly: false, allowMove: true, allowResize: false, allowProgressChange: false });
@@ -165,7 +165,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 			dependency: { setDependencies: vi.fn() }, fileCreate: { createNote: vi.fn() },
 		};
 		const writable = mount({
-			ganttBetaReadOnly: false, ganttBetaEnd: 'note.end', ganttBetaProgress: 'note.progress', ganttBetaDependencyFS: 'note.depends',
+			ganttReadOnly: false, ganttEnd: 'note.end', ganttProgress: 'note.progress', ganttDependencyFS: 'note.depends',
 		}, mutations);
 		expect(lastProps(writable)).toMatchObject({
 			allowMove: true, allowResize: true, allowProgressChange: true, allowLinkCreate: true, allowLinkDelete: true, allowTaskCreate: true,
@@ -173,8 +173,8 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		writable.view.onunload();
 
 		const formulas = mount({
-			ganttBetaReadOnly: false, ganttBetaEnd: 'formula.end',
-			ganttBetaProgress: 'formula.progress', ganttBetaDependencyFS: 'formula.depends',
+			ganttReadOnly: false, ganttEnd: 'formula.end',
+			ganttProgress: 'formula.progress', ganttDependencyFS: 'formula.depends',
 		}, mutations);
 		expect(lastProps(formulas)).toMatchObject({
 			allowMove: true, allowResize: false, allowProgressChange: false, allowLinkCreate: false, allowLinkDelete: false, allowTaskCreate: true,
@@ -183,13 +183,13 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 	});
 
 	it('enables resize once an End property is configured and a date grant exists', () => {
-		const harness = mount({ ganttBetaReadOnly: false, ganttBetaEnd: 'note.end' }, { date: { updateRange: vi.fn() } });
+		const harness = mount({ ganttReadOnly: false, ganttEnd: 'note.end' }, { date: { updateRange: vi.fn() } });
 		expect(lastProps(harness)).toMatchObject({ allowMove: true, allowResize: true });
 		harness.view.onunload();
 	});
 
 	it('formats Date tooltips as calendar dates without exposing the library UTC model', () => {
-		const harness = mount({ ganttBetaScale: 'week' });
+		const harness = mount({ ganttScale: 'week' });
 		const formats = lastProps(harness).formats as Record<string, { tooltip(date: { format(pattern: string): string }): string }>;
 		const date = { format: vi.fn((pattern: string) => pattern) };
 
@@ -199,7 +199,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 	});
 
 	it('drives toolbar actions through the chart ref and persists scale changes', () => {
-		const harness = mount({ ganttBetaReadOnly: false, ganttBetaAllowTaskCreate: true }, { fileCreate: { createNote: vi.fn() } });
+		const harness = mount({ ganttReadOnly: false, ganttAllowTaskCreate: true }, { fileCreate: { createNote: vi.fn() } });
 		const select = harness.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')!;
 		select.value = 'week';
 		select.dispatchEvent(new Event('change'));
@@ -211,7 +211,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		expect(harness.handle.scrollToToday).toHaveBeenCalledOnce();
 		expect(harness.handle.zoomToFit).toHaveBeenCalledOnce();
 		expect(harness.handle.addTask).toHaveBeenCalledOnce();
-		expect(harness.configWrites).toContainEqual(['ganttBetaScale', 'week']);
+		expect(harness.configWrites).toContainEqual(['ganttScale', 'week']);
 		harness.view.onunload();
 	});
 
@@ -221,18 +221,18 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		(lastProps(harness).onCollapsedChange as (ids: string[]) => void)(['Phase.md']);
 
 		expect(harness.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')?.value).toBe('day');
-		expect(harness.configWrites).toContainEqual(['ganttBetaScale', 'day']);
-		expect(harness.configWrites).toContainEqual(['ganttBetaCollapsedIds', '["Phase.md"]']);
+		expect(harness.configWrites).toContainEqual(['ganttScale', 'day']);
+		expect(harness.configWrites).toContainEqual(['ganttCollapsedIds', '["Phase.md"]']);
 		harness.view.onunload();
 
-		const reopened = mount({ ganttBetaScale: 'day', ganttBetaCollapsedIds: '["Phase.md"]' });
+		const reopened = mount({ ganttScale: 'day', ganttCollapsedIds: '["Phase.md"]' });
 		expect(lastProps(reopened)).toMatchObject({ defaultScale: 'day', collapsedIds: ['Phase.md'] });
 		expect(reopened.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')?.value).toBe('day');
 		reopened.view.onunload();
 	});
 
 	it('labels scales by visible resolution and shifts the UTC marker to local wall time', () => {
-		const harness = mount({ ganttBetaScale: 'week' });
+		const harness = mount({ ganttScale: 'week' });
 		const select = harness.host.querySelector<HTMLSelectElement>('[aria-label="Time resolution"]')!;
 		expect([...select.options].map(option => option.textContent)).toEqual(['Hours', 'Days', 'Weeks', 'Months', 'Quarters']);
 		expect(localTodayOffsetPx('week', -420)).toBe(21);
@@ -244,7 +244,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 
 	it('wires the custom detail renderer to ordered visible-property snapshots and note navigation', () => {
 		const harness = mount({
-			ganttBetaShowDetail: true, __order: ['note.owner'],
+			ganttShowDetail: true, __order: ['note.owner'],
 		}, {}, { 'note.owner': new StringValue('Parkis') });
 		const props = lastProps(harness);
 		expect(props.renderDetail).toBeTypeOf('function');
@@ -267,7 +267,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 
 	it('remounts the chart on a failed write, because the library ignores a re-passed identical array', async () => {
 		const updateRange = vi.fn().mockResolvedValue({ ok: false, reason: 'error', message: 'disk full' });
-		const harness = mount({ ganttBetaReadOnly: false }, { date: { updateRange } });
+		const harness = mount({ ganttReadOnly: false }, { date: { updateRange } });
 		const before = harness.renders.length;
 		const firstKey = (harness.renders.at(-1) as VNode).key;
 		const props = lastProps(harness);
@@ -285,7 +285,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 
 	it('holds Bases re-renders while our own write lands, then renders once from the latest data', async () => {
 		const updateRange = vi.fn().mockResolvedValue({ ok: true });
-		const harness = mount({ ganttBetaReadOnly: false }, { date: { updateRange } });
+		const harness = mount({ ganttReadOnly: false }, { date: { updateRange } });
 		const props = lastProps(harness);
 		const tasks = props.tasks as Array<Record<string, unknown>>;
 

@@ -11,7 +11,7 @@ import {
 import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/views/BasesCalendarView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { BASES_TIMELINE_VIEW_ID, createTimelineViewRegistration, getTimelineViewOptions } from "../src/views/timeline";
-import { BASES_GANTT_BETA_VIEW_ID, createGanttBetaViewRegistration } from "../src/views/gantt-beta";
+import { BASES_GANTT_VIEW_ID, createGanttBetaViewRegistration } from "../src/views/gantt-beta";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import WiseViewPlugin from "../src/main";
 
@@ -72,7 +72,7 @@ describe("ViewRegistry", () => {
 		const ganttBeta = createGanttBetaViewRegistration(plugin);
 
 		registry.register({
-			id: BASES_GANTT_BETA_VIEW_ID,
+			id: BASES_GANTT_VIEW_ID,
 			name: ganttBeta.name,
 			icon: ganttBeta.icon,
 			factory: ganttBeta.factory,
@@ -108,7 +108,7 @@ describe("ViewRegistry", () => {
 		});
 
 		expect(registry.list().map((d) => d.id)).toEqual([
-			BASES_GANTT_BETA_VIEW_ID,
+			BASES_GANTT_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
 			BASES_SWIMLANE_VIEW_ID,
@@ -168,14 +168,14 @@ describe("WiseViewPlugin.onload view registration", () => {
 			BASES_SWIMLANE_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
-			BASES_GANTT_BETA_VIEW_ID,
+			BASES_GANTT_VIEW_ID,
 		]);
 		expect(new Set(registeredViews).size).toBe(registeredViews.length);
 		expect(registeredHovers).toEqual([
 			BASES_SWIMLANE_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
-			BASES_GANTT_BETA_VIEW_ID,
+			BASES_GANTT_VIEW_ID,
 		]);
 		expect(registeredCommands).toEqual([]);
 	});
@@ -202,11 +202,11 @@ describe("scoped mutation grants (GBETA-003)", () => {
 	it("gives an approved descriptor exactly the capabilities it declared", () => {
 		const registry = new ViewRegistry();
 		registry.register({
-			...describedView("wise-view-gantt-beta", "Gantt", "gantt"),
+			...describedView("wise-view-gantt", "Gantt", "gantt"),
 			capabilities: { mutations: ["date", "fileCreate"] },
 		});
 
-		const granted = registry.mutationsFor("wise-view-gantt-beta", app);
+		const granted = registry.mutationsFor("wise-view-gantt", app);
 		expect(Object.keys(granted).sort()).toEqual(["date", "fileCreate"]);
 		expect(Object.keys(granted.date ?? {})).toEqual(["updateRange"]);
 	});
@@ -220,7 +220,7 @@ describe("scoped mutation grants (GBETA-003)", () => {
 
 	it("rejects a descriptor that declares both legacy and scoped mutations", () => {
 		const descriptor = {
-			...describedView("wise-view-gantt-beta", "Gantt", "gantt"),
+			...describedView("wise-view-gantt", "Gantt", "gantt"),
 			capabilities: { legacyMutation: true, mutations: ["date"] as const },
 		};
 

@@ -37,7 +37,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 			'ScrollToToday', 'Phases', 'ShowTaskList', 'ShowRowNumbers', 'ShowDetail', 'ShowProgress', 'ShowTooltip', 'RowHeight',
 			'ReadOnly', 'AllowMove', 'AllowResize', 'AllowProgress', 'AllowLinkCreate', 'AllowLinkDelete', 'AllowReorder', 'AllowTaskCreate',
 			'DependencyShift', 'WritePhaseDates', 'TemplatePath', 'TargetFolder', 'TitleFormat',
-		]) expect(serialized).toContain(`ganttBeta${key}`);
+		]) expect(serialized).toContain(`gantt${key}`);
 		expect(serialized).not.toMatch(/"key":"(?:type|name|filters|groupBy|order|summaries)"/);
 	});
 	it('maps every §3.2 task field and normalizes date/progress/dependencies', () => {
@@ -49,9 +49,9 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 			}),
 			snapshot('Tasks/Parent.md', { 'note.start': date('2026-01-01') }),
 		])], options({
-			ganttBetaStart: 'note.start', ganttBetaEnd: 'note.end', ganttBetaLabel: 'note.label', ganttBetaProgress: 'note.progress',
-			ganttBetaColorBy: 'note.color', ganttBetaParent: 'note.parent', ganttBetaOrder: 'note.order',
-			ganttBetaDependencyFS: 'note.depends', ganttBetaReadOnly: false,
+			ganttStart: 'note.start', ganttEnd: 'note.end', ganttLabel: 'note.label', ganttProgress: 'note.progress',
+			ganttColorBy: 'note.color', ganttParent: 'note.parent', ganttOrder: 'note.order',
+			ganttDependencyFS: 'note.depends', ganttReadOnly: false,
 		}), services);
 		const task = result.tasks.find(item => item.id === 'Tasks/A.md')!;
 		expect(task).toMatchObject({ id: 'Tasks/A.md', name: 'Custom A', startDate: '2026-01-31', endDate: '2026-02-03',
@@ -70,7 +70,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 				'note.start': date('2026-01-03'),
 				'note.depends': { kind: 'list', items: [text('[[Tasks/A]], [[Tasks/B]]')] },
 			}),
-		])], options({ ganttBetaStart: 'note.start', ganttBetaDependencyFS: 'note.depends' }), services);
+		])], options({ ganttStart: 'note.start', ganttDependencyFS: 'note.depends' }), services);
 
 		expect(result.tasks.find(item => item.id === 'Tasks/C.md')?.dependencies).toEqual([
 			{ targetId: 'Tasks/A.md', type: 'FS' }, { targetId: 'Tasks/B.md', type: 'FS' },
@@ -84,7 +84,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 				'note.start': date('2026-01-02'),
 				'note.depends': { kind: 'list', items: [link('Tasks/A'), link('Deleted note')] },
 			}),
-		])], options({ ganttBetaStart: 'note.start', ganttBetaDependencyFS: 'note.depends' }), {
+		])], options({ ganttStart: 'note.start', ganttDependencyFS: 'note.depends' }), {
 			...services,
 			resolveLink: (target: string) => target === 'Deleted note' ? null : services.resolveLink(target),
 		});
@@ -94,18 +94,18 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 	});
 
 	it('keeps the stable FS config key while presenting the relation as Depends on', () => {
-		const value = options({ ganttBetaDependencyFS: 'note.fs', ganttBetaMoveDependencies: true });
+		const value = options({ ganttDependencyFS: 'note.fs' });
 		expect(value.dependsOn).toBe('note.fs');
-		expect(value.dependencyShift).toBe('maintain-gap');
+		expect(value.dependencyShift).toBe('none');
 		const schema = JSON.stringify(getGanttBetaViewOptions({} as never));
-		expect(schema).toContain('"key":"ganttBetaDependencyFS","displayName":"Depends on"');
+		expect(schema).toContain('"key":"ganttDependencyFS","displayName":"Depends on"');
 	});
 
 	it('uses basename, supplies one scale step for missing end, and lists missing-start entries', () => {
 		const result = mapSnapshotsToGanttTasks([group([
 			snapshot('Alpha.md', { 'note.start': date('2026-03-08T01:30', true) }),
 			snapshot('Unscheduled.md', { 'note.label': text('Waiting') }),
-		])], options({ ganttBetaStart: 'note.start', ganttBetaScale: 'day' }), services);
+		])], options({ ganttStart: 'note.start', ganttScale: 'day' }), services);
 		expect(result.tasks[0]).toMatchObject({ name: 'Alpha', startDate: '2026-03-08T01:30', endDate: '2026-03-09T01:30' });
 		expect(result.unscheduled.map(entry => entry.path)).toEqual(['Unscheduled.md']);
 	});
@@ -113,7 +113,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 	it('renders grouped and external parents as read-only synthetic phases', () => {
 		const result = mapSnapshotsToGanttTasks([group([
 			snapshot('Child.md', { 'note.start': date('2026-01-01'), 'note.parent': link('Outside') }),
-		], text('Group A'))], options({ ganttBetaStart: 'note.start', ganttBetaParent: 'note.parent' }), services, true);
+		], text('Group A'))], options({ ganttStart: 'note.start', ganttParent: 'note.parent' }), services, true);
 		expect(result.tasks.map(task => task.name)).toEqual(['Group A', 'Outside', 'Child']);
 		expect(result.tasks.slice(0, 2).every(task => task.readOnly)).toBe(true);
 		expect(result.tasks[2]?.parentId).toBe(result.tasks[1]?.id);
@@ -122,7 +122,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 	it('disables date interactions for formula-backed properties and omits hidden progress', () => {
 		const result = mapSnapshotsToGanttTasks([group([snapshot('A.md', {
 			'formula.start': date('2026-01-01'), 'note.progress': number(50),
-		})])], options({ ganttBetaStart: 'formula.start', ganttBetaProgress: 'note.progress', ganttBetaShowProgress: false }), services);
+		})])], options({ ganttStart: 'formula.start', ganttProgress: 'note.progress', ganttShowProgress: false }), services);
 		expect(result.tasks[0]).toMatchObject({ allowMove: false, allowResize: false });
 		expect(result.tasks[0]).not.toHaveProperty('progress');
 	});
