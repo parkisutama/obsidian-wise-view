@@ -99,6 +99,21 @@ and writes only changed fields of changed notes.
 | Delete a dependency | `onDependencyDelete` → `onTasksChange` | Removes `[[predecessor]]` from Depends on in the successor note. |
 | Drag row to another phase | `onTaskMove` → `onTasksChange` | Parent (link to the new parent note, or cleared at root). Dropping into a synthetic group phase is rejected with a Notice in v1. |
 | Drag row within a phase | `onTaskMove` → `onTasksChange` | Order on the moved sibling set. Rejected with a Notice when no Order property is configured. |
+
+Date gestures always snap to whole calendar days. Date & time gestures preserve the original
+wall-clock time and duration on a move, with snapping controlled by the visible resolution:
+
+| Picker | Persisted scale key | Date & time snap |
+| --- | --- | --- |
+| Hours | `day` | Hour/minute movement from the chart |
+| Days | `week` | Whole days |
+| Weeks | `month` | Whole seven-day weeks |
+| Months | `quarter` | Calendar months |
+| Quarters | `year` | Three calendar months |
+
+Snapping happens before range validation and dependency cascade. Therefore schedule policies
+operate on the same final dates that are persisted. If a gesture rounds back to the existing
+boundary, the chart is repainted from that valid baseline without writing frontmatter.
 | Draw a range / Add task | `onTaskCreate` | New note from the template (`NoteTemplateService.prepareNote`, then the `fileCreate` grant) with Start/End prefilled. Parent is not prefilled: the library's draft carries only the dates, not the row it was drawn on. |
 | Detail panel field edit | `onTasksChange` or direct | Same as the equivalent gesture |
 

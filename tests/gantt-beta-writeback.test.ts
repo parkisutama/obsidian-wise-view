@@ -92,6 +92,110 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		}
 	});
 
+	it('keeps hour-level movement only at Hours resolution', async () => {
+		const h = harness({ scale: 'day' });
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'datetime' },
+		});
+		h.writer.replaceBaseline([task('Tasks/A.md', {
+			startDate: '2026-10-01T09:00', endDate: '2026-10-01T10:30',
+		})]);
+
+		await h.writer.onTasksChange([task('Tasks/A.md', {
+			startDate: '2026-10-01T11:00', endDate: '2026-10-01T12:30',
+		})]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-10-01T11:00', 'note.end', '2026-10-01T12:30',
+		);
+	});
+
+	it('snaps Date & time movement to whole days while preserving wall time and duration', async () => {
+		const h = harness({ scale: 'week' });
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'datetime' },
+		});
+		h.writer.replaceBaseline([task('Tasks/A.md', {
+			startDate: '2026-10-01T09:15', endDate: '2026-10-01T10:45',
+		})]);
+
+		await h.writer.onTasksChange([task('Tasks/A.md', {
+			startDate: '2026-10-02T03:15:00.000Z', endDate: '2026-10-02T04:45:00.000Z',
+		})]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-10-02T09:15', 'note.end', '2026-10-02T10:45',
+		);
+	});
+
+	it('renders the snapped baseline back when a sub-day gesture rounds to no movement', async () => {
+		const h = harness({ scale: 'week' });
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'datetime' },
+		});
+		const before = [task('Tasks/A.md', {
+			startDate: '2026-10-01T09:00', endDate: '2026-10-01T10:00',
+		})];
+		h.writer.replaceBaseline(before);
+
+		await h.writer.onTasksChange([task('Tasks/A.md', {
+			startDate: '2026-10-01T15:00', endDate: '2026-10-01T16:00',
+		})]);
+
+		expect(h.date.updateRange).not.toHaveBeenCalled();
+		expect(h.renderTasks).toHaveBeenCalledWith(expect.arrayContaining([
+			expect.objectContaining({ startDate: '2026-10-01T09:00', endDate: '2026-10-01T10:00' }),
+		]));
+	});
+
+	it('snaps Date & time movement to whole weeks at Weeks resolution', async () => {
+		const h = harness({ scale: 'month' });
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'datetime' },
+		});
+		h.writer.replaceBaseline([task('Tasks/A.md', {
+			startDate: '2026-10-01T09:00', endDate: '2026-10-02T09:00',
+		})]);
+
+		await h.writer.onTasksChange([task('Tasks/A.md', {
+			startDate: '2026-10-05T09:00', endDate: '2026-10-06T09:00',
+		})]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-10-08T09:00', 'note.end', '2026-10-09T09:00',
+		);
+	});
+
+	it('snaps coarser Date & time movement by calendar month without changing the hour', async () => {
+		const h = harness({ scale: 'quarter' });
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'datetime' },
+		});
+		h.writer.replaceBaseline([task('Tasks/A.md', {
+			startDate: '2026-01-31T09:00', endDate: '2026-02-01T09:00',
+		})]);
+
+		await h.writer.onTasksChange([task('Tasks/A.md', {
+			startDate: '2026-02-20T09:00', endDate: '2026-02-21T09:00',
+		})]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-02-28T09:00', 'note.end', '2026-03-01T09:00',
+		);
+	});
+
+	it('keeps Date properties on whole-day boundaries even at Hours resolution', async () => {
+		const h = harness({ scale: 'day' });
+		await h.writer.onTasksChange([
+			{ ...h.before[0]!, startDate: '2026-10-02T01:00:00.000Z', endDate: '2026-10-04T01:00:00.000Z' },
+			h.before[1]!,
+		]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-10-02', 'note.end', '2026-10-03',
+		);
+	});
+
 	it('uses the date capability for an end-only resize and keeps the existing start', async () => {
 		const h = harness();
 		await h.writer.onTasksChange([{ ...h.before[0]!, endDate: '2026-10-06' }, h.before[1]!]);

@@ -120,7 +120,7 @@ export class BasesGanttBetaView extends BasesView {
 		this.currentStartType = mutationProperties.start?.type ?? 'date';
 		if (this.writer) {
 			this.writer.replaceProperties(mutationProperties);
-			this.writer.replaceScheduleOptions(options.dependencyShift, options.writePhaseDates);
+			this.writer.replaceScheduleOptions(options.dependencyShift, options.writePhaseDates, options.scale);
 			this.writer.replaceBaseline(mapped.tasks, mutationProperties);
 		} else {
 			this.writer = new GanttBetaWriteBack(mapped.tasks, {
@@ -132,6 +132,7 @@ export class BasesGanttBetaView extends BasesView {
 				createTask: draft => this.createTask(draft, this.currentOptions ?? options, this.currentStartType),
 				dependencyPolicy: options.dependencyShift,
 				writePhaseDates: options.writePhaseDates,
+				scale: options.scale,
 				renderTasks: tasks => this.renderTaskArray(tasks),
 			});
 		}

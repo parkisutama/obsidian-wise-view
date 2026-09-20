@@ -117,6 +117,11 @@ Catatan UX lanjutan untuk GBETA-014: detail panel custom harus menampilkan Date 
 hari inklusif (tanpa boundary jam tersembunyi) dan menyediakan Duration yang dapat diedit;
 perubahan Duration menghitung dan menulis End melalui jalur mutation yang sama.
 
+Catatan snapping build terbaru: Date selalu bergerak per hari. Date & time hanya mengubah jam
+pada resolusi Hours; Days/Weeks/Months/Quarters mempertahankan jam dan durasi sambil membulatkan
+pergeseran ke unit kalender picker sebelum cascade dijalankan. Preview pointer masih berasal dari
+library, sedangkan nilai final terlihat setelah pointer dilepas.
+
 ### Checklist dependency schedule dan phase dates
 
 | Mode | Langkah dan hasil yang diharapkan | Hasil | Catatan/bukti |

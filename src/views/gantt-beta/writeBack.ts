@@ -17,6 +17,7 @@ import {
 import { SYNTHETIC_PHASE_PREFIX } from '../../core/gantt/phases';
 import type { GrantedMutations } from '../../platform/mutations/grants';
 import type { MutationResult } from '../../platform/mutations/types';
+import type { GanttBetaScale } from './options';
 
 interface BaselineValues {
 	currentOrder?: ReadonlyMap<string, number | null | undefined>;
@@ -35,6 +36,7 @@ export interface GanttBetaWriteBackOptions {
 	createTask?(draft: GanttTaskDraft): Promise<void>;
 	dependencyPolicy?: GanttDependencyPolicy;
 	writePhaseDates?: boolean;
+	scale?: GanttBetaScale;
 	/** Applies cascade results without remounting the chart. */
 	renderTasks?(tasks: Task[]): void;
 	/** Holds Bases re-renders while writes are in flight (see EchoGate). */
@@ -46,7 +48,7 @@ function failed(message: string): MutationResult {
 }
 
 function canonicalDate(value: string, type: 'date' | 'datetime', boundary: 'start' | 'end'): string {
-	if (type === 'datetime') return value;
+	if (type === 'datetime') return writeGanttDate(value, type, boundary) ?? value;
 	const stored = writeGanttDate(value, type, boundary);
 	return stored ? (readGanttDate(stored, type, boundary) ?? value) : value;
 }
@@ -63,6 +65,69 @@ function hasReversedRange(task: Task, endType: 'date' | 'datetime'): boolean {
 	return Number.isFinite(start) && Number.isFinite(end) && (endType === 'date' ? end <= start : end < start);
 }
 
+const DAY_MS = 86_400_000;
+const FIXED_SNAP_MS: Record<'day' | 'week', number> = { day: DAY_MS, week: 7 * DAY_MS };
+
+function isoAt(milliseconds: number): string {
+	return new Date(milliseconds).toISOString();
+}
+
+function addUtcMonths(milliseconds: number, months: number): number {
+	const date = new Date(milliseconds);
+	const day = date.getUTCDate();
+	date.setUTCDate(1);
+	date.setUTCMonth(date.getUTCMonth() + months);
+	const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+	date.setUTCDate(Math.min(day, lastDay));
+	return date.getTime();
+}
+
+function snappedBoundary(
+	baseline: string,
+	proposed: string,
+	type: 'date' | 'datetime',
+	scale: GanttBetaScale,
+): string {
+	const from = chartTime(baseline);
+	const to = chartTime(proposed);
+	if (!Number.isFinite(from) || !Number.isFinite(to)) return proposed;
+	const delta = to - from;
+	if (delta === 0) return baseline;
+	if (type === 'date') return isoAt(from + Math.round(delta / DAY_MS) * DAY_MS);
+	if (scale === 'day') return proposed;
+	if (scale === 'week' || scale === 'month') {
+		const unit = scale === 'week' ? FIXED_SNAP_MS.day : FIXED_SNAP_MS.week;
+		return isoAt(from + Math.round(delta / unit) * unit);
+	}
+	const monthsPerStep = scale === 'quarter' ? 1 : 3;
+	const approximateStep = monthsPerStep * 30.4375 * DAY_MS;
+	return isoAt(addUtcMonths(from, Math.round(delta / approximateStep) * monthsPerStep));
+}
+
+function snapTask(
+	task: Task,
+	baseline: Task | undefined,
+	types: { start: 'date' | 'datetime'; end: 'date' | 'datetime' },
+	scale: GanttBetaScale,
+): Task {
+	if (!baseline) return task;
+	const startChanged = task.startDate !== baseline.startDate;
+	const endChanged = task.endDate !== baseline.endDate;
+	if (!startChanged && !endChanged) return task;
+	const startDelta = chartTime(task.startDate) - chartTime(baseline.startDate);
+	const endDelta = chartTime(task.endDate) - chartTime(baseline.endDate);
+	if (startChanged && endChanged && startDelta === endDelta) {
+		const snappedStart = snappedBoundary(baseline.startDate, task.startDate, types.start, scale);
+		const snappedDelta = chartTime(snappedStart) - chartTime(baseline.startDate);
+		return { ...task, startDate: snappedStart, endDate: isoAt(chartTime(baseline.endDate) + snappedDelta) };
+	}
+	return {
+		...task,
+		startDate: startChanged ? snappedBoundary(baseline.startDate, task.startDate, types.start, scale) : task.startDate,
+		endDate: endChanged ? snappedBoundary(baseline.endDate, task.endDate, types.end, scale) : task.endDate,
+	};
+}
+
 /**
  * Converts controlled chart gestures into the smallest scoped mutation calls. It owns only an
  * immutable task baseline and plain frontmatter values; no live Bases object crosses an update.
@@ -74,6 +139,7 @@ export class GanttBetaWriteBack {
 	private epoch = 0;
 	private dependencyPolicy: GanttDependencyPolicy;
 	private writePhaseDates: boolean;
+	private scale: GanttBetaScale;
 	private pendingDependencyChange = false;
 
 	constructor(tasks: Task[], private readonly options: GanttBetaWriteBackOptions) {
@@ -81,6 +147,7 @@ export class GanttBetaWriteBack {
 		this.properties = options.properties;
 		this.dependencyPolicy = options.dependencyPolicy ?? 'none';
 		this.writePhaseDates = options.writePhaseDates ?? false;
+		this.scale = options.scale ?? 'day';
 	}
 
 	get tasks(): Task[] {
@@ -91,9 +158,10 @@ export class GanttBetaWriteBack {
 		this.properties = properties;
 	}
 
-	replaceScheduleOptions(dependencyPolicy: GanttDependencyPolicy, writePhaseDates: boolean): void {
+	replaceScheduleOptions(dependencyPolicy: GanttDependencyPolicy, writePhaseDates: boolean, scale: GanttBetaScale = this.scale): void {
 		this.dependencyPolicy = dependencyPolicy;
 		this.writePhaseDates = writePhaseDates;
+		this.scale = scale;
 	}
 
 	replaceBaseline(tasks: Task[], values: BaselineValues = {}): void {
@@ -160,8 +228,10 @@ export class GanttBetaWriteBack {
 			const types = this.properties.dateTypes?.get(task.id);
 			const startType = types?.start ?? this.properties.start?.type;
 			const endType = types?.end ?? this.properties.end?.type;
-			const startDate = startType ? canonicalDate(task.startDate, startType, 'start') : task.startDate;
-			const endDate = endType ? canonicalDate(task.endDate, endType, 'end') : task.endDate;
+			const baseline = this.baseline.find(candidate => candidate.id === task.id);
+			const snapped = startType ? snapTask(task, baseline, { start: startType, end: endType ?? startType }, this.scale) : task;
+			const startDate = startType ? canonicalDate(snapped.startDate, startType, 'start') : snapped.startDate;
+			const endDate = endType ? canonicalDate(snapped.endDate, endType, 'end') : snapped.endDate;
 			return startDate === task.startDate && endDate === task.endDate ? task : { ...task, startDate, endDate };
 		});
 		const preservedTasks = allowDependencyChange ? dateNormalizedTasks : dateNormalizedTasks.map(task => {
@@ -206,6 +276,7 @@ export class GanttBetaWriteBack {
 		});
 		if (plan.length === 0) {
 			this.baseline = scheduledTasks;
+			if (scheduledTasks.some((task, index) => task !== sourceTasks[index])) this.options.renderTasks?.(scheduledTasks);
 			return;
 		}
 
