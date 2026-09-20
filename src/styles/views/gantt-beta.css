@@ -265,3 +265,13 @@
 .gantt-beta-previewing .gantt-bar-tooltip-detail {
 	display: none;
 }
+
+/*
+ * The library derives a colored bar's progress fill by mixing the bar color with black, so a dark
+ * color (or a dark-theme accent) gets a fill that is nearly the bar itself. Mixing toward the bar's own
+ * text color instead (white on dark bars, black on light ones) keeps the fill distinguishable at either
+ * end. The library sets --gantt-progress-color inline on colored bars, hence !important.
+ */
+.gantt-beta-chart .gantt-task-bar[style*="--gantt-progress-color"]:not(.summary) {
+	--gantt-progress-color: color-mix(in srgb, var(--gantt-bar-color) 50%, var(--gantt-bar-text-color)) !important;
+}

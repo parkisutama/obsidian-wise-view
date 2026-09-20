@@ -132,3 +132,9 @@ Record here any change in a shared module that affects Frappe Gantt (gantt-beta.
   phase dates" option is on, those can differ from Gantt Beta's rolled-up summary dates.
 - **Order property.** Gantt Beta may write an Order property. Frappe Gantt ignores it and
   keeps following the Bases sort.
+
+- **GBETA-016 review.** Shared modules touched by Gantt Beta (`src/core/gantt/dependencies.ts`,
+  `NoteTemplateService.prepareNote`, `LegacyMutationGateway.setDependencies`) changed only additively
+  for Frappe: the one helper Frappe imports (`toGanttWikiLink`) is unchanged. Gantt Beta's
+  `wikiLinkText` heals damaged wikilinks; Frappe's own `ganttUtils.ts` still re-wraps link targets and
+  can grow `[[[[Note]]` the same way. Not fixed here because the workstream is frozen.

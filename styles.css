@@ -2801,34 +2801,44 @@ body.gantt-wbs-resizing {
 .gantt-beta-detail {
 	display: flex;
 	flex-direction: column;
-	gap: var(--size-4-3);
+	gap: var(--size-4-2);
 	color: var(--text-normal);
 }
 
-.gantt-beta-detail__header,
-.gantt-beta-detail__dependency,
-.gantt-beta-detail__property {
+/* The close button sits alone on a row above the title, so it reads as the panel's, not the note's. */
+.gantt-beta-detail__top {
+	display: flex;
+	justify-content: flex-end;
+	margin-block: calc(var(--size-4-1) * -1) calc(var(--size-2-2) * -1);
+}
+
+.gantt-beta-detail__dependency {
 	display: flex;
 	align-items: center;
 	gap: var(--size-2-2);
 }
 
 .gantt-beta-detail__title {
-	min-width: 0;
-	flex: 1;
+	display: block;
+	width: 100%;
+	height: auto;
+	padding: 0;
 	overflow: hidden;
 	border: 0;
 	background: transparent;
 	box-shadow: none;
 	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
 	font-weight: var(--font-semibold);
 	text-align: start;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	cursor: pointer;
 }
 
 .gantt-beta-detail__title:hover {
-	background: var(--background-modifier-hover);
+	background: transparent;
+	text-decoration: underline;
 }
 
 .gantt-beta-detail__close {
@@ -2837,14 +2847,21 @@ body.gantt-wbs-resizing {
 
 .gantt-beta-detail__fields {
 	display: grid;
-	gap: var(--size-2-2);
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--size-2-3) var(--size-4-2);
 }
 
+/* Labels sit above their values instead of taking a column of their own. */
 .gantt-beta-detail__field {
-	display: grid;
-	grid-template-columns: minmax(5rem, auto) minmax(0, 1fr);
-	align-items: center;
-	gap: var(--size-2-2);
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+	min-width: 0;
+}
+
+.gantt-beta-detail__field--wide,
+.gantt-beta-detail__timezone {
+	grid-column: 1 / -1;
 }
 
 .gantt-beta-detail__field input {
@@ -2856,6 +2873,7 @@ body.gantt-wbs-resizing {
 .gantt-beta-detail__property-name,
 .gantt-beta-detail__timezone {
 	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
 }
 
 .gantt-beta-detail__section-title {
@@ -2877,13 +2895,86 @@ body.gantt-wbs-resizing {
 }
 
 .gantt-beta-detail__property {
-	align-items: start;
+	display: flex;
+	flex-direction: column;
+	gap: 0;
 	padding-block: var(--size-2-1);
 }
 
 .gantt-beta-detail__property-name {
-	width: 40%;
-	flex: 0 0 40%;
+	width: auto;
+	flex: none;
+}
+
+/* Derived from Depends on: a bar that starts before a predecessor finishes, or waits on an
+   unfinished one. The class lands on both the bar and its task-list row. */
+.gantt-beta-chart .gantt-beta-conflict .gantt-task-bar,
+.gantt-beta-chart .gantt-task-bar.gantt-beta-conflict {
+	outline: 2px solid var(--text-error);
+	outline-offset: 1px;
+}
+
+.gantt-beta-chart .gantt-beta-blocked .gantt-task-bar,
+.gantt-beta-chart .gantt-task-bar.gantt-beta-blocked {
+	opacity: 0.6;
+}
+
+.gantt-beta-chart .gantt-grid-row.gantt-beta-conflict {
+	box-shadow: inset 3px 0 0 var(--text-error);
+}
+
+.gantt-beta-chart .gantt-grid-row.gantt-beta-blocked {
+	box-shadow: inset 3px 0 0 var(--text-faint);
+}
+
+.gantt-beta-detail__link {
+	min-width: 0;
+	height: auto;
+	flex: 1;
+	justify-content: flex-start;
+	padding: 0;
+	overflow-wrap: anywhere;
+	text-align: start;
+	background: none;
+	border: 0;
+	box-shadow: none;
+	color: var(--link-color);
+	cursor: pointer;
+}
+
+.gantt-beta-detail__link:hover {
+	background: none;
+	text-decoration: underline;
+}
+
+.gantt-beta-detail__warning {
+	margin-bottom: var(--size-2-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.gantt-beta-detail__warning--conflict {
+	color: var(--text-error);
+}
+
+.gantt-beta-detail__blocks {
+	padding-top: var(--size-4-2);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Ctrl/Cmd is Obsidian's Page Preview modifier; the library's own hover card would sit under it. */
+.gantt-beta-previewing .gantt-bar-tooltip-detail {
+	display: none;
+}
+
+/*
+ * The library derives a colored bar's progress fill by mixing the bar color with black, so a dark
+ * color (or a dark-theme accent) gets a fill that is nearly the bar itself. Mixing toward the bar's own
+ * text color instead (white on dark bars, black on light ones) keeps the fill distinguishable at either
+ * end. The library sets --gantt-progress-color inline on colored bars, hence !important.
+ */
+.gantt-beta-chart .gantt-task-bar[style*="--gantt-progress-color"]:not(.summary) {
+	--gantt-progress-color: color-mix(in srgb, var(--gantt-bar-color) 50%, var(--gantt-bar-text-color)) !important;
 }
 
 /* === BUNDLED CSS IMPORTS === */

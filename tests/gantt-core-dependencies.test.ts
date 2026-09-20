@@ -32,6 +32,13 @@ describe('Gantt dependency conversion (GBETA-006)', () => {
 		]);
 	});
 
+	it('reports links that name no note instead of dropping them silently', () => {
+		const unresolved: string[] = [];
+		const parsed = parseGanttDependencies({ FS: ['[[Tasks/A]]', '[[Nowhere]]', 'Ghost'] }, resolve, target => unresolved.push(target));
+		expect(parsed).toEqual([{ targetId: 'Tasks/A.md', type: 'FS' }]);
+		expect(unresolved).toEqual(['Nowhere', 'Ghost']);
+	});
+
 	it('appends to a list and starts a list when nothing is stored', () => {
 		expect(appendGanttDependency(['[[Missing]]'], 'Tasks/B.md', resolve)).toEqual(['[[Missing]]', '[[Tasks/B]]']);
 		expect(appendGanttDependency(undefined, 'Tasks/B.md', resolve)).toEqual(['[[Tasks/B]]']);

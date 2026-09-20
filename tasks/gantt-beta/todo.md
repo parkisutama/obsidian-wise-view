@@ -449,6 +449,15 @@ holidays, snap, and first-day-of-week options wired to the chart.
 
 ### GBETA-016: Scale, limitations, and upstream follow-ups
 
+**Status:** Implemented 2026-09-20; native confirmation pending. Large-Base cost measured and cut
+(5000 notes: 160 ms to map, 60 ms per gesture, from 883 ms and 1190 ms); the today line was already
+offset for local time (`638b51a`), the residual (scroll-to-today and the "Add task" draft) is
+documented; progress fill mixes toward the bar's text color (contrast 1.00 to 2.62 worst case);
+unresolved dependency links raise a Notice and formula-backed edits are disabled up front; the
+popout limitation is documented with upstream issues drafted in `tasks/gantt-beta/upstream-issues.md`
+(not opened). Still to see in a real vault: the progress-fill colors in both themes, and a Base of
+several hundred notes.
+
 **Description:** Large-Base check (hundreds of entries), today-marker investigation (own
 local-time marker or documented offset), popout limitation documented and an upstream
 issue/PR opened for `ownerDocument` listeners, Notices for unresolved links, formula
@@ -457,10 +466,10 @@ properties, and a missing template. Record any Frappe-visible side effect of sha
 
 **Acceptance criteria:**
 
-- [ ] Spec §5 table matches observed behavior.
-- [ ] Progress fill remains distinguishable for configured light and dark bar colors in both
+- [x] Spec §5 table matches observed behavior.
+- [x] Progress fill remains distinguishable for configured light and dark bar colors in both
   Obsidian themes.
-- [ ] No UI freeze on a single gesture in the large-Base check (measured, recorded).
+- [x] No UI freeze on a single gesture in the large-Base check (measured, recorded).
 
 **Verification:** `pnpm run check && pnpm run build && pnpm run verify:artifacts`
 

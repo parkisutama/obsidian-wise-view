@@ -77,6 +77,22 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 		]);
 	});
 
+	it('lists dependency links that name no note so the view can say so', () => {
+		const result = mapSnapshotsToGanttTasks([group([
+			snapshot('Tasks/A.md', { 'note.start': date('2026-01-01') }),
+			snapshot('Tasks/B.md', {
+				'note.start': date('2026-01-02'),
+				'note.depends': { kind: 'list', items: [link('Tasks/A'), link('Deleted note')] },
+			}),
+		])], options({ ganttBetaStart: 'note.start', ganttBetaDependencyFS: 'note.depends' }), {
+			...services,
+			resolveLink: (target: string) => target === 'Deleted note' ? null : services.resolveLink(target),
+		});
+
+		expect(result.unresolved).toEqual([{ path: 'Tasks/B.md', target: 'Deleted note' }]);
+		expect(result.tasks.find(item => item.id === 'Tasks/B.md')?.dependencies).toEqual([{ targetId: 'Tasks/A.md', type: 'FS' }]);
+	});
+
 	it('keeps the stable FS config key while presenting the relation as Depends on', () => {
 		const value = options({ ganttBetaDependencyFS: 'note.fs', ganttBetaMoveDependencies: true });
 		expect(value.dependsOn).toBe('note.fs');

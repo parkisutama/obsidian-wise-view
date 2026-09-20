@@ -250,13 +250,18 @@ fight over a `.base` file.
 | Limitation (v1.5.1) | Handling |
 |---|---|
 | React peer dependency | D1: `preact/compat` alias; pnpm `peerDependencyRules` for the missing React peer. |
-| UTC-only layout | D7 floating-time adapter. UTC is an internal chart coordinate system, not the user's storage semantics, and must not appear in Date labels. The built-in today line and "Add task" draft are computed in UTC, so between local midnight and UTC midnight they can sit one column off; the plan investigates positioning our own marker, else it is documented. Runtime local time is detected from the owning window (`Intl.DateTimeFormat().resolvedOptions().timeZone`), which on desktop follows the Windows timezone through Electron/Chromium. |
+| UTC-only layout | D7 floating-time adapter. UTC is an internal chart coordinate system, not the user's storage semantics, and must not appear in Date labels. The library places its today line, scroll-to-today, and "Add task" draft at the real instant, which sits `|UTC offset|` hours away from a floating local time. The today line is corrected with a CSS offset (`--gantt-local-today-offset`, exact at day and week scale, approximate at month and coarser). Scroll-to-today and the "Add task" draft are not corrected: between local midnight and the offset hours they land on the neighbouring day. Runtime local time is detected from the owning window (`Intl.DateTimeFormat().resolvedOptions().timeZone`). Upstream request drafted in `tasks/gantt-beta/upstream-issues.md`. |
 | Exclusive end dates | Converted on read/write (§3.2). |
-| Global `document` listeners and `document.body` cursor | Drags inside an Obsidian popout window may not work. Documented limitation for Beta; plan opens an upstream issue/PR to use the element's `ownerDocument`. Never monkey-patched (existing guard). |
+| Global `document` listeners and `document.body` cursor | Drags inside an Obsidian popout window may not work; not yet verified natively (GBETA-017). Gantt Beta's own listeners are popout-safe (`ViewRuntime`); only the library's are not. Documented limitation for Beta; the upstream issue/PR to use the element's `ownerDocument` is drafted in `tasks/gantt-beta/upstream-issues.md` and not yet opened. Never monkey-patched (existing guard). |
 | Whole-array `onTasksChange` | Diffing (§3.4). |
 | No context-menu/hover callbacks | Delegated listeners on `data-task-id`. |
 | Library reports a typed dependency | The v1 adapter accepts only end-to-start/FS and persists one Depends on link (§3.4). |
 | Fixed 28 px bar height | Only row height is configurable. |
+| Progress fill is the bar color mixed 62% with black | Near-black bar colors get a fill indistinguishable from the bar (contrast 1.00). Gantt Beta mixes toward the bar's own text color instead (white on dark bars, black on light ones) at 50%: minimum contrast 2.62 over 20 sample colors from black to white, against 1.00 before. Pure CSS, applies to bars with an explicit `color`. |
+| Whole-Base cost | Measured 2026-09-20 (`tests/gantt-beta-scale.test.ts`): 5000 notes map in 160 ms and a bar move does 60 ms of main-thread work (was 883 ms and 1190 ms before removing per-task linear scans and per-comparison collators). Chart rendering is virtualized by the library. |
+| Links that name no note | Reported once per link with a Notice ("could not find N dependency links"); links to notes merely filtered out of the Base are not errors. |
+| Formula-backed properties | A property that is a formula has no frontmatter field, so edits that need it (move, resize, progress, link, reorder, add task) are disabled up front instead of failing after the drag. |
+| Missing template note | `NoteTemplateService` shows "Template note not found" and creates the note without a template body. |
 | Single maintainer, fast release cadence | Exact version pin, provenance ledger entry, characterization tests around the adapter before any upgrade. |
 
 ## 6. Shared code policy

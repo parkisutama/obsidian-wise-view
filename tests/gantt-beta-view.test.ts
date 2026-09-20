@@ -159,6 +159,29 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		harness.view.onunload();
 	});
 
+	it('switches off edits that need a frontmatter field a formula cannot provide', () => {
+		const mutations = {
+			date: { updateRange: vi.fn() }, property: { setProperty: vi.fn(), setProperties: vi.fn() },
+			dependency: { setDependencies: vi.fn() }, fileCreate: { createNote: vi.fn() },
+		};
+		const writable = mount({
+			ganttBetaReadOnly: false, ganttBetaEnd: 'note.end', ganttBetaProgress: 'note.progress', ganttBetaDependencyFS: 'note.depends',
+		}, mutations);
+		expect(lastProps(writable)).toMatchObject({
+			allowMove: true, allowResize: true, allowProgressChange: true, allowLinkCreate: true, allowLinkDelete: true, allowTaskCreate: true,
+		});
+		writable.view.onunload();
+
+		const formulas = mount({
+			ganttBetaReadOnly: false, ganttBetaEnd: 'formula.end',
+			ganttBetaProgress: 'formula.progress', ganttBetaDependencyFS: 'formula.depends',
+		}, mutations);
+		expect(lastProps(formulas)).toMatchObject({
+			allowMove: true, allowResize: false, allowProgressChange: false, allowLinkCreate: false, allowLinkDelete: false, allowTaskCreate: true,
+		});
+		formulas.view.onunload();
+	});
+
 	it('enables resize once an End property is configured and a date grant exists', () => {
 		const harness = mount({ ganttBetaReadOnly: false, ganttBetaEnd: 'note.end' }, { date: { updateRange: vi.fn() } });
 		expect(lastProps(harness)).toMatchObject({ allowMove: true, allowResize: true });

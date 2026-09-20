@@ -47,6 +47,7 @@ export class BasesGanttBetaView extends BasesView {
 	private readonly chart: GanttBetaChartHost;
 	private readonly toolbar: GanttBetaToolbar;
 	private reportedCycles = new Set<string>();
+	private reportedUnresolved = new Set<string>();
 	private lastGroups: unknown = null;
 	private lastNonCssConfig = '';
 	private lastModel: GanttBetaChartModel | null = null;
@@ -136,6 +137,13 @@ export class BasesGanttBetaView extends BasesView {
 			freshCycles.forEach(path => this.reportedCycles.add(path));
 			new Notice(`Gantt Beta ignored cyclic parent links: ${freshCycles.join(', ')}`);
 		}
+		const freshUnresolved = mapped.unresolved.filter(link => !this.reportedUnresolved.has(`${link.path}::${link.target}`));
+		if (freshUnresolved.length) {
+			for (const link of freshUnresolved) this.reportedUnresolved.add(`${link.path}::${link.target}`);
+			const shown = freshUnresolved.slice(0, 5).map(link => `[[${link.target}]] in ${link.path}`).join('; ');
+			const more = freshUnresolved.length > 5 ? ` (and ${freshUnresolved.length - 5} more)` : '';
+			new Notice(`Gantt Beta could not find ${freshUnresolved.length} dependency link${freshUnresolved.length === 1 ? '' : 's'}: ${shown}${more}`);
+		}
 		const mutationProperties = this.mutationProperties(groups, options);
 		this.currentStartType = mutationProperties.start?.type ?? 'date';
 		if (this.writer) {
@@ -158,7 +166,10 @@ export class BasesGanttBetaView extends BasesView {
 		}
 		const writer = this.writer;
 		const editable = !options.readOnly;
-		const canAddTask = editable && options.allowTaskCreate && Boolean(options.start && this.mutations.fileCreate);
+		// A formula has no frontmatter field to write, so an edit that needs one is switched off up front
+		// instead of failing after the drag.
+		const writable = (property: string | null): property is string => property !== null && !property.startsWith('formula.');
+		const canAddTask = editable && options.allowTaskCreate && writable(options.start) && Boolean(this.mutations.fileCreate);
 		const showTime = mutationProperties.start?.type === 'datetime' || mutationProperties.end?.type === 'datetime';
 		const formats: GanttProps['formats'] = {
 			[options.scale]: { tooltip: (date: { format(pattern: string): string }) => date.format(showTime ? 'YYYY-MM-DD HH:mm' : 'YYYY-MM-DD') },
@@ -178,10 +189,10 @@ export class BasesGanttBetaView extends BasesView {
 			predecessorId: dependency.targetId, successorId: taskId, type: dependency.type,
 		});
 		const renderDetail = (detailProps: GanttDetailRenderProps) => renderGanttDetail(detailProps, {
-			canEditStart: editable && options.allowMove && Boolean(options.start && this.mutations.date),
-			canEditEnd: editable && options.allowResize && Boolean(options.end && this.mutations.date),
-			canEditProgress: editable && options.allowProgress && Boolean(options.progress && this.mutations.property),
-			canEditDependencies: editable && options.allowLinkDelete && Boolean(options.dependsOn && this.mutations.dependency),
+			canEditStart: editable && options.allowMove && writable(options.start) && Boolean(this.mutations.date),
+			canEditEnd: editable && options.allowResize && writable(options.end) && Boolean(this.mutations.date),
+			canEditProgress: editable && options.allowProgress && writable(options.progress) && Boolean(this.mutations.property),
+			canEditDependencies: editable && options.allowLinkDelete && writable(options.dependsOn) && Boolean(this.mutations.dependency),
 			dependsOnProperty: options.dependsOn, progressProperty: options.progress, entry: detailEntry(detailProps.task.id),
 			localTimeZone: timezone,
 			taskName: id => taskNames.get(id) ?? null,
@@ -211,12 +222,12 @@ export class BasesGanttBetaView extends BasesView {
 				holidays: options.holidays.split(',').map(value => value.trim()).filter(Boolean), firstDayOfWeek: options.firstDayOfWeek,
 				zoomOnWheel: options.zoomOnWheel, infiniteScroll: options.infiniteScroll,
 				...(options.scrollToToday ? { initialScrollTo: 'today' as const } : {}),
-				allowMove: editable && options.allowMove && Boolean(this.mutations.date),
-				allowResize: editable && options.allowResize && Boolean(options.end && this.mutations.date),
-				allowProgressChange: editable && options.allowProgress && Boolean(options.progress && this.mutations.property),
-				allowLinkCreate: editable && options.allowLinkCreate && Boolean(options.dependsOn && this.mutations.dependency),
-				allowLinkDelete: editable && options.allowLinkDelete && Boolean(options.dependsOn && this.mutations.dependency),
-				allowReorder: editable && options.allowReorder && Boolean((options.order || options.parent) && this.mutations.property),
+				allowMove: editable && options.allowMove && writable(options.start) && Boolean(this.mutations.date),
+				allowResize: editable && options.allowResize && writable(options.end) && Boolean(this.mutations.date),
+				allowProgressChange: editable && options.allowProgress && writable(options.progress) && Boolean(this.mutations.property),
+				allowLinkCreate: editable && options.allowLinkCreate && writable(options.dependsOn) && Boolean(this.mutations.dependency),
+				allowLinkDelete: editable && options.allowLinkDelete && writable(options.dependsOn) && Boolean(this.mutations.dependency),
+				allowReorder: editable && options.allowReorder && (writable(options.order) || writable(options.parent)) && Boolean(this.mutations.property),
 				allowTaskCreate: canAddTask,
 				onTasksChange: tasks => void writer.onTasksChange(tasks),
 				onDependencyCreate: change => writer.onDependencyCreate(change),

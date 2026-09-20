@@ -16,7 +16,12 @@ export interface GanttBetaMappingServices {
 	resolveLink(target: string, sourcePath: string): { path: string; name: string } | null;
 	resolveColor(entry: EntrySnapshot, category: string | null): string | null;
 }
-export interface GanttBetaMappingResult { tasks: Task[]; unscheduled: EntrySnapshot[]; cycles: string[] }
+export interface GanttUnresolvedLink { path: string; target: string }
+export interface GanttBetaMappingResult {
+	tasks: Task[]; unscheduled: EntrySnapshot[]; cycles: string[];
+	/** Depends on links that name no note in the vault (links to notes filtered out of the Base are not listed). */
+	unresolved: GanttUnresolvedLink[];
+}
 
 function text(value: NormalizedValue | undefined): string | null {
 	if (!value || value.kind === 'missing') return null;
@@ -86,6 +91,7 @@ export function mapSnapshotsToGanttTasks(
 	const phaseById = new Map(phaseTree.nodes.map(node => [node.id, node]));
 	const tasks = new Map<string, Task>();
 	const unscheduled: EntrySnapshot[] = [];
+	const unresolved: GanttUnresolvedLink[] = [];
 
 	for (const entry of entries) {
 		const startValue = options.start ? entry.values.get(options.start) : undefined;
@@ -99,7 +105,7 @@ export function mapSnapshotsToGanttTasks(
 		if (!end) end = dateType === 'date' ? readGanttDate(startSource, 'date', 'end')! : addScaleStep(start, options.scale);
 		const dependencies = parseGanttDependencies({
 			FS: rawDependency(options.dependsOn ? entry.values.get(options.dependsOn) : undefined),
-		}, target => services.resolveLink(target, entry.path)?.path ?? null);
+		}, target => services.resolveLink(target, entry.path)?.path ?? null, target => unresolved.push({ path: entry.path, target }));
 		const formulaDates = Boolean(options.start?.startsWith('formula.') || options.end?.startsWith('formula.'));
 		const category = options.colorBy ? text(entry.values.get(options.colorBy)) : null;
 		const phase = phaseById.get(entry.path)!;
@@ -127,5 +133,5 @@ export function mapSnapshotsToGanttTasks(
 			sequence: node.sequence, readOnly: node.synthetic, allowMove: false, allowResize: false, allowProgressChange: false,
 			allowLinkCreate: false, allowLinkDelete: false, allowReorder: false });
 	}
-	return { tasks: [...tasks.values()].sort((a, b) => compareSequence(a.sequence, b.sequence)), unscheduled, cycles: phaseTree.cycles };
+	return { tasks: [...tasks.values()].sort((a, b) => compareSequence(a.sequence, b.sequence)), unscheduled, cycles: phaseTree.cycles, unresolved };
 }

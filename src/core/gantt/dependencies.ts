@@ -49,13 +49,17 @@ export function toGanttWikiLink(filePath: string): string {
 	return `[[${filePath.replace(/\.md$/i, '')}]]`;
 }
 
-export function parseGanttDependencies(values: DependencyValues, resolve: LinkResolver): TaskDependency[] {
+/** `onUnresolved` hears every link that names no note, which is otherwise dropped without a trace. */
+export function parseGanttDependencies(
+	values: DependencyValues, resolve: LinkResolver, onUnresolved?: (target: string) => void,
+): TaskDependency[] {
 	const result: TaskDependency[] = [];
 	const seen = new Set<string>();
 	for (const type of TYPES) {
 		for (const raw of expand(values[type])) {
 			const target = linkTarget(raw);
 			const targetId = target ? resolve(target) : null;
+			if (target && !targetId) onUnresolved?.(target);
 			const key = targetId ? `${type}:${targetId}` : null;
 			if (!targetId || !key || seen.has(key)) continue;
 			seen.add(key);
