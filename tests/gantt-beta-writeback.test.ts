@@ -287,6 +287,26 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		expect(h.notice).not.toHaveBeenCalled();
 	});
 
+	it('rebuilds a clamped Date phase from normalized descendants before validating the batch', async () => {
+		const before = [
+			task('Phase.md', { startDate: '2026-09-19', endDate: '2026-09-21' }),
+			task('Child.md', { parentId: 'Phase.md', sequence: '1.1', startDate: '2026-09-19', endDate: '2026-09-21' }),
+		];
+		const h = harness({ writePhaseDates: true, scale: 'day' });
+		h.writer.replaceBaseline(before);
+
+		await h.writer.onTasksChange([
+			{ ...before[0]!, startDate: '2026-09-20T11:25:00.000Z', endDate: '2026-09-20T12:30:00.000Z' },
+			{ ...before[1]!, startDate: '2026-09-20T00:00:00.000Z', endDate: '2026-09-22T00:00:00.000Z' },
+		]);
+
+		expect(h.revertTasks).not.toHaveBeenCalled();
+		expect(h.notice).not.toHaveBeenCalled();
+		expect(h.date.updateRange).toHaveBeenCalledWith('Phase.md', 'note.start', '2026-09-20', 'note.end', '2026-09-21');
+		expect(h.date.updateRange).toHaveBeenCalledWith('Child.md', 'note.start', '2026-09-20', 'note.end', '2026-09-21');
+		expect(h.writer.tasks[0]).toMatchObject({ startDate: '2026-09-20', endDate: '2026-09-22' });
+	});
+
 	it('rejects a reversed task draft before note creation', async () => {
 		const createTask = vi.fn().mockResolvedValue(undefined);
 		const h = harness({ createTask });
@@ -511,7 +531,7 @@ describe('Gantt Beta schedule write-back (GBETA-011)', () => {
 		on.writer.replaceBaseline(before);
 		await on.writer.onTasksChange(after);
 		expect(on.date.updateRange).toHaveBeenCalledWith(
-			'Phase.md', 'note.start', '2026-10-02T09:00', 'note.end', '2026-10-03T09:00',
+			'Phase.md', 'note.start', '2026-10-02T00:00', 'note.end', '2026-10-04T00:00',
 		);
 	});
 });

@@ -18,6 +18,7 @@ import { SYNTHETIC_PHASE_PREFIX } from '../../core/gantt/phases';
 import type { GrantedMutations } from '../../platform/mutations/grants';
 import type { MutationResult } from '../../platform/mutations/types';
 import type { GanttBetaScale } from './options';
+import { rollUpPhaseDates } from './phaseRollup';
 
 interface BaselineValues {
 	currentOrder?: ReadonlyMap<string, number | null | undefined>;
@@ -239,8 +240,11 @@ export class GanttBetaWriteBack {
 			if (!previous || task.dependencies === previous.dependencies) return task;
 			return { ...task, dependencies: previous.dependencies };
 		});
-		const normalizedTasks = preservedTasks.every((task, index) => task === nextTasks[index])
-			? nextTasks : preservedTasks;
+		const ids = new Set(preservedTasks.map(task => task.id));
+		const phaseIds = new Set(preservedTasks.map(task => task.parentId).filter((id): id is string => id !== null && ids.has(id)));
+		const rolledUpTasks = rollUpPhaseDates(preservedTasks, phaseIds);
+		const normalizedTasks = rolledUpTasks.every((task, index) => task === nextTasks[index])
+			? nextTasks : rolledUpTasks;
 		this.options.gate?.begin();
 		const job = this.queue
 			.then(() => (epoch === this.epoch ? this.apply(normalizedTasks, nextTasks) : undefined))

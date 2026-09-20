@@ -134,6 +134,10 @@ Rules:
   write is in flight, or within 350 ms after it (3 s cap), are held and replaced by a single render
   from the latest data (`EchoGate`; `RenderScheduler` decides only skip/css-only/full and cannot
   coalesce over time).
+- **Summary normalization.** A phase range is derived again, bottom-up, from its normalized direct
+  children before the batch is validated. The chart library can report a clamped sub-day phase
+  boundary while an Hours gesture is in progress; that intermediate range is never validated or
+  persisted as an independent Date edit.
 - **Echo suppression.** The re-render that Bases triggers after our own write must not reset
   scroll, selection, collapse state, or the open detail panel.
 - **Order values.** Reordering renumbers the affected siblings with gaps (10, 20, 30, …) and only
