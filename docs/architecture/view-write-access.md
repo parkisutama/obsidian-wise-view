@@ -45,7 +45,9 @@ weigh the following before granting the same capability to another view:
 - **Format contracts.** Gantt Beta writes local floating dates (`YYYY-MM-DD`,
   `YYYY-MM-DDTHH:mm`) and wiki-link lists. Plugins that expect ISO `Z` timestamps or plain-text
   ids will not interoperate without a conversion setting — a future change to either format is
-  a compatibility change and needs its own decision.
+  a compatibility change and needs its own decision. Zoned values may be read and presented in
+  the runtime local timezone, with that context disclosed in UI, but this acceptance does not
+  authorize a new zoned-write contract or silent preservation/conversion claims.
 - **New properties.** Gantt Beta introduces optional per-type dependency properties (SS/FF/SF)
   and an Order property. Their names are user-chosen in Bases options, never hard-coded, so
   users can align them with other plugins' conventions.
@@ -61,3 +63,5 @@ weigh the following before granting the same capability to another view:
 - Another view requests write access.
 - Obsidian ships a first-party write API for Bases views that supersedes this gateway.
 - A compatibility conflict with another plugin is reported against a Gantt Beta write.
+- A view proposes preserving or producing `Z`/offset datetime values; review the other plugins
+  that share those properties before choosing instant-preserving semantics.

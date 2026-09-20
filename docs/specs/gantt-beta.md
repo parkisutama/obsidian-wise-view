@@ -31,7 +31,7 @@ Gantt Beta meets the stability gate (§11), a separate workstream removes Frappe
 | D4 | Phases | A phase is a **parent note** referenced by the configured Parent property, **and** each Bases `Group by` group becomes a synthetic, read-only phase row. |
 | D5 | Dependency UX | One Bases-configured **Depends on** list-of-links property. Every stored edge is finish-to-start (FS). Users create/delete it through the line on the chart or the relation property; FS/SS/FF/SF codes are not exposed in the primary UX. |
 | D6 | Schedule response | A three-state **When predecessor moves** policy: do not shift; shift only to resolve overlap; or shift by the same delta and maintain the gap. Every automatic move preserves successor duration and is cycle-safe. |
-| D7 | Date storage | Local, floating values: `Date` properties as `YYYY-MM-DD` (end date **inclusive**), `Date & time` properties as `YYYY-MM-DDTHH:mm` with no offset. ISO strings with `Z` are read but never produced. |
+| D7 | Date storage | Local, floating values: `Date` properties as `YYYY-MM-DD` (end date **inclusive**), `Date & time` properties as `YYYY-MM-DDTHH:mm` with no offset. ISO strings with `Z`/offset are converted for display to the runtime local timezone but never produced. When configured values carry a zone, the detail UI identifies the runtime context (for example `Local time · Asia/Jakarta`); it does not imply that the stored offset was preserved. A future zoned-write mode requires a separate plugin-compatibility decision. |
 | D8 | Obsidian integration | Click opens the note (modifier = new tab, per existing navigation helpers) and Ctrl/Cmd-hover shows Page Preview. |
 | D9 | Detail panel | Custom Obsidian renderer (`renderDetail`), not the library's built-in body. |
 | D10 | Reordering and creation | All three enabled: drag a row to another phase (writes Parent), drag to reorder within a phase (writes an Order property), and draw a range to create a note from the template. |
@@ -204,7 +204,7 @@ fight over a `.base` file.
 | Limitation (v1.5.1) | Handling |
 |---|---|
 | React peer dependency | D1: `preact/compat` alias; pnpm `peerDependencyRules` for the missing React peer. |
-| UTC-only layout | D7 floating-time adapter. The built-in today line and "Add task" draft are computed in UTC, so between local midnight and UTC midnight they can sit one column off; the plan investigates positioning our own marker, else it is documented. |
+| UTC-only layout | D7 floating-time adapter. UTC is an internal chart coordinate system, not the user's storage semantics, and must not appear in Date labels. The built-in today line and "Add task" draft are computed in UTC, so between local midnight and UTC midnight they can sit one column off; the plan investigates positioning our own marker, else it is documented. Runtime local time is detected from the owning window (`Intl.DateTimeFormat().resolvedOptions().timeZone`), which on desktop follows the Windows timezone through Electron/Chromium. |
 | Exclusive end dates | Converted on read/write (§3.2). |
 | Global `document` listeners and `document.body` cursor | Drags inside an Obsidian popout window may not work. Documented limitation for Beta; plan opens an upstream issue/PR to use the element's `ownerDocument`. Never monkey-patched (existing guard). |
 | Whole-array `onTasksChange` | Diffing (§3.4). |
@@ -289,6 +289,9 @@ provenance entries, the `wise-view-gantt` registration, and document how users s
 - Context menu and command-palette commands for Gantt Beta.
 - Moving rows between synthetic Bases group phases.
 - Upstream: `ownerDocument`-aware listeners (popout windows), local-time today marker.
+- Zoned datetime write compatibility with Calendar, Tasks/Dataview-style workflows, Templater,
+  and other property-owning plugins. Until that work has its own decision, Gantt Beta keeps the
+  approved local-floating write contract and only explains the local display context in UI.
 
 ## 13. External UX references
 

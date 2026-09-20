@@ -340,13 +340,20 @@ driven by the chart `ref`; persist scale (`onScaleChange`) and collapsed ids
 
 ### GBETA-014: Detail panel renderer
 
-**Description:** `renderDetail` showing note title (opens the note), editable start/end and
-progress, Depends on links (removable), and the Base's visible properties read-only.
+**Description:** `renderDetail` showing note title (opens the note), editable start/end,
+editable Duration (recomputes End), progress, Depends on links (removable), and the Base's
+visible properties read-only. Date fields use day precision; Date & time fields retain hour and
+minute precision. If an input property carried `Z` or an offset, show the runtime context such as
+`Local time · Asia/Jakarta`, obtained from the owning window, without claiming the offset will be
+preserved on write.
 
 **Acceptance criteria:**
 
 - [ ] Edits write through the same paths as gestures (no second write path).
 - [ ] Visible properties follow the Base's property order.
+- [ ] Date never exposes a hidden hour; Date & time exposes hour/minute and editable Duration.
+- [ ] Zoned input displays the local timezone context; unzoned local-floating input does not add
+  a misleading timezone label.
 
 **Verification:** `pnpm run test -- gantt-beta-detail`
 
