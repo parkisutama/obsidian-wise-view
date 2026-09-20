@@ -109,3 +109,25 @@ describe('Gantt Beta detail panel (GBETA-014)', () => {
 		expect(h.update).toHaveBeenCalledWith({ dependencies: [] });
 	});
 });
+
+describe('Gantt Beta detail panel: derived blocking', () => {
+	it('names predecessors, opens them, and lists what this task blocks', () => {
+		const h = mount(task(), {
+			taskName: id => id === 'Before.md' ? 'Design phase' : null,
+			dependencyInfo: () => ({ blocks: [{ id: 'After.md', name: 'Launch' }], incomplete: 1, conflicts: 1 }),
+		});
+		const links = Array.from(h.host.querySelectorAll<HTMLButtonElement>('.gantt-beta-detail__link'));
+		expect(links.map(link => link.textContent)).toEqual(['Design phase', 'Launch']);
+
+		links[1]!.click();
+		expect(h.open).toHaveBeenCalledWith('After.md');
+		expect(h.host.querySelector('.gantt-beta-detail__blocks .gantt-beta-detail__section-title')?.textContent).toBe('Blocks');
+		expect(h.host.textContent).toContain('Starts before 1 predecessor finishes.');
+		expect(h.host.textContent).toContain('Waiting on 1 unfinished predecessor.');
+	});
+
+	it('falls back to the note name, not the vault path, when no task name is known', () => {
+		const h = mount(task({ dependencies: [{ targetId: 'Folder/Sub/Before.md', type: 'FS' }] }));
+		expect(h.host.querySelector('.gantt-beta-detail__link')?.textContent).toBe('Before');
+	});
+});

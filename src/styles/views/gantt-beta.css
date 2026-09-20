@@ -184,3 +184,51 @@
 	width: 40%;
 	flex: 0 0 40%;
 }
+
+/* Derived from Depends on: a bar that starts before a predecessor finishes, or waits on an
+   unfinished one. The class lands on both the bar and its task-list row. */
+.gantt-beta-chart .gantt-beta-conflict .gantt-task-bar,
+.gantt-beta-chart .gantt-task-bar.gantt-beta-conflict {
+	outline: 2px solid var(--text-error);
+	outline-offset: 1px;
+}
+
+.gantt-beta-chart .gantt-beta-blocked .gantt-task-bar,
+.gantt-beta-chart .gantt-task-bar.gantt-beta-blocked {
+	opacity: 0.6;
+}
+
+.gantt-beta-chart .gantt-grid-row.gantt-beta-conflict {
+	box-shadow: inset 3px 0 0 var(--text-error);
+}
+
+.gantt-beta-chart .gantt-grid-row.gantt-beta-blocked {
+	box-shadow: inset 3px 0 0 var(--text-faint);
+}
+
+.gantt-beta-detail__link {
+	min-width: 0;
+	flex: 1;
+	padding: 0;
+	overflow-wrap: anywhere;
+	text-align: start;
+	background: none;
+	box-shadow: none;
+	color: var(--link-color);
+	cursor: pointer;
+}
+
+.gantt-beta-detail__warning {
+	margin-bottom: var(--size-2-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.gantt-beta-detail__warning--conflict {
+	color: var(--text-error);
+}
+
+.gantt-beta-detail__blocks {
+	padding-top: var(--size-4-2);
+	border-top: 1px solid var(--background-modifier-border);
+}

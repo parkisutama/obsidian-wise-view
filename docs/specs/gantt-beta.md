@@ -172,6 +172,21 @@ but they are not four manual properties in Gantt Beta v1. Critical path, slack, 
 indicators are derived/descriptive outputs from the dependency graph and dates; they must not add
 frontmatter merely to explain the visualization.
 
+### 3.5.1 Derived blocking (no extra property)
+
+"Blocks" is Depends on read from the other side: if B depends on A, A blocks B. It is computed from
+the dependency graph every time and never stored, so there is no second property to drift out of
+sync (see the derived-output rule in §3.5).
+
+| Derived state | Rule (finish-to-start only) | Shown as |
+|---|---|---|
+| Blocks | Tasks whose Depends on contains this task | "Blocks" section in the detail panel, each entry opens its note |
+| Blocked | A predecessor has progress below 100 (unset counts as 0). Needs a Progress property; without one completion is unknown and the state is not shown | Faded bar and a grey edge on the list row; "Waiting on N unfinished predecessors" in the detail panel |
+| Date conflict | A predecessor ends after this task starts (ends are exclusive, so touching is fine) | Red outline on the bar and a red edge on the list row; "Starts before N predecessors finish" in the detail panel |
+
+The detail panel's Depends on list shows note names and opens the note on click. "Finished" means
+progress 100 in v1; a status-property definition is deferred (§12).
+
 ### 3.6 Bases view options
 
 Keys are Gantt Beta's own; none are shared with the Frappe view's config so the two views never
@@ -311,6 +326,8 @@ provenance entries, the `wise-view-gantt` registration, and document how users s
 
 ## 12. Follow-ups (not planned)
 
+- A status-property definition of "finished" for the blocked state, instead of progress 100.
+- "Ready to start" filter and critical-path highlighting built on the same derived graph.
 - Expected progress on Gantt Beta.
 - Descriptive critical-path, slack, and violated-dependency analysis derived from the graph and
   dates; no additional user-authored relationship text.

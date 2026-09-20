@@ -17,7 +17,21 @@ export interface GanttDetailEntry {
 	visibleProperties: readonly string[];
 }
 
+export interface GanttLinkedTask { id: string; name: string }
+
+/** Derived from Depends on (see core/gantt/dependencyStatus); nothing here is stored. */
+export interface GanttDependencyInfo {
+	/** Tasks that depend on this one. */
+	blocks: GanttLinkedTask[];
+	/** Predecessors that are not finished. */
+	incomplete: number;
+	/** Predecessors that finish after this task starts. */
+	conflicts: number;
+}
+
 export interface GanttDetailPanelOptions {
+	dependencyInfo?: (taskId: string) => GanttDependencyInfo;
+	taskName?: (taskId: string) => string | null;
 	canEditEnd: boolean;
 	canEditDependencies: boolean;
 	canEditProgress: boolean;
@@ -29,6 +43,11 @@ export interface GanttDetailPanelOptions {
 	onExactDateUpdate: (taskId: string, boundary: 'start' | 'end', type: GanttPropertyDateType) => void;
 	onRemoveDependency: (taskId: string, dependency: TaskDependency) => boolean;
 	progressProperty: string | null;
+}
+
+function basename(path: string): string {
+	const name = path.split('/').at(-1) ?? path;
+	return name.toLowerCase().endsWith('.md') ? name.slice(0, -3) : name;
 }
 
 function inputDate(value: string, type: GanttPropertyDateType, boundary: 'start' | 'end'): string {
@@ -45,7 +64,7 @@ function chartDate(value: string, type: GanttPropertyDateType, boundary: 'start'
  * blanked the Duration field and made typing a duration a silent no-op.
  */
 function chartMilliseconds(value: string): number {
-	return Date.parse(/(?:Z|[+-]d{2}:d{2})$/i.test(value) ? value : `${value}Z`);
+	return Date.parse(ZONED_DATE.test(value) ? value : `${value}Z`);
 }
 
 function durationMilliseconds(start: string, end: string): number {
@@ -114,6 +133,10 @@ export function renderGanttDetail(
 		}
 	};
 	const dependencies = task.dependencies ?? [];
+	const info = options.dependencyInfo?.(task.id);
+	const noteLink = (id: string, label: string) => h('button', {
+		class: 'gantt-beta-detail__link', type: 'button', onClick: () => options.onOpenNote(id),
+	}, label);
 	const duration = durationLabel(task.startDate, task.endDate);
 	return h('div', { class: 'gantt-beta-detail' },
 		h('div', { class: 'gantt-beta-detail__header' },
@@ -148,8 +171,12 @@ export function renderGanttDetail(
 			hasZonedDate(entry) ? h('div', { class: 'gantt-beta-detail__timezone' }, `Local time · ${options.localTimeZone}`) : null),
 		options.dependsOnProperty && dependencies.length > 0 ? h('section', { class: 'gantt-beta-detail__dependencies' },
 			h('div', { class: 'gantt-beta-detail__section-title' }, 'Depends on'),
+			info && info.conflicts > 0 ? h('div', { class: 'gantt-beta-detail__warning gantt-beta-detail__warning--conflict' },
+				`Starts before ${info.conflicts} predecessor${info.conflicts === 1 ? ' finishes' : 's finish'}.`) : null,
+			info && info.incomplete > 0 ? h('div', { class: 'gantt-beta-detail__warning' },
+				`Waiting on ${info.incomplete} unfinished predecessor${info.incomplete === 1 ? '' : 's'}.`) : null,
 			...dependencies.map(dependency => h('div', { class: 'gantt-beta-detail__dependency', key: `${dependency.type}:${dependency.targetId}` },
-				h('span', null, dependency.targetId.replace(/\.md$/i, '')),
+				noteLink(dependency.targetId, options.taskName?.(dependency.targetId) ?? basename(dependency.targetId)),
 				h('button', {
 					type: 'button', 'aria-label': `Remove dependency ${dependency.targetId}`,
 					disabled: !options.canEditDependencies || task.readOnly || task.allowLinkDelete === false,
@@ -157,6 +184,9 @@ export function renderGanttDetail(
 						if (options.onRemoveDependency(task.id, dependency)) props.update({ dependencies: dependencies.filter(item => item !== dependency) });
 					},
 				}, '×')))) : null,
+		info && info.blocks.length > 0 ? h('section', { class: 'gantt-beta-detail__blocks' },
+			h('div', { class: 'gantt-beta-detail__section-title' }, 'Blocks'),
+			...info.blocks.map(blocked => h('div', { class: 'gantt-beta-detail__dependency', key: blocked.id }, noteLink(blocked.id, blocked.name)))) : null,
 		entry && entry.visibleProperties.length > 0 ? h('section', { class: 'gantt-beta-detail__properties' },
 			h('div', { class: 'gantt-beta-detail__section-title' }, 'Properties'),
 			...entry.visibleProperties.map(property => h('div', { class: 'gantt-beta-detail__property', key: property },

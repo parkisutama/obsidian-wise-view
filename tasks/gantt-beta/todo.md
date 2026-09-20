@@ -387,6 +387,33 @@ preserved on write.
 
 **Estimated scope:** M
 
+### GBETA-019: Derived dependency status (Blocks, blocked, date conflict)
+
+**Status:** Complete 2026-09-20. `src/core/gantt/dependencyStatus.ts` derives blocks, blocked and
+date-conflict state from Depends on; the view tags bars through `Task.className`, and the detail
+panel shows names, links, warnings, and a Blocks section. Nothing new is written to frontmatter.
+
+**Description:** Spec §3.5.1. Read Depends on from both sides, flag tasks that wait on unfinished
+predecessors or start before a predecessor ends, and surface both in the chart and detail panel.
+
+**Acceptance criteria:**
+
+- [x] Blocks is derived, never stored; no property or write path is added.
+- [x] Blocked needs a Progress property and is hidden without one.
+- [x] A predecessor ending exactly when the task starts is not a conflict; Z-suffixed and plain chart
+  dates compare correctly.
+- [x] Detail panel lists predecessors by name (not vault path), opens notes on click, and lists what
+  the task blocks.
+
+**Verification:** `pnpm run test -- gantt-core-dependency-status gantt-beta-detail`
+
+**Dependencies:** GBETA-014.
+
+**Likely files:** `src/core/gantt/dependencyStatus.ts`, `src/views/gantt-beta/detailPanel.ts`,
+`src/views/gantt-beta/BasesGanttBetaView.ts`, `src/styles/views/gantt-beta.css`
+
+**Estimated scope:** M
+
 ### GBETA-015: Click-to-open, hover preview, locale, working calendar
 
 **Description:** `onTaskClick` opens the note via the existing navigation helper (modifier →

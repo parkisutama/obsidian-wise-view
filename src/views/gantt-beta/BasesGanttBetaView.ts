@@ -7,6 +7,7 @@ import type WiseViewPlugin from '../../main';
 import type { NormalizedValue } from '../../core/entries/NormalizedValue';
 import { writeGanttDate, type GanttPropertyDateType } from '../../core/gantt/dates';
 import { toGanttWikiLink, wikiLinkText } from '../../core/gantt/dependencies';
+import { annotateDependencyStatus, computeDependencyStatus, dependencyStatusOf } from '../../core/gantt/dependencyStatus';
 import { createEntrySnapshotGroups } from '../../platform/bases/entrySnapshotAdapter';
 import type { EntrySnapshotGroup } from '../../platform/bases/entrySnapshotAdapter';
 import { resolveColor } from '../../platform/colors/ColorResolver';
@@ -117,6 +118,10 @@ export class BasesGanttBetaView extends BasesView {
 				return resolved.background;
 			},
 		}, grouped);
+		// Blocking is Depends on read from the other side: derived here, never stored.
+		const dependencyStatus = computeDependencyStatus(mapped.tasks, { trackCompletion: Boolean(options.progress) });
+		const chartTasks = annotateDependencyStatus(mapped.tasks, dependencyStatus);
+		const taskNames = new Map(chartTasks.map(task => [task.id, task.name]));
 		const freshCycles = mapped.cycles.filter(path => !this.reportedCycles.has(path));
 		if (freshCycles.length) {
 			freshCycles.forEach(path => this.reportedCycles.add(path));
@@ -127,9 +132,9 @@ export class BasesGanttBetaView extends BasesView {
 		if (this.writer) {
 			this.writer.replaceProperties(mutationProperties);
 			this.writer.replaceScheduleOptions(options.dependencyShift, options.writePhaseDates, options.scale);
-			this.writer.replaceBaseline(mapped.tasks, mutationProperties);
+			this.writer.replaceBaseline(chartTasks, mutationProperties);
 		} else {
-			this.writer = new GanttBetaWriteBack(mapped.tasks, {
+			this.writer = new GanttBetaWriteBack(chartTasks, {
 				mutations: this.mutations,
 				properties: mutationProperties,
 				revertTasks: tasks => this.revertTaskArray(tasks),
@@ -170,12 +175,20 @@ export class BasesGanttBetaView extends BasesView {
 			canEditDependencies: editable && options.allowLinkDelete && Boolean(options.dependsOn && this.mutations.dependency),
 			dependsOnProperty: options.dependsOn, progressProperty: options.progress, entry: detailEntry(detailProps.task.id),
 			localTimeZone: timezone,
+			taskName: id => taskNames.get(id) ?? null,
+			dependencyInfo: id => {
+				const status = dependencyStatusOf(dependencyStatus, id);
+				return {
+					blocks: status.blocks.map(blockedId => ({ id: blockedId, name: taskNames.get(blockedId) ?? blockedId })),
+					incomplete: status.incomplete.length, conflicts: status.conflicts.length,
+				};
+			},
 			onOpenNote: path => { if (entriesByPath.has(path)) void this.app.workspace.openLinkText(path, '', false); },
 			onExactDateUpdate: (taskId, boundary, type) => writer.onExactDateUpdate(taskId, boundary, type),
 			onRemoveDependency: removeDependency,
 		});
 		const model: GanttBetaChartModel = {
-			tasks: mapped.tasks, unscheduledCount: mapped.unscheduled.length, rowHeight: options.rowHeight,
+			tasks: chartTasks, unscheduledCount: mapped.unscheduled.length, rowHeight: options.rowHeight,
 			props: {
 				defaultScale: options.scale, readOnly: options.readOnly, hierarchy: options.phases, showTaskList: options.showTaskList,
 				collapsedIds: options.collapsedIds,
