@@ -35,47 +35,8 @@ const htmlPlugin = {
 	},
 };
 
-// Frappe Gantt's stylesheet targets :root; scope it to the view and map its variables to Obsidian's theme.
-function scopeFrappeGanttCss(css) {
-	const scoped = css
-		.replace(/:root/g, ".bases-gantt-view")
-		.replace(/html\[data-theme=dark\]/g, "body.theme-dark .bases-gantt-view")
-		.replace(/html\[data-theme="dark"\]/g, "body.theme-dark .bases-gantt-view");
-	const themeVars = {
-		"--g-arrow-color": "var(--text-muted)",
-		"--g-bar-color": "var(--interactive-accent)",
-		"--g-bar-border": "var(--background-modifier-border)",
-		"--g-tick-color-thick": "var(--background-modifier-border-hover)",
-		"--g-tick-color": "var(--background-modifier-border)",
-		"--g-actions-background": "var(--background-secondary)",
-		"--g-border-color": "var(--background-modifier-border)",
-		"--g-text-muted": "var(--text-muted)",
-		"--g-text-light": "var(--text-on-accent)",
-		"--g-text-dark": "var(--text-normal)",
-		"--g-progress-color": "var(--interactive-accent-hover)",
-		"--g-handle-color": "var(--text-normal)",
-		"--g-weekend-label-color": "var(--background-secondary-alt)",
-		"--g-expected-progress": "var(--background-modifier-hover)",
-		"--g-header-background": "var(--background-primary)",
-		"--g-row-color": "var(--background-primary)",
-		"--g-row-border-color": "var(--background-modifier-border)",
-		"--g-today-highlight": "var(--interactive-accent)",
-		"--g-popup-actions": "var(--background-secondary)",
-		"--g-weekend-highlight-color": "var(--background-secondary)",
-	};
-	return Object.entries(themeVars).reduce(
-		(result, [name, value]) =>
-			result.replace(new RegExp(`${name}:\\s*[^;}}]+`, "g"), `${name}: ${value}`),
-		scoped,
-	);
-}
-
 // Explicit, non-path-sorted order for first-party CSS source modules (spec §7.17). Foundations
-// and shared components load before any view so a view's rules can override a shared default;
-// gantt.css also carries the first-party Frappe Gantt bar/WBS overrides that used to sit
-// separately from the rest of the Gantt rules in the pre-extraction styles.css — moving them
-// adjacent is safe because their selectors (.bar-*, .gantt-*, frappe-gantt classes) never
-// overlap with settings/modal or any other view's selectors.
+// and shared components load before any view so a view's rules can override a shared default.
 const FIRST_PARTY_CSS = [
 	"src/styles/foundations/common.css",
 	"src/styles/components/settings.css",
@@ -85,8 +46,8 @@ const FIRST_PARTY_CSS = [
 	"src/styles/views/gantt-beta.css",
 ].map((p) => path.resolve(p));
 
-// Merge first-party sources, imported CSS, and the Gantt Chart and Frappe Gantt stylesheets (which nothing
-// imports) into styles.css.
+// Merge first-party sources, imported CSS, and the Gantt Chart stylesheet (which nothing imports)
+// into styles.css.
 const cssPlugin = createCssMergePlugin({
 	stylesPath: "./styles.css",
 	banner: buildLicenseBanner("styles.css"),
@@ -95,12 +56,7 @@ const cssPlugin = createCssMergePlugin({
 	extraCss: [
 		{
 			path: path.resolve("node_modules/@jaeungkim/gantt-chart/dist/gantt-chart.css"),
-			note: "Unmodified; Gantt Beta themes it through --gantt-* tokens in first-party CSS",
-		},
-		{
-			path: path.resolve("node_modules/frappe-gantt/dist/frappe-gantt.css"),
-			transform: scopeFrappeGanttCss,
-			note: "Modified: scoped to .bases-gantt-view and themed with Obsidian CSS variables",
+			note: "Unmodified; Gantt themes it through --gantt-* tokens in first-party CSS",
 		},
 	],
 });

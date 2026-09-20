@@ -60,7 +60,8 @@ const SCOPED_GRANT_DIRS = ["src/views/gantt-beta/"];
 const GATEWAY_IMPORT_PATTERN = /LegacyMutationGateway/;
 
 /** Build/runtime dependencies the specification forbids adding (spec §3.5, §6.2, §7.17). */
-const FORBIDDEN_DEPENDENCIES = ["react", "react-dom", "sass", "node-sass", "tailwindcss", "@tanstack/react-virtual"];
+// "frappe-gantt" was removed with the Frappe Gantt view on 2026-09-20 (docs/specs/gantt-frappe-removal.md).
+const FORBIDDEN_DEPENDENCIES = ["react", "react-dom", "sass", "node-sass", "tailwindcss", "@tanstack/react-virtual", "frappe-gantt"];
 
 function toPosix(p: string): string {
 	return p.split(path.sep).join("/");

@@ -179,7 +179,7 @@ copied.
 
 ## Existing bundled dependencies (already licensed, not part of this program's new adoption)
 
-`obsidian-bases-gantt`, FullCalendar, Preact, and Frappe Gantt are already recorded in
+`obsidian-bases-gantt`, FullCalendar, and Preact are already recorded in
 [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) from prior work and are unaffected by
 this ledger; they remain reconciled by `pnpm run verify:artifacts`.
 
@@ -189,29 +189,9 @@ Bugs in a bundled dependency that Wise View cannot fix without patching the vend
 Recorded here so a later task does not rediscover the same tradeoff from scratch, and so a
 general fix (if one is ever found) gets applied everywhere it applies instead of once.
 
-### Frappe Gantt leaks a `document`-level `mouseup` listener (T010, 2026-09-18)
-
-`frappe-gantt@1.2.2`'s `Gantt` constructor attaches `document.addEventListener('mouseup', ...)`
-internally (in `bind_bar_events`) and never removes it — not from `clear()`, not from
-`destroy()`. Wise View previously captured that specific listener by temporarily replacing the
-global `document.addEventListener` for the duration of `new Gantt(...)`, then removed the
-captured listener on rebuild/unload (`BasesGanttView.ts`, before T010).
-
-The T005 architecture guard now forbids overwriting a global browser API anywhere in the
-codebase, and the spec names this exact monkey-patch as something to remove (spec §4.4). T010
-removed the capture entirely rather than keep the workaround. The residual effect: one
-`document`-level `mouseup` listener is now leaked per `new Gantt(...)` call (each Gantt config
-change or rebuild), for the life of the Obsidian window. The listener resets local drag-state
-closures and is a no-op once its `$container` is detached from the DOM — it does not throw or
-corrupt state — but it keeps the detached Gantt instance's closures reachable, which is a real
-(if bounded per rebuild, not per data update) memory cost.
-
-No public Frappe Gantt API removes this listener, and there is no way to capture a third
-party's listener reference at attachment time without intercepting `addEventListener` in some
-form. If a later view (Timeline, or a future Gantt alternative) finds a general,
-non-global-mutating interception technique — e.g. vendoring a patched build, or a documented
-Frappe Gantt option to suppress this binding — revisit this decision and consider applying it
-here too.
+None currently open. The Frappe Gantt entry (a leaked `document`-level `mouseup` listener) was removed
+with the library on 2026-09-20 (docs/specs/gantt-frappe-removal.md). `@jaeungkim/gantt-chart`'s own
+limitations are recorded in its ledger entry above and in docs/specs/gantt-beta.md §5.
 
 ## How an implementation task records file-level provenance
 

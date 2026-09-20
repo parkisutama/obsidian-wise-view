@@ -58,13 +58,6 @@ export const THIRD_PARTY_COMPONENTS = [
 		files: ["main.js"],
 		packages: [],
 	},
-	{
-		name: "Frappe Gantt",
-		license: "MIT",
-		copyright: "Copyright (c) 2024 Frappe Technologies Pvt. Ltd.",
-		files: ["main.js", "styles.css"],
-		packages: ["frappe-gantt"],
-	},
 ];
 
 export const BANNER_START = "/*! Wise View";

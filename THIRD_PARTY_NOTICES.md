@@ -24,7 +24,7 @@ The full GPL v3 text is included in [LICENSE](LICENSE).
 - Source: <https://github.com/lhassa8/obsidian-bases-gantt>
 - Packages: none (source code adapted into this repository)
 - License: MIT
-- Used for: Portions of the Gantt view (`src/views/BasesGanttView.ts`, `src/utils/ganttUtils.ts`, `src/types/frappe-gantt.d.ts`, `src/main.ts`, `styles.css`)
+- Used for: Portions of `src/main.ts` (view registration structure). The Frappe-based Gantt view files this notice also covered (`src/views/BasesGanttView.ts`, `src/utils/ganttUtils.ts`, `src/types/frappe-gantt.d.ts`, and its stylesheet) were removed on 2026-09-20; the entry stays until a maintainer review confirms no adapted code remains (docs/specs/gantt-frappe-removal.md, GFR-005)
 
 ```text
 MIT License
@@ -232,25 +232,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
-
-## Frappe Gantt
-
-- Source: <https://github.com/frappe/gantt>
-- Packages: `frappe-gantt@1.2.2`
-- License: MIT
-- Used for: Gantt view; JavaScript bundled in `main.js`, modified stylesheet included in `styles.css`
-
-```text
-The MIT License (MIT)
-
-Copyright (c) 2024 Frappe Technologies Pvt. Ltd.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ## Bases Timeline

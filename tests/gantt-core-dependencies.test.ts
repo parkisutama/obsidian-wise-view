@@ -117,7 +117,7 @@ describe('Gantt dependency conversion (GBETA-006)', () => {
 		});
 	});
 
-	it('writes the exact wiki-link form characterized by the Frappe view', () => {
+	it('writes the standard wiki-link form for a note', () => {
 		expect(toGanttWikiLink('Tasks/B.md')).toBe('[[Tasks/B]]');
 		expect(appendGanttDependency('[[Tasks/A]]', 'Tasks/B.md', resolve, 'text')).toBe('[[Tasks/A]], [[Tasks/B]]');
 	});

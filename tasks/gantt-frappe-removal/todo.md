@@ -57,15 +57,17 @@ reference search for each symbol another file might still import.
 
 ### GFR-003: Remove `frappe-gantt` and its build, license, and provenance plumbing
 
+**Status:** Complete 2026-09-20. frappe-gantt, its stylesheet scoper, banner and notice entries, and the provenance limitation are gone; a guard test forbids the dependency. Production build: main.js 694,169 to 608,345 bytes (-85,824, -12%); styles.css 124,495 to 95,183 bytes (-29,312, -24%). Neither file contains the string frappe. The obsidian-bases-gantt notice stays, with its file list corrected.
+
 **Description:** Remove the dependency, `scopeFrappeGanttCss`, the stylesheet entry, the banner and
 notice entries, and the provenance ledger's Frappe rows and known-limitation section.
 
 **Acceptance criteria:**
 
-- [ ] `frappe-gantt` is absent from `package.json` and the lockfile.
-- [ ] `pnpm run build && pnpm run verify:artifacts` pass.
-- [ ] `main.js` and `styles.css` sizes are recorded before and after.
-- [ ] A guard test asserts `frappe-gantt` is not a dependency.
+- [x] `frappe-gantt` is absent from `package.json` and the lockfile.
+- [x] `pnpm run build && pnpm run verify:artifacts` pass.
+- [x] `main.js` and `styles.css` sizes are recorded before and after.
+- [x] A guard test asserts `frappe-gantt` is not a dependency.
 
 **Verification:** `pnpm run check && pnpm run build && pnpm run verify:artifacts`
 

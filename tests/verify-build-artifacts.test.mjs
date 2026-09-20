@@ -66,7 +66,8 @@ describe("buildLicenseBanner", () => {
 	it("lists only components shipped in the given file", () => {
 		const css = buildLicenseBanner("styles.css");
 		expect(css.startsWith("/*!")).toBe(true);
-		expect(css).toContain("Frappe Gantt (MIT)");
+		expect(css).toContain("Gantt Chart (MIT)");
+		expect(css).not.toContain("Frappe");
 		expect(css).not.toContain("Preact");
 
 		const js = buildLicenseBanner("main.js", "1.2.3");
