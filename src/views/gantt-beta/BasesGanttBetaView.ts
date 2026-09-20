@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Parkis Utama
 
 import { BasesView, Notice, type QueryController } from 'obsidian';
-import type { GanttTaskDraft, Task } from '@jaeungkim/gantt-chart';
+import type { GanttProps, GanttTaskDraft, Task } from '@jaeungkim/gantt-chart';
 import type WiseViewPlugin from '../../main';
 import type { NormalizedValue } from '../../core/entries/NormalizedValue';
 import { writeGanttDate, type GanttPropertyDateType } from '../../core/gantt/dates';
@@ -110,10 +110,15 @@ export class BasesGanttBetaView extends BasesView {
 		}
 		const writer = this.writer;
 		const editable = !options.readOnly;
+		const showTime = mutationProperties.start?.type === 'datetime' || mutationProperties.end?.type === 'datetime';
+		const formats: GanttProps['formats'] = {
+			[options.scale]: { tooltip: (date: { format(pattern: string): string }) => date.format(showTime ? 'YYYY-MM-DD HH:mm' : 'YYYY-MM-DD') },
+		};
 		const model: GanttBetaChartModel = {
 			tasks: mapped.tasks, unscheduledCount: mapped.unscheduled.length, rowHeight: options.rowHeight,
 			props: {
 				defaultScale: options.scale, readOnly: options.readOnly, hierarchy: options.phases, showTaskList: options.showTaskList,
+				formats,
 				showRowNumbers: options.showRowNumbers, showDetail: options.showDetail, showTooltip: options.showTooltip,
 				showNonWorkingDays: options.showNonWorkingDays,
 				workingWeekdays: options.workingWeekdays.split(',').map(Number).filter(day => day >= 0 && day <= 6),

@@ -141,6 +141,16 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		harness.view.onunload();
 	});
 
+	it('formats Date tooltips as calendar dates without exposing the library UTC model', () => {
+		const harness = mount({ ganttBetaScale: 'week' });
+		const formats = lastProps(harness).formats as Record<string, { tooltip(date: { format(pattern: string): string }): string }>;
+		const date = { format: vi.fn((pattern: string) => pattern) };
+
+		expect(formats.week?.tooltip(date)).toBe('YYYY-MM-DD');
+		expect(date.format).toHaveBeenCalledWith('YYYY-MM-DD');
+		harness.view.onunload();
+	});
+
 	it('remounts the chart on a failed write, because the library ignores a re-passed identical array', async () => {
 		const updateRange = vi.fn().mockResolvedValue({ ok: false, reason: 'error', message: 'disk full' });
 		const harness = mount({ ganttBetaReadOnly: false }, { date: { updateRange } });

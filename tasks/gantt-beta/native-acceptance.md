@@ -95,10 +95,10 @@ setiap baris agar hasil sebelumnya tidak menyamarkan hasil berikutnya.
 
 | Area | Langkah dan hasil yang diharapkan | Hasil | Catatan/bukti |
 | --- | --- | --- | --- |
-| Move | Geser Task A satu hari. Start dan End maju satu hari; durasi tetap. | Gagal, perbaikan tersedia | Move dua arah menulis tanggal, tetapi batas Date terasa tidak tepat dan End bertambah satu hari. Regresi ditutup oleh uji konversi exclusive End bertime sub-day; perlu uji ulang build terbaru. |
-| Resize | Tarik ujung kanan Task A satu hari. Hanya End bertambah satu hari. | Gagal, perbaikan tersedia | End selalu mendapat satu hari ekstra. Perbaikan memakai exclusive End chart untuk seluruh output Date; perlu uji ulang build terbaru. |
+| Move | Geser Task A satu hari. Start dan End maju satu hari; durasi tetap. | Lulus dengan perbaikan UX lanjutan | Tambahan satu hari sudah hilang. Pada scale halus library sempat menampilkan boundary jam/UTC untuk properti Date; callback kini dikanonisasi kembali ke hari penuh dan tooltip Date tidak lagi menyebut UTC. |
+| Resize | Tarik ujung kanan Task A satu hari. Hanya End bertambah satu hari. | Lulus dengan perbaikan UX lanjutan | Tambahan satu hari sudah hilang. Gesture Date kini dikanonisasi ke boundary hari penuh sebelum render/cascade. |
 | Progress | Tarik progress Task A. `progress` menjadi integer yang terlihat pada chart. | Lulus | Nilai dapat dinaikkan dan diturunkan secara normal. |
-| Summary drag | Geser bar Phase A. Task A dan B ikut bergeser; tanggal Phase A tidak ditulis karena Write phase dates=off. | Gagal, perbaikan tersedia | Task A dan B ikut bergeser, tetapi End mendapat satu hari ekstra. Perlu uji ulang setelah perbaikan konversi End. |
+| Summary drag | Geser bar Phase A. Task A dan B ikut bergeser; tanggal Phase A tidak ditulis karena Write phase dates=off. | Lulus dengan perbaikan UX lanjutan | Task A dan B ikut bergeser dan tambahan satu hari sudah hilang. Tinggi summary/phase disamakan dengan task biasa agar lebih mudah dibaca. |
 | Dependency create | Tarik dari endpoint akhir Task A ke endpoint awal Task B. Tepat satu `[[Task A]]` ditambahkan ke `depends_on` Task B dan satu garis tampil. | Lulus dengan regresi lanjutan | Link A→B berhasil dibuat. Setelah A digeser, link sempat hilang dari `depends_on` B; perbaikan kini membatasi perubahan dependency hanya pada gesture create/delete dan perlu uji ulang. |
 | Dependency reject | Coba endpoint selain end-to-start. Gesture ditolak dan frontmatter tidak berubah. | Belum diuji | |
 | Dependency delete | Pilih/hapus garis A→B. Hanya link Task A di `depends_on` Task B yang hilang. | Lulus | Link dapat dihapus. |
@@ -113,12 +113,16 @@ Uji Echo state: scroll horizontal menjauh dari posisi awal, collapse satu phase,
 buka detailnya, lalu ubah progress task tersebut. Setelah save, posisi scroll, kondisi collapse,
 task terpilih, dan panel detail harus tetap sama.
 
+Catatan UX lanjutan untuk GBETA-014: detail panel custom harus menampilkan Date sebagai rentang
+hari inklusif (tanpa boundary jam tersembunyi) dan menyediakan Duration yang dapat diedit;
+perubahan Duration menghitung dan menulis End melalui jalur mutation yang sama.
+
 ### Checklist dependency schedule dan phase dates
 
 | Mode | Langkah dan hasil yang diharapkan | Hasil | Catatan/bukti |
 | --- | --- | --- | --- |
-| None | Dengan A→B, geser A melewati awal B. B tidak bergeser; garis memperlihatkan konflik. | Belum diuji | |
-| Overlap | Pilih Shift only when dates overlap lalu geser A melewati awal B. B maju minimum sampai start B = end A dan durasi B tetap. | Belum diuji | |
+| None | Dengan A→B, geser A melewati awal B. B tidak bergeser; garis memperlihatkan konflik. | Lulus | Do not shift automatically mempertahankan tanggal successor. |
+| Overlap | Pilih Shift only when dates overlap lalu geser A melewati awal B. B maju minimum sampai start B = end A dan durasi B tetap. | Gagal, perbaikan tersedia | Successor bergeser terlalu jauh ketika callback Date membawa jam internal. Input kini dikanonisasi ke boundary hari sebelum cascade; perlu uji ulang build terbaru. |
 | Maintain gap | Pilih Shift and maintain time lalu geser A dua hari. B dan successor berikutnya maju dua hari; seluruh durasi tetap. | Belum diuji | |
 | Phase dates off | Geser descendant. Bar phase roll-up berubah, tetapi frontmatter phase tidak berubah. | Belum diuji | |
 | Phase dates on | Aktifkan Write phase dates dan geser descendant. Start/End phase ditulis sesuai roll-up. Ulangi pada phase Date & time untuk memastikan jam tidak hilang. | Belum diuji | |

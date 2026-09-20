@@ -43,3 +43,9 @@
 	place-items: center;
 	color: var(--text-muted);
 }
+
+/* Summary bars carry the same visual weight as their task rows in Wise View. */
+.bases-gantt-beta-view .gantt-task-bar.summary {
+	height: 28px !important;
+	border-radius: 6px;
+}

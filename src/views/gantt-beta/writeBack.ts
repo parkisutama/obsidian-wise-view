@@ -9,7 +9,7 @@ import type {
 } from '@jaeungkim/gantt-chart';
 import { diffGanttTasks } from '../../core/gantt/diff';
 import { applyGanttDependencyPolicy, type GanttDependencyPolicy } from '../../core/gantt/cascade';
-import { writeGanttDate } from '../../core/gantt/dates';
+import { readGanttDate, writeGanttDate } from '../../core/gantt/dates';
 import {
 	buildGanttMutationPlan,
 	type GanttMutationPlanOptions,
@@ -43,6 +43,12 @@ export interface GanttBetaWriteBackOptions {
 
 function failed(message: string): MutationResult {
 	return { ok: false, reason: 'error', message };
+}
+
+function canonicalDate(value: string, type: 'date' | 'datetime', boundary: 'start' | 'end'): string {
+	if (type === 'datetime') return value;
+	const stored = writeGanttDate(value, type, boundary);
+	return stored ? (readGanttDate(stored, type, boundary) ?? value) : value;
 }
 
 /**
@@ -133,7 +139,15 @@ export class GanttBetaWriteBack {
 		const epoch = this.epoch;
 		const allowDependencyChange = this.pendingDependencyChange;
 		this.pendingDependencyChange = false;
-		const preservedTasks = allowDependencyChange ? nextTasks : nextTasks.map(task => {
+		const dateNormalizedTasks = nextTasks.map(task => {
+			const types = this.properties.dateTypes?.get(task.id);
+			const startType = types?.start ?? this.properties.start?.type;
+			const endType = types?.end ?? this.properties.end?.type;
+			const startDate = startType ? canonicalDate(task.startDate, startType, 'start') : task.startDate;
+			const endDate = endType ? canonicalDate(task.endDate, endType, 'end') : task.endDate;
+			return startDate === task.startDate && endDate === task.endDate ? task : { ...task, startDate, endDate };
+		});
+		const preservedTasks = allowDependencyChange ? dateNormalizedTasks : dateNormalizedTasks.map(task => {
 			const previous = this.baseline.find(candidate => candidate.id === task.id);
 			if (!previous || task.dependencies === previous.dependencies) return task;
 			return { ...task, dependencies: previous.dependencies };
@@ -142,13 +156,13 @@ export class GanttBetaWriteBack {
 			? nextTasks : preservedTasks;
 		this.options.gate?.begin();
 		const job = this.queue
-			.then(() => (epoch === this.epoch ? this.apply(normalizedTasks) : undefined))
+			.then(() => (epoch === this.epoch ? this.apply(normalizedTasks, nextTasks) : undefined))
 			.finally(() => this.options.gate?.end());
 		this.queue = job.catch(() => undefined);
 		return job;
 	}
 
-	private async apply(nextTasks: Task[]): Promise<void> {
+	private async apply(nextTasks: Task[], sourceTasks: Task[] = nextTasks): Promise<void> {
 		const previous = this.baseline;
 		const scheduledTasks = applyGanttDependencyPolicy(previous, nextTasks, this.dependencyPolicy);
 		const ids = new Set(scheduledTasks.map(task => task.id));
@@ -177,7 +191,7 @@ export class GanttBetaWriteBack {
 			return;
 		}
 		this.baseline = scheduledTasks;
-		if (scheduledTasks.some((task, index) => task !== nextTasks[index])) this.options.renderTasks?.(scheduledTasks);
+		if (scheduledTasks.some((task, index) => task !== sourceTasks[index])) this.options.renderTasks?.(scheduledTasks);
 	}
 
 	private writeItem(path: string, values: Record<string, unknown>): Promise<MutationResult>[] {

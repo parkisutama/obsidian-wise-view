@@ -11,6 +11,7 @@ function harness(overrides: Record<string, unknown> = {}) {
 	const property = { setProperty: vi.fn().mockResolvedValue({ ok: true }), setProperties: vi.fn().mockResolvedValue({ ok: true }) };
 	const dependency = { setDependencies: vi.fn().mockResolvedValue({ ok: true }) };
 	const revertTasks = vi.fn();
+	const renderTasks = vi.fn();
 	const notice = vi.fn();
 	const gate = { begin: vi.fn(), end: vi.fn() };
 	const before = [task('Tasks/A.md', { progress: 20 }), task('Tasks/B.md', { sequence: '2' })];
@@ -21,10 +22,10 @@ function harness(overrides: Record<string, unknown> = {}) {
 			progress: 'note.progress', parent: 'note.parent', order: 'note.order', dependsOn: 'note.depends_on',
 			currentOrder: new Map([['Tasks/A.md', 10], ['Tasks/B.md', 20]]), currentDependsOn: new Map(),
 		},
-		revertTasks, notice, gate,
+		revertTasks, renderTasks, notice, gate,
 		...overrides,
 	});
-	return { writer, before, date, property, dependency, revertTasks, notice, gate };
+	return { writer, before, date, property, dependency, revertTasks, renderTasks, notice, gate };
 }
 
 describe('Gantt Beta write-back (GBETA-010)', () => {
@@ -49,6 +50,24 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		]);
 
 		expect(h.date.updateRange).toHaveBeenCalledWith('Tasks/A.md', 'note.start', '2026-10-02', 'note.end', '2026-10-04');
+	});
+
+	it('canonicalizes sub-day Date gestures before rendering and scheduling', async () => {
+		const h = harness({ dependencyPolicy: 'overlap' });
+		const before = [
+			task('Tasks/A.md', { startDate: '2026-10-01', endDate: '2026-10-04' }),
+			task('Tasks/B.md', { startDate: '2026-10-04', endDate: '2026-10-07', sequence: '2',
+				dependencies: [{ targetId: 'Tasks/A.md', type: 'FS' }] }),
+		];
+		h.writer.replaceBaseline(before);
+		await h.writer.onTasksChange([
+			{ ...before[0]!, startDate: '2026-10-02T06:00:00.000Z', endDate: '2026-10-05T06:00:00.000Z' },
+			before[1]!,
+		]);
+
+		expect(h.writer.tasks[0]).toMatchObject({ startDate: '2026-10-02', endDate: '2026-10-05' });
+		expect(h.writer.tasks[1]).toMatchObject({ startDate: '2026-10-05', endDate: '2026-10-08' });
+		expect(h.renderTasks).toHaveBeenCalledWith(h.writer.tasks);
 	});
 
 	it('persists a moved Date & time task at the same wall-clock time in a non-UTC zone', async () => {
