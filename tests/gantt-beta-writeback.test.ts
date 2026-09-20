@@ -102,6 +102,42 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		expect(h.property.setProperty).not.toHaveBeenCalled();
 	});
 
+	it('rejects a Date range whose inclusive end would precede its start', async () => {
+		const h = harness();
+		await h.writer.onTasksChange([{ ...h.before[0]!, startDate: '2026-10-03', endDate: '2026-10-03' }, h.before[1]!]);
+
+		expect(h.date.updateRange).not.toHaveBeenCalled();
+		expect(h.revertTasks).toHaveBeenCalledWith(h.before);
+		expect(h.notice).toHaveBeenCalledWith('Could not save Tasks/A.md: end must not be earlier than start.');
+		expect(h.writer.tasks).toBe(h.before);
+	});
+
+	it('rejects reversed Date & time ranges but permits a zero-duration milestone', async () => {
+		const h = harness();
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'datetime' },
+		});
+		h.writer.replaceBaseline([task('Tasks/A.md', { startDate: '2026-10-01T09:00', endDate: '2026-10-01T10:00' })]);
+
+		await h.writer.onTasksChange([task('Tasks/A.md', { startDate: '2026-10-01T11:00', endDate: '2026-10-01T10:00' })]);
+		expect(h.date.updateRange).not.toHaveBeenCalled();
+		expect(h.revertTasks).toHaveBeenCalledOnce();
+
+		await h.writer.onTasksChange([task('Tasks/A.md', { startDate: '2026-10-01T11:00', endDate: '2026-10-01T11:00' })]);
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-10-01T11:00', 'note.end', '2026-10-01T11:00',
+		);
+	});
+
+	it('rejects a reversed task draft before note creation', async () => {
+		const createTask = vi.fn().mockResolvedValue(undefined);
+		const h = harness({ createTask });
+		await h.writer.onTaskCreate({ startDate: '2026-10-05T00:00', endDate: '2026-10-04T00:00' });
+
+		expect(createTask).not.toHaveBeenCalled();
+		expect(h.notice).toHaveBeenCalledWith('End must not be earlier than start.');
+	});
+
 	it('batches a summary drag into one date write per real descendant', async () => {
 		const before = [
 			task('wise-view-synthetic://group/Project', { endDate: '2026-10-05' }),

@@ -51,6 +51,12 @@ function canonicalDate(value: string, type: 'date' | 'datetime', boundary: 'star
 	return stored ? (readGanttDate(stored, type, boundary) ?? value) : value;
 }
 
+function hasReversedRange(task: Task, type: 'date' | 'datetime'): boolean {
+	// Date tasks use an exclusive chart end, so equality would persist as an inclusive end one day
+	// before the start. Date & time tasks may intentionally be zero-duration milestones.
+	return type === 'date' ? task.endDate <= task.startDate : task.endDate < task.startDate;
+}
+
 /**
  * Converts controlled chart gestures into the smallest scoped mutation calls. It owns only an
  * immutable task baseline and plain frontmatter values; no live Bases object crosses an update.
@@ -123,6 +129,11 @@ export class GanttBetaWriteBack {
 			this.options.notice('Task creation is not available.');
 			return;
 		}
+		const type = this.properties.end ? (this.properties.start?.type ?? 'date') : null;
+		if (type && hasReversedRange({ ...draft, id: '', name: '', parentId: null, sequence: '' }, type)) {
+			this.options.notice('End must not be earlier than start.');
+			return;
+		}
 		try {
 			await this.options.createTask(draft);
 		} catch (error) {
@@ -164,6 +175,18 @@ export class GanttBetaWriteBack {
 
 	private async apply(nextTasks: Task[], sourceTasks: Task[] = nextTasks): Promise<void> {
 		const previous = this.baseline;
+		const reversed = nextTasks.find(task => {
+			if (task.id.startsWith(SYNTHETIC_PHASE_PREFIX)) return false;
+			if (!this.properties.end) return false;
+			const type = this.properties.dateTypes?.get(task.id)?.start ?? this.properties.start?.type;
+			return type ? hasReversedRange(task, type) : false;
+		});
+		if (reversed) {
+			this.epoch += 1;
+			this.options.revertTasks(previous);
+			this.options.notice(`Could not save ${reversed.name}: end must not be earlier than start.`);
+			return;
+		}
 		const scheduledTasks = applyGanttDependencyPolicy(previous, nextTasks, this.dependencyPolicy);
 		const ids = new Set(scheduledTasks.map(task => task.id));
 		const phaseIds = new Set(scheduledTasks.map(task => task.parentId).filter((id): id is string => id !== null && ids.has(id)));

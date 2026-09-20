@@ -95,6 +95,7 @@ and writes only changed fields of changed notes.
 | Progress drag / keyboard | `onTasksChange` | Progress (integer) |
 | Summary (phase) bar drag | `onTasksChange` | Start/End of every moved descendant; phase dates only if "Write phase dates" is on |
 | Draw a dependency | `onDependencyCreate` → `onTasksChange` | A finish-to-start line from predecessor end to successor start appends `[[predecessor]]` to Depends on in the successor note. Other endpoint combinations are rejected in v1. |
+| Enter or drag a reversed range | Before any mutation | Reject the change, restore the last valid chart state, and show a notice. Date & time permits an equal start/end as a zero-duration milestone; Date requires its inclusive End to be on or after Start. |
 | Delete a dependency | `onDependencyDelete` → `onTasksChange` | Removes `[[predecessor]]` from Depends on in the successor note. |
 | Drag row to another phase | `onTaskMove` → `onTasksChange` | Parent (link to the new parent note, or cleared at root). Dropping into a synthetic group phase is rejected with a Notice in v1. |
 | Drag row within a phase | `onTaskMove` → `onTasksChange` | Order on the moved sibling set. Rejected with a Notice when no Order property is configured. |
