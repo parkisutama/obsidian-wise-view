@@ -15,6 +15,7 @@ import { resolvePrettyPropertiesColor } from '../../integrations/PrettyPropertie
 import { ViewRuntime } from '../../platform/dom/ViewRuntime';
 import type { GrantedMutations } from '../../platform/mutations/grants';
 import { NoteTemplateService } from '../../services/NoteTemplateService';
+import { openPath } from '../../platform/navigation/NavigationService';
 import { PropertyTypeService } from '../../services/PropertyTypeService';
 import { EchoGate } from './echoGate';
 import { renderGanttDetail, type GanttDetailEntry } from './detailPanel';
@@ -22,6 +23,7 @@ import { GanttBetaChartHost, type ChartRender, type GanttBetaChartModel } from '
 import { ganttBetaRequestedProperties, readGanttBetaOptions } from './options';
 import type { GanttBetaOptions } from './options';
 import { mapSnapshotsToGanttTasks } from './taskMapping';
+import { installGanttBetaNavigation } from './navigation';
 import { GanttBetaToolbar } from './toolbar';
 import { GanttBetaWriteBack } from './writeBack';
 
@@ -52,6 +54,8 @@ export class BasesGanttBetaView extends BasesView {
 	private currentOptions: GanttBetaOptions | null = null;
 	private currentStartType: GanttPropertyDateType = 'date';
 	private creationFolder = '';
+	/** Paths of the notes currently in the chart; phase rows made up for grouping are not notes. */
+	private notePaths: ReadonlySet<string> = new Set();
 	private readonly echoGate: EchoGate;
 	private activeScale: GanttBetaOptions['scale'] | null = null;
 
@@ -68,6 +72,10 @@ export class BasesGanttBetaView extends BasesView {
 		const toolbarEl = containerEl.createDiv();
 		const chartEl = containerEl.createDiv({ cls: 'gantt-beta-chart' });
 		this.chart = this.runtime.own(new GanttBetaChartHost(chartEl, this.runtime, renderChart));
+		installGanttBetaNavigation({
+			app: this.app, root: chartEl, runtime: this.runtime, hoverParent: this.plugin,
+			sourceId: BASES_GANTT_BETA_VIEW_ID, isNote: path => this.notePaths.has(path),
+		});
 		this.toolbar = new GanttBetaToolbar(toolbarEl, this.runtime, {
 			onScale: scale => this.setScale(scale),
 			onToday: () => this.chart.scrollToToday(),
@@ -101,6 +109,7 @@ export class BasesGanttBetaView extends BasesView {
 		const groups = createEntrySnapshotGroups(this.data.groupedData, ganttBetaRequestedProperties(options, visibleProperties));
 		const entries = groups.flatMap(group => group.entries);
 		const entriesByPath = new Map(entries.map(entry => [entry.path, entry]));
+		this.notePaths = new Set(entriesByPath.keys());
 		this.creationFolder = groups.flatMap(group => group.entries)[0]?.folder ?? '';
 		const grouped = this.data.groupedData.length > 1 || Boolean(this.data.groupedData[0]?.hasKey());
 		const mapped = mapSnapshotsToGanttTasks(groups, options, {
@@ -183,7 +192,7 @@ export class BasesGanttBetaView extends BasesView {
 					incomplete: status.incomplete.length, conflicts: status.conflicts.length,
 				};
 			},
-			onOpenNote: path => { if (entriesByPath.has(path)) void this.app.workspace.openLinkText(path, '', false); },
+			onOpenNote: (path, event) => { if (entriesByPath.has(path)) openPath(this.app, path, event); },
 			onExactDateUpdate: (taskId, boundary, type) => writer.onExactDateUpdate(taskId, boundary, type),
 			onRemoveDependency: removeDependency,
 		});

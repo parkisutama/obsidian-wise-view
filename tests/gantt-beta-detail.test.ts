@@ -99,7 +99,7 @@ describe('Gantt Beta detail panel (GBETA-014)', () => {
 	it('routes progress and dependency removal through task updates and opens the note title', () => {
 		const h = mount(task());
 		(h.host.querySelector('.gantt-beta-detail__title') as HTMLButtonElement).click();
-		expect(h.open).toHaveBeenCalledWith('Task.md');
+		expect(h.open).toHaveBeenCalledWith('Task.md', expect.any(MouseEvent));
 		const progress = h.host.querySelector<HTMLInputElement>('input[type="number"]')!;
 		progress.value = '61';
 		progress.dispatchEvent(new Event('change', { bubbles: true }));
@@ -107,6 +107,37 @@ describe('Gantt Beta detail panel (GBETA-014)', () => {
 		(h.host.querySelector('[aria-label="Remove dependency Before.md"]') as HTMLButtonElement).click();
 		expect(h.remove).toHaveBeenCalledWith('Task.md', { targetId: 'Before.md', type: 'FS' });
 		expect(h.update).toHaveBeenCalledWith({ dependencies: [] });
+	});
+});
+
+describe('Gantt Beta detail panel: minimal layout', () => {
+	it('puts the close button on its own row above the title, so it reads as belonging to the panel', () => {
+		const h = mount(task());
+		const panel = h.host.querySelector('.gantt-beta-detail')!;
+		const children = Array.from(panel.children);
+		expect(children[0]?.className).toBe('gantt-beta-detail__top');
+		expect(children[0]?.querySelector('.gantt-beta-detail__close')).not.toBeNull();
+		expect(children[1]?.className).toBe('gantt-beta-detail__title');
+		expect(panel.querySelector('.gantt-beta-detail__header')).toBeNull();
+	});
+
+	it('lays labels above their values and gives Start and End the full width', () => {
+		const h = mount(task());
+		const fields = Array.from(h.host.querySelectorAll('.gantt-beta-detail__field'));
+		expect(fields.map(field => field.querySelector('.gantt-beta-detail__label')?.textContent)).toEqual(['Start', 'End', 'Duration', 'Progress']);
+		expect(fields.map(field => field.classList.contains('gantt-beta-detail__field--wide'))).toEqual([true, true, false, false]);
+	});
+
+	it('marks the title and every note link so hover preview and the open menu can find them', () => {
+		const h = mount(task(), { dependencyInfo: () => ({ blocks: [{ id: 'After.md', name: 'Launch' }], incomplete: 0, conflicts: 0 }) });
+		const paths = Array.from(h.host.querySelectorAll<HTMLElement>('[data-note-path]')).map(el => el.dataset.notePath);
+		expect(paths).toEqual(['Task.md', 'Before.md', 'After.md']);
+	});
+
+	it('passes the click event so Ctrl/Cmd opens in a new tab', () => {
+		const h = mount(task());
+		h.host.querySelector<HTMLElement>('.gantt-beta-detail__title')!.dispatchEvent(new MouseEvent('click', { ctrlKey: true, bubbles: true }));
+		expect(h.open.mock.calls[0]?.[1]).toMatchObject({ ctrlKey: true });
 	});
 });
 
@@ -120,7 +151,7 @@ describe('Gantt Beta detail panel: derived blocking', () => {
 		expect(links.map(link => link.textContent)).toEqual(['Design phase', 'Launch']);
 
 		links[1]!.click();
-		expect(h.open).toHaveBeenCalledWith('After.md');
+		expect(h.open).toHaveBeenCalledWith('After.md', expect.any(MouseEvent));
 		expect(h.host.querySelector('.gantt-beta-detail__blocks .gantt-beta-detail__section-title')?.textContent).toBe('Blocks');
 		expect(h.host.textContent).toContain('Starts before 1 predecessor finishes.');
 		expect(h.host.textContent).toContain('Waiting on 1 unfinished predecessor.');

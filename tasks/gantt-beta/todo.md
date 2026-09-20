@@ -364,6 +364,10 @@ order, and timezone context is limited to zoned Start/End source values.
 the library emits right after an edit (Duration went blank and typing one did nothing). It now
 accepts both plain and Z-suffixed chart dates.
 
+**Layout 2026-09-20:** minimal, stacked panel: the close button sits alone on the top row, labels sit
+above their values (Start and End full width, Duration and Progress side by side), and property
+names sit above their values. The title and every note link are Page Preview and right-click targets.
+
 **Description:** `renderDetail` showing note title (opens the note), editable start/end,
 editable Duration (recomputes End), progress, Depends on links (removable), and the Base's
 visible properties read-only. Date fields use day precision; Date & time fields retain hour and
@@ -416,14 +420,20 @@ predecessors or start before a predecessor ends, and surface both in the chart a
 
 ### GBETA-015: Click-to-open, hover preview, locale, working calendar
 
+**Status:** Navigation part complete 2026-09-20 (`src/views/gantt-beta/navigation.ts`): Page Preview on
+hover, the open-in-tab/right/above/below/left/window menu on right-click, and modifier-click to open,
+for bars, list rows, and the detail panel's title and links. Plain click still selects and opens the
+detail panel. The library hover card hides while Ctrl/Cmd is held. Holiday/weekday shading and snap
+still need native confirmation.
+
 **Description:** `onTaskClick` opens the note via the existing navigation helper (modifier →
 new tab); delegated hover preview on `data-task-id`; `locale` from Obsidian; working weekdays,
 holidays, snap, and first-day-of-week options wired to the chart.
 
 **Acceptance criteria:**
 
-- [ ] Navigation and hover tests match the other views' behavior.
-- [ ] Hover presents one unambiguous tooltip/preview layer; the library tooltip and Obsidian
+- [x] Navigation and hover tests match the other views' behavior.
+- [x] Hover presents one unambiguous tooltip/preview layer; the library tooltip and Obsidian
   preview do not overlap.
 - [ ] Holidays and weekdays shade and snap as configured.
 

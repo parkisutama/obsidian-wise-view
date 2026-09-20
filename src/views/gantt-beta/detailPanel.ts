@@ -39,7 +39,8 @@ export interface GanttDetailPanelOptions {
 	dependsOnProperty: string | null;
 	entry: GanttDetailEntry | null;
 	localTimeZone: string;
-	onOpenNote: (path: string) => void;
+	/** `event` carries the modifier keys, so Ctrl/Cmd, Alt and Shift pick the destination pane. */
+	onOpenNote: (path: string, event?: MouseEvent) => void;
 	onExactDateUpdate: (taskId: string, boundary: 'start' | 'end', type: GanttPropertyDateType) => void;
 	onRemoveDependency: (taskId: string, dependency: TaskDependency) => boolean;
 	progressProperty: string | null;
@@ -108,8 +109,8 @@ function hasZonedDate(entry: GanttDetailEntry | null): boolean {
 	});
 }
 
-function field(label: string, control: ComponentChild): ComponentChild {
-	return h('label', { class: 'gantt-beta-detail__field' },
+function field(label: string, control: ComponentChild, wide = false): ComponentChild {
+	return h('label', { class: wide ? 'gantt-beta-detail__field gantt-beta-detail__field--wide' : 'gantt-beta-detail__field' },
 		h('span', { class: 'gantt-beta-detail__label' }, label), control);
 }
 
@@ -135,22 +136,26 @@ export function renderGanttDetail(
 	const dependencies = task.dependencies ?? [];
 	const info = options.dependencyInfo?.(task.id);
 	const noteLink = (id: string, label: string) => h('button', {
-		class: 'gantt-beta-detail__link', type: 'button', onClick: () => options.onOpenNote(id),
+		class: 'gantt-beta-detail__link', type: 'button', 'data-note-path': id,
+		onClick: (event: MouseEvent) => options.onOpenNote(id, event),
 	}, label);
 	const duration = durationLabel(task.startDate, task.endDate);
 	return h('div', { class: 'gantt-beta-detail' },
-		h('div', { class: 'gantt-beta-detail__header' },
-			h('button', { class: 'gantt-beta-detail__title', type: 'button', onClick: () => options.onOpenNote(task.id) }, task.name),
+		h('div', { class: 'gantt-beta-detail__top' },
 			h('button', { class: 'clickable-icon gantt-beta-detail__close', type: 'button', 'aria-label': 'Close details', onClick: props.close }, '×')),
+		h('button', {
+			class: 'gantt-beta-detail__title', type: 'button', 'data-note-path': task.id,
+			onClick: (event: MouseEvent) => options.onOpenNote(task.id, event),
+		}, task.name),
 		h('div', { class: 'gantt-beta-detail__fields' },
 			field('Start', h('input', {
 				type: startType === 'date' ? 'date' : 'datetime-local', value: inputDate(task.startDate, startType, 'start'),
 				disabled: !editableStart, onChange: (event: Event) => updateDate('start', (event.currentTarget as HTMLInputElement).value),
-			})),
+			}), true),
 			field('End', h('input', {
 				type: editableEndType === 'date' ? 'date' : 'datetime-local', value: inputDate(task.endDate, editableEndType, 'end'),
 				disabled: !editableEnd, onChange: (event: Event) => updateDate('end', (event.currentTarget as HTMLInputElement).value),
-			})),
+			}), true),
 			field('Duration', h('input', {
 				type: 'text', value: duration, disabled: !editableEnd, 'aria-label': 'Duration',
 				onChange: (event: Event) => {
