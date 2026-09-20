@@ -39,8 +39,17 @@ function chartDate(value: string, type: GanttPropertyDateType, boundary: 'start'
 	return readGanttDate(value, type, boundary);
 }
 
+/**
+ * Chart dates are floating UTC: plain after a Bases echo (`2026-10-02`, `2026-10-02T09:00`), but
+ * ISO with a trailing Z straight after an edit. Appending another Z to the latter is NaN, which
+ * blanked the Duration field and made typing a duration a silent no-op.
+ */
+function chartMilliseconds(value: string): number {
+	return Date.parse(/(?:Z|[+-]d{2}:d{2})$/i.test(value) ? value : `${value}Z`);
+}
+
 function durationMilliseconds(start: string, end: string): number {
-	return Date.parse(`${end}Z`) - Date.parse(`${start}Z`);
+	return chartMilliseconds(end) - chartMilliseconds(start);
 }
 
 function durationLabel(start: string, end: string): string {
@@ -58,7 +67,7 @@ function durationEnd(start: string, value: string, dateType: GanttPropertyDateTy
 	const unit = match[2]!.toLowerCase();
 	if (!Number.isFinite(amount) || amount < 0 || (dateType === 'date' && (unit !== 'd' || !Number.isInteger(amount) || amount < 1))) return null;
 	const multiplier = unit === 'd' ? 86_400_000 : unit === 'h' ? 3_600_000 : 60_000;
-	const startTime = Date.parse(`${start}Z`);
+	const startTime = chartMilliseconds(start);
 	return Number.isFinite(startTime) ? new Date(startTime + amount * multiplier).toISOString() : null;
 }
 

@@ -61,6 +61,22 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 		]);
 	});
 
+	// A text value stored in a List-type property comes back from Bases as one item holding every link.
+	it('reads two dependencies out of a single list item', () => {
+		const result = mapSnapshotsToGanttTasks([group([
+			snapshot('Tasks/A.md', { 'note.start': date('2026-01-01') }),
+			snapshot('Tasks/B.md', { 'note.start': date('2026-01-02') }),
+			snapshot('Tasks/C.md', {
+				'note.start': date('2026-01-03'),
+				'note.depends': { kind: 'list', items: [text('[[Tasks/A]], [[Tasks/B]]')] },
+			}),
+		])], options({ ganttBetaStart: 'note.start', ganttBetaDependencyFS: 'note.depends' }), services);
+
+		expect(result.tasks.find(item => item.id === 'Tasks/C.md')?.dependencies).toEqual([
+			{ targetId: 'Tasks/A.md', type: 'FS' }, { targetId: 'Tasks/B.md', type: 'FS' },
+		]);
+	});
+
 	it('keeps the stable FS config key while presenting the relation as Depends on', () => {
 		const value = options({ ganttBetaDependencyFS: 'note.fs', ganttBetaMoveDependencies: true });
 		expect(value.dependsOn).toBe('note.fs');

@@ -13,6 +13,7 @@ import { resolvePrettyPropertiesColor } from '../../integrations/PrettyPropertie
 import { ViewRuntime } from '../../platform/dom/ViewRuntime';
 import type { GrantedMutations } from '../../platform/mutations/grants';
 import { NoteTemplateService } from '../../services/NoteTemplateService';
+import { PropertyTypeService } from '../../services/PropertyTypeService';
 import { EchoGate } from './echoGate';
 import { renderGanttDetail, type GanttDetailEntry } from './detailPanel';
 import { GanttBetaChartHost, type ChartRender, type GanttBetaChartModel } from './chartHost';
@@ -284,6 +285,10 @@ export class BasesGanttBetaView extends BasesView {
 			...(options.end ? { end: { id: options.end, type: dateType(options.end) } } : {}),
 			progress: options.progress ?? undefined, parent: options.parent ?? undefined, order: options.order ?? undefined,
 			dependsOn: options.dependsOn ?? undefined,
+			// A List-type property cannot read several links back from one text value, so lists are the
+			// default; only a property Obsidian types as plain text keeps the comma-string shape.
+			dependsStorage: (options.dependsOn && PropertyTypeService.getObsidianPropertyType(options.dependsOn, this.app) === 'text'
+				? 'text' : 'list') as 'text' | 'list',
 			dateTypes: new Map(entries.map(entry => [entry.path, {
 				start: entryDateType(entry, options.start), end: entryDateType(entry, options.end),
 			}])),

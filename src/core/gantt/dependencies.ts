@@ -7,19 +7,31 @@ export type DependencyValues = Partial<Record<DependencyType, unknown>>;
 export type LinkResolver = (target: string) => string | null;
 
 const TYPES: readonly DependencyType[] = ['FS', 'SS', 'FF', 'SF'];
-const WIKILINK = /^\s*\[\[([^\]|]+)(?:\|[^\]]+)?\]\]\s*$/;
+/** How a Depends on property is stored: a YAML list of links, or one text value of links. */
+export type DependencyStorage = 'list' | 'text';
 
-function parts(value: unknown): unknown[] {
-	if (Array.isArray(value)) return value;
-	if (typeof value === 'string') return value.split(/[\n,]/).map(part => part.trim()).filter(Boolean);
-	return [];
+const WIKILINK_ANYWHERE = /\[\[[^\]|]+(?:\|[^\]]+)?\]\]/g;
+const WIKILINK_TARGET = /^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]$/;
+
+/**
+ * Every link written in a stored value, one raw entry each. A list item or text value may hold
+ * several links ("[[A]], [[B]]"): Bases hands a text value stored in a List-type property back as a
+ * single item, so entries are split here instead of trusting the storage shape.
+ */
+function expand(value: unknown): string[] {
+	const raws = Array.isArray(value) ? value : [value];
+	return raws.flatMap(raw => {
+		if (typeof raw !== 'string') return [];
+		const text = raw.trim();
+		if (!text) return [];
+		const wikilinks = text.match(WIKILINK_ANYWHERE);
+		if (wikilinks) return wikilinks;
+		return text.split(/[\n,]/).map(part => part.trim()).filter(Boolean);
+	});
 }
 
-function linkTarget(value: unknown): string | null {
-	if (typeof value !== 'string') return null;
-	const text = value.trim();
-	if (!text) return null;
-	return (WIKILINK.exec(text)?.[1] ?? text).trim();
+function linkTarget(raw: string): string {
+	return (WIKILINK_TARGET.exec(raw.trim())?.[1] ?? raw).trim();
 }
 
 export function toGanttWikiLink(filePath: string): string {
@@ -30,10 +42,10 @@ export function parseGanttDependencies(values: DependencyValues, resolve: LinkRe
 	const result: TaskDependency[] = [];
 	const seen = new Set<string>();
 	for (const type of TYPES) {
-		for (const raw of parts(values[type])) {
+		for (const raw of expand(values[type])) {
 			const target = linkTarget(raw);
 			const targetId = target ? resolve(target) : null;
-			const key = targetId ? `${type}\0${targetId}` : null;
+			const key = targetId ? `${type}:${targetId}` : null;
 			if (!targetId || !key || seen.has(key)) continue;
 			seen.add(key);
 			result.push({ targetId, type });
@@ -42,30 +54,34 @@ export function parseGanttDependencies(values: DependencyValues, resolve: LinkRe
 	return result;
 }
 
-/** Appends one link without changing an existing array-vs-string storage shape. */
-export function appendGanttDependency(value: unknown, targetPath: string, resolve: LinkResolver): unknown {
-	const alreadyPresent = parts(value).some(raw => {
-		const target = linkTarget(raw);
-		return target !== null && resolve(target) === targetPath;
-	});
-	if (alreadyPresent) return value;
+/**
+ * Appends one link. An existing list stays a list, and a text value stays text only when the
+ * property is text-typed; anything else becomes a list, because one text value holding several
+ * links cannot be read back from a List-type property. A malformed multi-link item is split into
+ * proper entries on the way, so the next write repairs it.
+ */
+export function appendGanttDependency(
+	value: unknown,
+	targetPath: string,
+	resolve: LinkResolver,
+	storage: DependencyStorage = 'list',
+): unknown {
+	const existing = expand(value);
+	if (existing.some(raw => resolve(linkTarget(raw)) === targetPath)) return value;
 	const link = toGanttWikiLink(targetPath);
-	if (Array.isArray(value)) return [...value, link];
-	if (typeof value === 'string' && value.trim()) {
-		return value.includes('\n') ? `${value}\n${link}` : `${value}, ${link}`;
+	if (storage === 'text') {
+		if (existing.length === 0) return link;
+		const separator = typeof value === 'string' && value.includes('\n') ? '\n' : ', ';
+		return [...existing, link].join(separator);
 	}
-	return link;
+	return [...existing, link];
 }
 
 function removeFromValue(value: unknown, targetPath: string, resolve: LinkResolver): unknown {
-	const keep = (raw: unknown) => {
-		const target = linkTarget(raw);
-		return target === null || resolve(target) !== targetPath;
-	};
-	if (Array.isArray(value)) return value.filter(keep);
-	if (typeof value !== 'string') return value;
-	const separator = value.includes('\n') ? '\n' : ', ';
-	return parts(value).filter(keep).join(separator);
+	if (!Array.isArray(value) && typeof value !== 'string') return value;
+	const kept = expand(value).filter(raw => resolve(linkTarget(raw)) !== targetPath);
+	if (Array.isArray(value)) return kept;
+	return kept.join(value.includes('\n') ? '\n' : ', ');
 }
 
 /** Removes one resolved dependency while preserving array, comma, or newline storage shape. */

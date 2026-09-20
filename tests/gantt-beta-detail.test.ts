@@ -35,6 +35,17 @@ function mount(taskValue: Task, overrides: Partial<GanttDetailPanelOptions> = {}
 afterEach(() => document.body.replaceChildren());
 
 describe('Gantt Beta detail panel (GBETA-014)', () => {
+	// Straight after an edit the chart's store holds the ISO strings the library emits.
+	it('shows and edits Duration on the ISO strings the library emits right after an edit', () => {
+		const h = mount(task({ startDate: '2026-09-20T00:00:00.000Z', endDate: '2026-09-23T00:00:00.000Z' }));
+		const duration = h.host.querySelector<HTMLInputElement>('input[aria-label="Duration"]')!;
+		expect(duration.value).toBe('3d');
+
+		duration.value = '5d';
+		duration.dispatchEvent(new Event('change'));
+		expect(h.update).toHaveBeenCalledWith({ endDate: '2026-09-25T00:00:00.000Z' });
+	});
+
 	it('uses day precision, edits duration through the chart update path, and preserves property order', () => {
 		const h = mount(task());
 		const dateInputs = h.host.querySelectorAll<HTMLInputElement>('input[type="date"]');

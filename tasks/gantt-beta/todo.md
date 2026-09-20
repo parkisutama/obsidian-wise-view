@@ -248,6 +248,14 @@ capabilities; `EchoGate` holds Bases echoes of our own writes; a failed write re
 (the library ignores a re-passed identical array). Resize now also requires an End property.
 Native confirmation of "scroll/collapse/detail preserved after a write" is part of GBETA-012.
 
+**Correction 2026-09-20 (native report):** a second dependency on one task made both lines vanish.
+One text value "[[A]], [[B]]" written to a List-type property comes back from Bases as a single item,
+which the parser could not split. Parsing now reads every link inside an item, new dependencies are
+written as a list (text only for a text-typed property), and the writer remembers what it just wrote
+so a second draw before Bases echoes the first cannot overwrite it. Obsidian showed a "Gantt chart"
+tooltip because the library sets `aria-label` on the whole treegrid; `TooltipGuard` moves it to
+`aria-labelledby`.
+
 **Description:** Connect `onTasksChange`, `onDependencyCreate`/`Delete`, `onTaskMove` (reject
 into synthetic group phases; reject in-phase reorder without an Order property), and
 `onTaskCreate` (template note with Start/End prefilled via `NoteTemplateService`) to the
@@ -344,6 +352,10 @@ driven by the chart `ref`; persist scale (`onScaleChange`) and collapsed ids
 Start, End, Duration, and Progress; dependency removal is authorized by the existing dependency
 callback before the same task-array write path runs. Visible Base properties retain configured
 order, and timezone context is limited to zoned Start/End source values.
+
+**Correction 2026-09-20:** Duration read `Date.parse(end + 'Z')`, which is NaN for the ISO strings
+the library emits right after an edit (Duration went blank and typing one did nothing). It now
+accepts both plain and Z-suffixed chart dates.
 
 **Description:** `renderDetail` showing note title (opens the note), editable start/end,
 editable Duration (recomputes End), progress, Depends on links (removable), and the Base's

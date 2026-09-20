@@ -30,15 +30,43 @@ describe('Gantt dependency conversion (GBETA-006)', () => {
 		]);
 	});
 
-	it('appends while preserving list, comma-string, and newline-string shapes', () => {
-		expect(appendGanttDependency(['[[Missing]]'], 'Tasks/B.md', resolve)).toEqual([
-			'[[Missing]]',
-			'[[Tasks/B]]',
-		]);
-		expect(appendGanttDependency('[[Missing]]', 'Tasks/B.md', resolve)).toBe('[[Missing]], [[Tasks/B]]');
-		expect(appendGanttDependency('[[Missing]]\n[[Tasks/A]]', 'Tasks/B.md', resolve)).toBe(
+	it('appends to a list and starts a list when nothing is stored', () => {
+		expect(appendGanttDependency(['[[Missing]]'], 'Tasks/B.md', resolve)).toEqual(['[[Missing]]', '[[Tasks/B]]']);
+		expect(appendGanttDependency(undefined, 'Tasks/B.md', resolve)).toEqual(['[[Tasks/B]]']);
+		expect(appendGanttDependency('', 'Tasks/B.md', resolve)).toEqual(['[[Tasks/B]]']);
+	});
+
+	it('turns a text value into a list unless the property is text-typed', () => {
+		expect(appendGanttDependency('[[Tasks/A]]', 'Tasks/B.md', resolve)).toEqual(['[[Tasks/A]]', '[[Tasks/B]]']);
+		expect(appendGanttDependency('[[Missing]]', 'Tasks/B.md', resolve, 'text')).toBe('[[Missing]], [[Tasks/B]]');
+		expect(appendGanttDependency('[[Missing]]\n[[Tasks/A]]', 'Tasks/B.md', resolve, 'text')).toBe(
 			'[[Missing]]\n[[Tasks/A]]\n[[Tasks/B]]',
 		);
+		expect(appendGanttDependency(undefined, 'Tasks/B.md', resolve, 'text')).toBe('[[Tasks/B]]');
+	});
+
+	// Bases hands a text value stored in a List-type property back as ONE item. A second
+	// dependency written as "[[A]], [[B]]" then vanished, taking the first line with it.
+	it('reads several links out of one list item or text value', () => {
+		const both = [
+			{ targetId: 'Tasks/A.md', type: 'FS' },
+			{ targetId: 'Tasks/B.md', type: 'FS' },
+		];
+		expect(parseGanttDependencies({ FS: ['[[Tasks/A]], [[Tasks/B]]'] }, resolve)).toEqual(both);
+		expect(parseGanttDependencies({ FS: '[[Tasks/A]] [[B|Alias]]' }, resolve)).toEqual(both);
+		expect(parseGanttDependencies({ FS: ['[[Tasks/A]]\n[[Tasks/B]]', '[[Tasks/A]]'] }, resolve)).toEqual(both);
+		expect(parseGanttDependencies({ FS: 'Tasks/A, Tasks/B' }, resolve)).toEqual(both);
+	});
+
+	it('repairs a malformed multi-link item into separate entries on the next append', () => {
+		expect(appendGanttDependency(['[[Tasks/A]], [[Missing]]'], 'Tasks/B.md', resolve)).toEqual([
+			'[[Tasks/A]]', '[[Missing]]', '[[Tasks/B]]',
+		]);
+	});
+
+	it('removes one link from a multi-link list item without touching the others', () => {
+		expect(removeGanttDependencyFromAllTypes({ FS: ['[[Tasks/A]], [[Missing]]'] }, 'Tasks/A.md', resolve).FS)
+			.toEqual(['[[Missing]]']);
 	});
 
 	it('does not append a dependency that already resolves to the target', () => {
@@ -62,6 +90,6 @@ describe('Gantt dependency conversion (GBETA-006)', () => {
 
 	it('writes the exact wiki-link form characterized by the Frappe view', () => {
 		expect(toGanttWikiLink('Tasks/B.md')).toBe('[[Tasks/B]]');
-		expect(appendGanttDependency('[[Tasks/A]]', 'Tasks/B.md', resolve)).toBe('[[Tasks/A]], [[Tasks/B]]');
+		expect(appendGanttDependency('[[Tasks/A]]', 'Tasks/B.md', resolve, 'text')).toBe('[[Tasks/A]], [[Tasks/B]]');
 	});
 });

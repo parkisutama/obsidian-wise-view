@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Parkis Utama
 
 import type { TaskDependency } from '@jaeungkim/gantt-chart';
-import { appendGanttDependency, removeGanttDependency } from './dependencies';
+import { appendGanttDependency, removeGanttDependency, type DependencyStorage } from './dependencies';
 import { writeGanttDate, type GanttPropertyDateType } from './dates';
 import type { GanttTaskDiff } from './diff';
 import { SYNTHETIC_PHASE_PREFIX } from './phases';
@@ -15,6 +15,8 @@ export interface GanttMutationPlanOptions {
 	parent?: string;
 	order?: string;
 	dependsOn?: string;
+	/** Shape a new Depends on value takes when the note has none yet (see appendGanttDependency). */
+	dependsStorage?: DependencyStorage;
 	currentOrder?: ReadonlyMap<string, number | null | undefined>;
 	currentDependsOn?: ReadonlyMap<string, unknown>;
 	resolveLink?: (target: string) => string | null;
@@ -68,7 +70,7 @@ export function buildGanttMutationPlan(
 			const after = dependencyTargets(change.after.dependencies);
 			let stored = options.currentDependsOn?.get(change.id);
 			for (const target of before) if (!after.has(target)) stored = removeGanttDependency(stored, target, resolve);
-			for (const target of after) if (!before.has(target)) stored = appendGanttDependency(stored, target, resolve);
+			for (const target of after) if (!before.has(target)) stored = appendGanttDependency(stored, target, resolve, options.dependsStorage);
 			values[options.dependsOn] = stored;
 		}
 	}

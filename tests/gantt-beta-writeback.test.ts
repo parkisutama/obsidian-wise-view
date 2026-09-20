@@ -375,7 +375,24 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		]);
 
 		expect(h.dependency.setDependencies).toHaveBeenCalledOnce();
-		expect(h.dependency.setDependencies).toHaveBeenCalledWith('Tasks/B.md', 'note.depends_on', '[[Tasks/A]]');
+		expect(h.dependency.setDependencies).toHaveBeenCalledWith('Tasks/B.md', 'note.depends_on', ['[[Tasks/A]]']);
+	});
+
+	it('gives one task two dependencies, even when the second is drawn before Bases echoes the first', async () => {
+		const before = [task('Tasks/A.md'), task('Tasks/B.md', { sequence: '2' }), task('Tasks/C.md', { sequence: '3' })];
+		const h = harness();
+		h.writer.replaceBaseline(before, { currentDependsOn: new Map() });
+		const fs = (predecessorId: string) => ({ predecessorId, successorId: 'Tasks/C.md', type: 'FS' as const });
+		const withLinks = (targets: string[]) => before.map(item => item.id === 'Tasks/C.md'
+			? { ...item, dependencies: targets.map(targetId => ({ targetId, type: 'FS' as const })) } : item);
+
+		expect(h.writer.onDependencyCreate(fs('Tasks/A.md'))).toBe(true);
+		await h.writer.onTasksChange(withLinks(['Tasks/A.md']));
+		expect(h.writer.onDependencyCreate(fs('Tasks/B.md'))).toBe(true);
+		await h.writer.onTasksChange(withLinks(['Tasks/A.md', 'Tasks/B.md']));
+
+		expect(h.dependency.setDependencies).toHaveBeenNthCalledWith(1, 'Tasks/C.md', 'note.depends_on', ['[[Tasks/A]]']);
+		expect(h.dependency.setDependencies).toHaveBeenNthCalledWith(2, 'Tasks/C.md', 'note.depends_on', ['[[Tasks/A]]', '[[Tasks/B]]']);
 	});
 
 	it('preserves dependencies when a date gesture omits them from the library task array', async () => {

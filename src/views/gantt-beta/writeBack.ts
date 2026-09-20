@@ -319,7 +319,29 @@ export class GanttBetaWriteBack {
 			return;
 		}
 		this.baseline = scheduledTasks;
+		this.rememberWrites(plan);
 		if (scheduledTasks.some((task, index) => task !== sourceTasks[index])) this.options.renderTasks?.(scheduledTasks);
+	}
+
+	/**
+	 * Bases echoes a write only after the metadata cache catches up. A second gesture on the same note
+	 * inside that window must build on what was just written, not on the stale echo, or it would
+	 * overwrite the first (a second dependency replacing the first).
+	 */
+	private rememberWrites(plan: readonly { path: string; values: Record<string, unknown> }[]): void {
+		const { dependsOn, order } = this.properties;
+		let currentDependsOn = this.properties.currentDependsOn;
+		let currentOrder = this.properties.currentOrder;
+		for (const item of plan) {
+			if (dependsOn && Object.hasOwn(item.values, dependsOn)) {
+				currentDependsOn = new Map(currentDependsOn).set(item.path, item.values[dependsOn]);
+			}
+			if (order && Object.hasOwn(item.values, order)) {
+				const value = item.values[order];
+				currentOrder = new Map(currentOrder).set(item.path, typeof value === 'number' ? value : null);
+			}
+		}
+		this.properties = { ...this.properties, currentDependsOn, currentOrder };
 	}
 
 	private writeItem(

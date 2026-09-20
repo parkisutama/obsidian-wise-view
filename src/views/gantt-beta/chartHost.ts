@@ -5,6 +5,7 @@ import { ReactGanttChart, type GanttHandle, type GanttProps, type GanttScaleKey,
 import { h, type ComponentChild } from 'preact';
 import { render } from 'preact/compat';
 import type { ViewRuntime } from '../../platform/dom/ViewRuntime';
+import { TooltipGuard } from './tooltipGuard';
 
 export type GanttBetaTheme = 'light' | 'dark';
 export type ChartRender = (node: ComponentChild, container: Element) => void;
@@ -28,6 +29,7 @@ export class GanttBetaChartHost {
 	private model: GanttBetaChartModel | null = null;
 	private remountKey = 0;
 	private handle: GanttHandle | null = null;
+	private readonly tooltipGuard: TooltipGuard;
 
 	constructor(
 		private readonly containerEl: HTMLElement,
@@ -38,6 +40,7 @@ export class GanttBetaChartHost {
 		const MutationObserverCtor = (runtime.win as Window & { MutationObserver: typeof MutationObserver }).MutationObserver;
 		this.observer = new MutationObserverCtor(() => this.refreshTheme());
 		this.observer.observe(runtime.doc.body, { attributes: true, attributeFilter: ['class'] });
+		this.tooltipGuard = new TooltipGuard(containerEl, runtime.win);
 	}
 
 	get currentTheme(): GanttBetaTheme {
@@ -67,6 +70,7 @@ export class GanttBetaChartHost {
 			theme: this.theme,
 			...this.model.props,
 		}), this.containerEl);
+		this.tooltipGuard.sweep();
 	}
 
 	setScale(scale: GanttScaleKey): void {
@@ -113,5 +117,6 @@ export class GanttBetaChartHost {
 		this.observer.disconnect();
 		this.handle = null;
 		this.renderChart(null, this.containerEl);
+		this.tooltipGuard.dispose();
 	}
 }
