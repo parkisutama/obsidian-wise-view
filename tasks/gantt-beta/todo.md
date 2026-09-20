@@ -256,6 +256,13 @@ so a second draw before Bases echoes the first cannot overwrite it. Obsidian sho
 tooltip because the library sets `aria-label` on the whole treegrid; `TooltipGuard` moves it to
 `aria-labelledby`.
 
+**Correction 2026-09-20 (second native report):** `depend_on` grew `[[[[[[[[persona/...`. Bases reports
+the damaged text `[[[[Note]]` with target `[[Note`, and both the read path and the write path wrapped
+that target in `[[ ]]` again, two brackets per round trip. Wrapping is now idempotent
+(`wikiLinkText`), damaged values parse and heal on the next write, and links are written the way
+Obsidian would generate them (shortest path per the vault's link settings) instead of as full vault
+paths. Notes already damaged are repaired only when their dependencies are next edited.
+
 **Description:** Connect `onTasksChange`, `onDependencyCreate`/`Delete`, `onTaskMove` (reject
 into synthetic group phases; reject in-phase reorder without an Order property), and
 `onTaskCreate` (template note with Start/End prefilled via `NoteTemplateService`) to the

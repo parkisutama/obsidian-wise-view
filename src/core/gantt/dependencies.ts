@@ -10,8 +10,19 @@ const TYPES: readonly DependencyType[] = ['FS', 'SS', 'FF', 'SF'];
 /** How a Depends on property is stored: a YAML list of links, or one text value of links. */
 export type DependencyStorage = 'list' | 'text';
 
-const WIKILINK_ANYWHERE = /\[\[[^\]|]+(?:\|[^\]]+)?\]\]/g;
-const WIKILINK_TARGET = /^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]$/;
+// Link text never contains a bracket, so a value damaged into "[[[[Note]]" still yields "[[Note]]".
+const WIKILINK_ANYWHERE = /\[\[[^[\]|]+(?:\|[^[\]]+)?\]\]/g;
+const WIKILINK_TARGET = /^\[\[([^[\]|]+)(?:\|[^[\]]+)?\]\]$/;
+
+/** A link target with any stray brackets around it removed. */
+export function cleanLinkTarget(target: string): string {
+	return target.trim().replace(/^\[+/, '').replace(/\]+$/, '').trim();
+}
+
+/** Wraps a target once. Re-wrapping an already wrapped target is what grew "[[[[[[Note]]". */
+export function wikiLinkText(target: string): string {
+	return `[[${cleanLinkTarget(target)}]]`;
+}
 
 /**
  * Every link written in a stored value, one raw entry each. A list item or text value may hold
@@ -31,7 +42,7 @@ function expand(value: unknown): string[] {
 }
 
 function linkTarget(raw: string): string {
-	return (WIKILINK_TARGET.exec(raw.trim())?.[1] ?? raw).trim();
+	return cleanLinkTarget(WIKILINK_TARGET.exec(raw.trim())?.[1] ?? raw);
 }
 
 export function toGanttWikiLink(filePath: string): string {
@@ -65,10 +76,11 @@ export function appendGanttDependency(
 	targetPath: string,
 	resolve: LinkResolver,
 	storage: DependencyStorage = 'list',
+	formatLink: (targetPath: string) => string = toGanttWikiLink,
 ): unknown {
 	const existing = expand(value);
 	if (existing.some(raw => resolve(linkTarget(raw)) === targetPath)) return value;
-	const link = toGanttWikiLink(targetPath);
+	const link = formatLink(targetPath);
 	if (storage === 'text') {
 		if (existing.length === 0) return link;
 		const separator = typeof value === 'string' && value.includes('\n') ? '\n' : ', ';

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
-import { BasesView, Notice, type QueryController } from 'obsidian';
+import { BasesView, Notice, TFile, type QueryController } from 'obsidian';
 import type { GanttDetailRenderProps, GanttProps, GanttTaskDraft, Task, TaskDependency } from '@jaeungkim/gantt-chart';
 import type WiseViewPlugin from '../../main';
 import type { NormalizedValue } from '../../core/entries/NormalizedValue';
 import { writeGanttDate, type GanttPropertyDateType } from '../../core/gantt/dates';
+import { toGanttWikiLink, wikiLinkText } from '../../core/gantt/dependencies';
 import { createEntrySnapshotGroups } from '../../platform/bases/entrySnapshotAdapter';
 import type { EntrySnapshotGroup } from '../../platform/bases/entrySnapshotAdapter';
 import { resolveColor } from '../../platform/colors/ColorResolver';
@@ -275,7 +276,7 @@ export class BasesGanttBetaView extends BasesView {
 		const stored = (value: NormalizedValue | undefined): unknown => {
 			if (!value || value.kind === 'missing') return undefined;
 			if (value.kind === 'list') return value.items.map(item => stored(item)).filter(item => item !== undefined);
-			if (value.kind === 'link') return `[[${value.target}]]`;
+			if (value.kind === 'link') return wikiLinkText(value.target);
 			if (value.kind === 'text' || value.kind === 'date' || value.kind === 'number' || value.kind === 'boolean') return value.value;
 			if (value.kind === 'file') return value.path;
 			return undefined;
@@ -298,6 +299,13 @@ export class BasesGanttBetaView extends BasesView {
 			})),
 			currentDependsOn: new Map(entries.map(entry => [entry.path, stored(options.dependsOn ? entry.values.get(options.dependsOn) : undefined)])),
 			resolveLink: (target: string) => this.app.metadataCache.getFirstLinkpathDest(target, '')?.path ?? null,
+			// Write links the way Obsidian would (shortest path, per the vault's link settings), not as
+			// full vault paths. Anything but a wikilink falls back to one, since parsing reads wikilinks.
+			formatLink: (targetPath: string, sourcePath: string) => {
+				const file = this.app.vault.getAbstractFileByPath(targetPath);
+				const generated = file instanceof TFile ? this.app.fileManager.generateMarkdownLink(file, sourcePath) : '';
+				return /^[[[^[]]+]]$/.test(generated) ? generated : toGanttWikiLink(targetPath);
+			},
 		};
 	}
 

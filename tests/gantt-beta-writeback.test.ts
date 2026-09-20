@@ -378,6 +378,20 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		expect(h.dependency.setDependencies).toHaveBeenCalledWith('Tasks/B.md', 'note.depends_on', ['[[Tasks/A]]']);
 	});
 
+	it('writes dependency and parent links in the form the caller generates', async () => {
+		const before = [task('Tasks/A.md'), task('Tasks/B.md', { sequence: '2' })];
+		const formatLink = vi.fn((target: string) => '[[' + target.split('/').at(-1)!.replace(/\.md$/i, '') + ']]');
+		const h = harness();
+		h.writer.replaceBaseline(before, { currentDependsOn: new Map() });
+		h.writer.replaceProperties({ ...h.writer['properties'], formatLink });
+
+		h.writer.onDependencyCreate({ predecessorId: 'Tasks/A.md', successorId: 'Tasks/B.md', type: 'FS' });
+		await h.writer.onTasksChange([before[0]!, { ...before[1]!, dependencies: [{ targetId: 'Tasks/A.md', type: 'FS' }] }]);
+
+		expect(h.dependency.setDependencies).toHaveBeenCalledWith('Tasks/B.md', 'note.depends_on', ['[[A]]']);
+		expect(formatLink).toHaveBeenCalledWith('Tasks/A.md', 'Tasks/B.md');
+	});
+
 	it('gives one task two dependencies, even when the second is drawn before Bases echoes the first', async () => {
 		const before = [task('Tasks/A.md'), task('Tasks/B.md', { sequence: '2' }), task('Tasks/C.md', { sequence: '3' })];
 		const h = harness();

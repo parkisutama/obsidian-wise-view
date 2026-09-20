@@ -5,7 +5,7 @@ import type { Task } from '@jaeungkim/gantt-chart';
 import type { EntrySnapshot } from '../../core/entries/EntrySnapshot';
 import type { NormalizedValue } from '../../core/entries/NormalizedValue';
 import { readGanttDate } from '../../core/gantt/dates';
-import { parseGanttDependencies } from '../../core/gantt/dependencies';
+import { parseGanttDependencies, wikiLinkText } from '../../core/gantt/dependencies';
 import { buildPhaseTree, type PhaseGroup, type PhaseInput } from '../../core/gantt/phases';
 import { parseGanttProgress } from '../../core/gantt/progress';
 import type { EntrySnapshotGroup } from '../../platform/bases/entrySnapshotAdapter';
@@ -28,8 +28,8 @@ function text(value: NormalizedValue | undefined): string | null {
 
 function rawDependency(value: NormalizedValue | undefined): unknown {
 	if (!value || value.kind === 'missing') return undefined;
-	if (value.kind === 'list') return value.items.map(item => item.kind === 'link' ? `[[${item.target}]]` : text(item)).filter(Boolean);
-	if (value.kind === 'link') return `[[${value.target}]]`;
+	if (value.kind === 'list') return value.items.map(item => item.kind === 'link' ? wikiLinkText(item.target) : text(item)).filter(Boolean);
+	if (value.kind === 'link') return wikiLinkText(value.target);
 	return text(value);
 }
 

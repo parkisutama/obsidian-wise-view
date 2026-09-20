@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	appendGanttDependency,
+	cleanLinkTarget,
+	wikiLinkText,
 	parseGanttDependencies,
 	removeGanttDependencyFromAllTypes,
 	toGanttWikiLink,
@@ -56,6 +58,26 @@ describe('Gantt dependency conversion (GBETA-006)', () => {
 		expect(parseGanttDependencies({ FS: '[[Tasks/A]] [[B|Alias]]' }, resolve)).toEqual(both);
 		expect(parseGanttDependencies({ FS: ['[[Tasks/A]]\n[[Tasks/B]]', '[[Tasks/A]]'] }, resolve)).toEqual(both);
 		expect(parseGanttDependencies({ FS: 'Tasks/A, Tasks/B' }, resolve)).toEqual(both);
+	});
+
+	// Each read-then-write round trip wrapped the target again: [[Note]] became [[[[Note]],
+	// then [[[[[[Note]]. Wrapping is now idempotent and damaged values heal.
+	it('wraps a link target exactly once, however many brackets it already carries', () => {
+		expect(wikiLinkText('Tasks/A')).toBe('[[Tasks/A]]');
+		expect(wikiLinkText('[[Tasks/A]]')).toBe('[[Tasks/A]]');
+		expect(wikiLinkText('[[[[[[Tasks/A')).toBe('[[Tasks/A]]');
+		expect(cleanLinkTarget(' [[Tasks/A]] ')).toBe('Tasks/A');
+	});
+
+	it('reads a value damaged by repeated wrapping', () => {
+		const dependency = [{ targetId: 'Tasks/A.md', type: 'FS' }];
+		expect(parseGanttDependencies({ FS: ['[[[[[[Tasks/A]]'] }, resolve)).toEqual(dependency);
+		expect(parseGanttDependencies({ FS: '[[[[Tasks/A' }, resolve)).toEqual(dependency);
+		expect(appendGanttDependency(['[[[[Tasks/A]]'], 'Tasks/B.md', resolve)).toEqual(['[[Tasks/A]]', '[[Tasks/B]]']);
+	});
+
+	it('writes the link text the caller generates, such as a shortest-path link', () => {
+		expect(appendGanttDependency(undefined, 'Tasks/B.md', resolve, 'list', () => '[[B]]')).toEqual(['[[B]]']);
 	});
 
 	it('repairs a malformed multi-link item into separate entries on the next append', () => {

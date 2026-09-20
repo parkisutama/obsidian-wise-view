@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Parkis Utama
 
 import type { TaskDependency } from '@jaeungkim/gantt-chart';
-import { appendGanttDependency, removeGanttDependency, type DependencyStorage } from './dependencies';
+import { appendGanttDependency, removeGanttDependency, toGanttWikiLink, type DependencyStorage } from './dependencies';
 import { writeGanttDate, type GanttPropertyDateType } from './dates';
 import type { GanttTaskDiff } from './diff';
 import { SYNTHETIC_PHASE_PREFIX } from './phases';
@@ -20,6 +20,8 @@ export interface GanttMutationPlanOptions {
 	currentOrder?: ReadonlyMap<string, number | null | undefined>;
 	currentDependsOn?: ReadonlyMap<string, unknown>;
 	resolveLink?: (target: string) => string | null;
+	/** Link text to store for a note, as Obsidian would write it from `sourcePath` (vault link settings). */
+	formatLink?: (targetPath: string, sourcePath: string) => string;
 	dateTypes?: ReadonlyMap<string, { start: GanttPropertyDateType; end: GanttPropertyDateType }>;
 	phaseIds?: ReadonlySet<string>;
 	writePhaseDates?: boolean;
@@ -61,7 +63,7 @@ export function buildGanttMutationPlan(
 		if (change.parentChanged && options.parent) {
 			if (change.after.parentId === null) values[options.parent] = null;
 			else if (!change.after.parentId.startsWith(SYNTHETIC_PHASE_PREFIX)) {
-				values[options.parent] = `[[${change.after.parentId.replace(/\.md$/i, '')}]]`;
+				values[options.parent] = (options.formatLink ?? toGanttWikiLink)(change.after.parentId, change.id);
 			}
 		}
 		if (change.dependenciesChanged && options.dependsOn) {
@@ -70,7 +72,8 @@ export function buildGanttMutationPlan(
 			const after = dependencyTargets(change.after.dependencies);
 			let stored = options.currentDependsOn?.get(change.id);
 			for (const target of before) if (!after.has(target)) stored = removeGanttDependency(stored, target, resolve);
-			for (const target of after) if (!before.has(target)) stored = appendGanttDependency(stored, target, resolve, options.dependsStorage);
+			for (const target of after) if (!before.has(target)) stored = appendGanttDependency(stored, target, resolve, options.dependsStorage,
+				targetPath => (options.formatLink ?? toGanttWikiLink)(targetPath, change.id));
 			values[options.dependsOn] = stored;
 		}
 	}
