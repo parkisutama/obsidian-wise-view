@@ -4,15 +4,22 @@
 let nextLabelId = 0;
 
 /**
- * Obsidian turns every `aria-label` into a hover tooltip. The chart library names its whole
- * treegrid `aria-label="Gantt chart"`, so a bubble reading "Gantt chart" followed the pointer
- * across the entire chart. The accessible name moves to `aria-labelledby` on a hidden element, which
- * keeps the name for screen readers and gives Obsidian nothing to show. Labels on small controls
- * (delete dependency, close panel) stay: a tooltip is useful there.
+ * Elements whose `aria-label` duplicates something the chart already shows. Obsidian turns every
+ * `aria-label` into a hover tooltip, so these produced a second bubble on top of the library's own:
+ * the whole treegrid ("Gantt chart") and each bar (name, dates, progress), which is exactly what the
+ * library's hover card says, plus the progress handle sitting on the bar. Labels on small controls
+ * (link handles, delete dependency, close panel) stay: a tooltip helps there.
+ */
+const GUARDED = '[role="treegrid"][aria-label], [role="gridcell"][aria-label], [role="slider"][aria-label]';
+
+/**
+ * Moves each guarded label to `aria-labelledby` on a hidden element. Screen readers keep the name;
+ * Obsidian has nothing to show. The library rewrites `aria-label` as dates or progress change, so
+ * this re-runs on every mutation and keeps the hidden text current.
  */
 export class TooltipGuard {
 	private readonly observer: MutationObserver;
-	private label: HTMLElement | null = null;
+	private readonly labels = new Map<Element, HTMLElement>();
 
 	constructor(private readonly root: HTMLElement, win: Window) {
 		const MutationObserverCtor = (win as Window & { MutationObserver: typeof MutationObserver }).MutationObserver;
@@ -22,29 +29,35 @@ export class TooltipGuard {
 
 	/** Idempotent; safe to call after every render. */
 	sweep(): void {
-		for (const grid of Array.from(this.root.querySelectorAll<HTMLElement>('[role="treegrid"][aria-label]'))) {
-			const name = grid.getAttribute('aria-label') ?? '';
-			grid.removeAttribute('aria-label');
+		for (const [owner, label] of this.labels) {
+			if (owner.isConnected) continue;
+			label.remove();
+			this.labels.delete(owner);
+		}
+		for (const element of Array.from(this.root.querySelectorAll<HTMLElement>(GUARDED))) {
+			const name = element.getAttribute('aria-label') ?? '';
+			element.removeAttribute('aria-label');
 			if (!name) continue;
-			const label = this.ensureLabel();
+			const label = this.labelFor(element);
 			label.textContent = name;
-			grid.setAttribute('aria-labelledby', label.id);
+			element.setAttribute('aria-labelledby', label.id);
 		}
 	}
 
-	private ensureLabel(): HTMLElement {
-		if (this.label?.isConnected) return this.label;
+	private labelFor(owner: HTMLElement): HTMLElement {
+		const existing = this.labels.get(owner);
+		if (existing?.isConnected) return existing;
 		const label = this.root.ownerDocument.createElement('span');
 		label.id = `gantt-beta-label-${nextLabelId++}`;
 		label.className = 'gantt-sr-only';
 		this.root.appendChild(label);
-		this.label = label;
+		this.labels.set(owner, label);
 		return label;
 	}
 
 	dispose(): void {
 		this.observer.disconnect();
-		this.label?.remove();
-		this.label = null;
+		for (const label of this.labels.values()) label.remove();
+		this.labels.clear();
 	}
 }

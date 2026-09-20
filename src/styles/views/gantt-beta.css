@@ -208,14 +208,22 @@
 
 .gantt-beta-detail__link {
 	min-width: 0;
+	height: auto;
 	flex: 1;
+	justify-content: flex-start;
 	padding: 0;
 	overflow-wrap: anywhere;
 	text-align: start;
 	background: none;
+	border: 0;
 	box-shadow: none;
 	color: var(--link-color);
 	cursor: pointer;
+}
+
+.gantt-beta-detail__link:hover {
+	background: none;
+	text-decoration: underline;
 }
 
 .gantt-beta-detail__warning {
