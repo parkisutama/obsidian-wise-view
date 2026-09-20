@@ -26,7 +26,7 @@ cause unbounded synchronous DOM construction on first render, for:
 - **Swimlane**: card construction across all columns/swimlanes.
 - **Calendar**: FullCalendar's own event rendering (verify FullCalendar's built-in virtualization
   is actually engaged for the configured view modes, not assumed).
-- **Gantt**: Frappe Gantt's own bar rendering (same caveat as Calendar).
+- **Gantt**: the chart library virtualizes rows and time cells; Wise View's own mapping and write-back cost was measured and fixed in GBETA-016 (`tests/gantt-beta-scale.test.ts`).
 - **Timeline**: already has `VirtualLinearCollection`-based row virtualization from the prior
   program — confirm it still holds after Timeline's own workstream changes land, don't re-derive
   it.
@@ -56,8 +56,9 @@ triggers:
   fit either, that mismatch is itself a finding to record, not a reason to build a third
   abstraction preemptively.
 - No performance work on a view type that doesn't exist yet (Grid, Masonry, Feed, Keep).
-- No change to FullCalendar's or Frappe Gantt's bundled version purely for performance reasons —
-  that's `docs/specs/gantt.md`'s territory if Frappe Gantt needs it for the listener-leak fix.
+- No change to FullCalendar's or the Gantt chart library's bundled version purely for performance
+  reasons. The Gantt library is pinned exactly and upgraded only through a dedicated task
+  (docs/architecture/upstream-provenance.md).
 
 ## 4. Verification policy
 

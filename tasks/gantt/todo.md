@@ -3,6 +3,8 @@
 Plan: [plan.md](plan.md)
 Specification: [../../docs/specs/gantt.md](../../docs/specs/gantt.md)
 
+> **Superseded 2026-09-20: the Frappe Gantt view was removed** ([removal workstream](../gantt-frappe-removal/todo.md)); the tasks below are history and will not be resumed.
+>
 > **Frozen 2026-09-19.** Frappe Gantt receives bug fixes only while Gantt Beta
 > ([tasks/gantt-beta/todo.md](../gantt-beta/todo.md)) matures. GAN-002–GAN-006 are deferred;
 > GAN-005 is superseded by Gantt Beta. Follow-ups caused by Gantt Beta are listed in
@@ -12,6 +14,8 @@ Specification: [../../docs/specs/gantt.md](../../docs/specs/gantt.md)
 
 ### GAN-001: Add characterization tests for task mapping, dependency mutation, WBS, and lifecycle
 
+**Status:** Complete (2026-09-19)
+
 **Description:** Extend or add tests covering task data mapping (including the keyword-detection
 fallback), dependency mutation via the context menu (add/clear), the WBS sidebar, and the Frappe
 Gantt lifecycle wrapper (construction/config mapping/teardown, including the current known
@@ -19,10 +23,10 @@ listener leak — characterize its presence, don't fix it here).
 
 **Acceptance criteria:**
 
-- [ ] A test demonstrates the current listener leak exists (one `document`-level `mouseup`
+- [x] A test demonstrates the current listener leak exists (one `document`-level `mouseup`
   listener added per `new Gantt(...)` call, never removed) — this is the baseline GAN-004 fixes
   against.
-- [ ] Dependency mutation tests assert on the exact property shape written (comma-separated vs.
+- [x] Dependency mutation tests assert on the exact property shape written (comma-separated vs.
   array, matching current behavior).
 
 **Verification:** `pnpm run test -- gantt && pnpm run typecheck`
@@ -32,6 +36,9 @@ listener leak — characterize its presence, don't fix it here).
 **Likely files:** `tests/gantt-view.test.ts` (or wherever Gantt's existing tests live)
 
 **Estimated scope:** L
+
+**Verification record:** `pnpm run test -- gantt` (18 passed), `pnpm run typecheck`, and
+`pnpm run check` (31 files / 305 tests passed) on 2026-09-19.
 
 ## Phase 2: Extract modules
 

@@ -32,7 +32,7 @@ The original Planner is a full-featured planning and task management plugin. Wis
 | Task management workflow & statuses | ✗ Removed |
 | Calendar view | ✓ Kept |
 | Kanban view | ✓ Kept, renamed **Swimlane** |
-| Gantt view (Frappe Gantt) | Added |
+| Gantt view | Added (an earlier Frappe-based view was replaced) |
 
 ### Gantt code attribution
 
@@ -53,11 +53,12 @@ whole project is then governed by GPL v3. The original MIT copyright notice is p
 - **Swimlane view** — Drag-and-drop board with columns and optional swimlane rows. You choose
   the property for columns (and rows); nothing is preselected. Formerly named "Kanban"; renamed
   because Obsidian now ships a core Kanban view.
-- **Gantt view** — Date-range chart powered by [Frappe Gantt](https://frappe.io/gantt).
-  Map existing start, end, progress, dependency, parent, and color properties from your notes.
-- **Gantt Beta** — Phase-aware scheduling with four dependency types and native Bases grouping.
-  See the [Gantt Beta configuration guide](docs/gantt-beta.md) for goal-based recipes and option
-  relationships.
+- **Gantt view** — Phase-aware schedule built on
+  [@jaeungkim/gantt-chart](https://github.com/jaeungkim/gantt-chart). Parent notes and native Bases
+  grouping become phases, finish-to-start dependencies are drawn and edited on the chart, and
+  moving, resizing, progress, links, order, and note creation are written back to your properties.
+  Blocking and date conflicts are derived from Depends on. See the
+  [Gantt documentation](docs/gantt-view.md) for goal-based recipes and option relationships.
 - **Timeline view** — Grouped, virtualized date ranges plus quick placement of unscheduled notes
   into user-selected start/end properties, with no task-schema assumptions. See the
   [Timeline View documentation](docs/timeline-view.md).
@@ -105,7 +106,7 @@ feature set.
 ## Usage
 
 Open any folder as a Base (right-click → **New base from folder**), then select the view type
-dropdown to **Calendar**, **Swimlane**, **Gantt**, **Gantt Beta**, or **Timeline**.
+dropdown to **Calendar**, **Swimlane**, **Gantt**, or **Timeline**.
 
 ### Recommended frontmatter shape
 
@@ -159,13 +160,32 @@ all-day events come from the new **All-day field** option instead of a fixed `al
 
 ---
 
+## Migrating from the earlier Gantt view
+
+The earlier Frappe-based Gantt view (view type `wise-view-gantt`) was removed. A base that still uses
+it shows an unknown view type. To move it:
+
+1. Open the base and add or switch the view to **Gantt**.
+2. Map Start date, End date, and optionally Label, Parent, Progress, Color by, and Depends on. Old
+   option names map as: `startDate` to Start date, `endDate` to End date, `label` to Label,
+   `dependencies` to Depends on, `parentProp` to Parent, `progress` to Progress, `colorBy` to Color by,
+   and `viewMode` to Scale.
+3. Turn off **Read only** if you want to edit from the chart.
+
+Not carried over: expected progress, the Hour / Quarter day / Half day scales, the right-click menu,
+the WBS sidebar (replaced by the task list and phases), the Gantt command-palette commands, and the
+"Gantt defaults" settings. Dependencies stay in the same property.
+
 ## Known limitations
 
 - Wise View requires the Obsidian Bases API, so older Obsidian versions are not supported.
-- Gantt dependencies and WBS parent fields are read from existing frontmatter for visualization.
-  The context menu does not edit dependency or parent fields.
-- Calendar and Gantt date or progress changes write only to the mapped frontmatter properties when
-  you directly create, drag, or edit an item in the view.
+- Gantt is read-only until you turn off **Read only** in its view options. Once editing is on, it
+  writes dates, progress, Depends on, Parent, and Order only to the properties you mapped, and only
+  when you drag, draw, or edit in the view.
+- Gantt has not been verified on mobile or in a popout window, and keyboard editing is untested.
+  Drags may not work in a popout window (a limitation of the chart library).
+- Calendar date changes write only to the mapped frontmatter properties when you directly create,
+  drag, or edit an item in the view.
 - Mobile support is best-effort until tested on Android and iOS.
 
 ---
@@ -223,10 +243,9 @@ are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 | Dependency | License | Copyright | Notes |
 | --- | --- | --- | --- |
-| [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt) | MIT | Lars Tray | Adapted Gantt view code |
+| [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt) | MIT | Lars Tray | Adapted plugin code (attribution under review) |
 | [FullCalendar](https://fullcalendar.io/) | MIT | Adam Shaw | Calendar view (`fullcalendar`, `@full-ui/headless-calendar`, `temporal-polyfill`, `temporal-utils`; JavaScript and stylesheets) |
 | [Preact](https://preactjs.com/) | MIT | Jason Miller | Rendering library used by FullCalendar |
-| [Frappe Gantt](https://github.com/frappe/gantt) | MIT | Frappe Technologies Pvt. Ltd. | Gantt view (JavaScript and modified stylesheet) |
 
 The [Obsidian API](https://obsidian.md/) is provided by the Obsidian app at runtime and is not
 bundled.
@@ -241,7 +260,7 @@ bundled.
   derivative work free.
 - **[lhassa8](https://github.com/lhassa8)** — author of
   [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt), which demonstrated a
-  clean pattern for integrating Frappe Gantt into Obsidian Bases.
+  clean pattern for putting a Gantt chart into Obsidian Bases.
 - **[mmattia09](https://github.com/mmattia09)** — whose MIT-licensed
   [obsidian-project-manager](https://github.com/mmattia09/obsidian-project-manager) provided
   the attributed Timeline controls, temporal grid, navigation, zoom, quick scheduling behavior,

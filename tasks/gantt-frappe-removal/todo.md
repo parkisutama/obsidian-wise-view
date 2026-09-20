@@ -82,15 +82,17 @@ notice entries, and the provenance ledger's Frappe rows and known-limitation sec
 
 ### GFR-004: README, migration note, and superseded documents
 
+**Status:** Complete 2026-09-20. README describes the single Gantt view, the migration steps, and the removed commands and settings. The user guide moved to docs/gantt-view.md and now documents editing, Blocks, and navigation. The old Gantt spec, plan, and tasks are marked superseded, docs/gantt-view-improvement-prompt.md is gone, and AGENTS.md no longer tells agents to build on Frappe.
+
 **Description:** README describes the single Gantt view and lists breaking changes with the migration
 steps from the spec. Mark the old Gantt spec, plan, and tasks superseded, update the roadmap, and
 remove `docs/gantt-view-improvement-prompt.md`.
 
 **Acceptance criteria:**
 
-- [ ] README carries the migration note and the list of removed commands and settings.
-- [ ] `docs/specs/gantt.md`, `tasks/gantt/plan.md`, and `tasks/gantt/todo.md` say "Superseded".
-- [ ] `ROADMAP.md` shows Gantt as Done and the row for this removal.
+- [x] README carries the migration note and the list of removed commands and settings.
+- [x] `docs/specs/gantt.md`, `tasks/gantt/plan.md`, and `tasks/gantt/todo.md` say "Superseded".
+- [x] `ROADMAP.md` shows Gantt as Done and the row for this removal.
 
 **Verification:** Documentation review.
 
@@ -102,12 +104,21 @@ remove `docs/gantt-view-improvement-prompt.md`.
 
 ### GFR-005: Leftover search and attribution review
 
+**Status:** Search complete 2026-09-20; attribution decision recorded as **keep**, awaiting maintainer
+confirmation (Gate 1). Search command: `grep -rniE "frappe|BasesGanttView|ganttUtils|GanttDefaults|bases-gantt-view"`
+over the repository, excluding `node_modules`, `.git`, `coverage`, generated `main.js`, and the lockfile.
+Remaining hits are all intentional: this workstream's own documents, the superseded Gantt spec, plan and
+tasks, the migration note in the README, the provenance and notice text explaining the removal, the
+license-compliance plan (history), the guard test that forbids the dependency, and a load-time comment in
+`src/main.ts`. `tasks/note-template/todo.md` still names `src/views/BasesGanttView.ts`; it belongs to the
+note-template workstream (uncommitted edits by another session) and needs its own update there.
+
 **Description:** Search the repository for any remaining Frappe reference, and ask the maintainer to
 decide whether the `obsidian-bases-gantt` attribution can go.
 
 **Acceptance criteria:**
 
-- [ ] The search finds no `frappe`, `BasesGanttView`, `ganttUtils`, `GanttDefaults`, or
+- [x] The search finds no `frappe`, `BasesGanttView`, `ganttUtils`, `GanttDefaults`, or
   `bases-gantt-view` outside history, provenance notes, and the removal spec.
 - [ ] The attribution decision is recorded in the spec (keep or remove, with the reason).
 

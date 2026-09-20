@@ -1,6 +1,6 @@
 # Spec: Gantt code quality, dependency editing, and the Frappe Gantt listener leak
 
-Status: Frozen 2026-09-19 — bug fixes only; GAN-001 complete, GAN-002–GAN-006 deferred (see §8)
+Status: Superseded 2026-09-20 — the Frappe Gantt view was removed (docs/specs/gantt-frappe-removal.md); kept as history
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)

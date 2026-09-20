@@ -59,7 +59,7 @@ phase below is verify-then-fix, not assume-then-build.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| FullCalendar's or Frappe Gantt's own virtualization is assumed rather than confirmed | Medium | Phase 1 requires an actual measurement/test per view, not a assumption from documentation |
+| FullCalendar's or the Gantt chart library's own virtualization is assumed rather than confirmed | Medium | Phase 1 requires an actual measurement/test per view, not a assumption from documentation |
 | A fast-path guard added to an existing view changes its update timing in a way native testing doesn't cover | Medium | Phase 4 explicitly re-verifies native behavior after Phases 1-3's changes, not before |
 
 ## Human gates

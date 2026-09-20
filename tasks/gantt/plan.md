@@ -1,6 +1,6 @@
 # Implementation plan: Gantt code quality, dependency editing, and the listener leak
 
-Status: Frozen 2026-09-19 — bug fixes only; GAN-001 complete, remaining phases deferred (see [spec §8](../../docs/specs/gantt.md))
+Status: Superseded 2026-09-20 — the Frappe Gantt view was removed (see [gantt-frappe-removal](../gantt-frappe-removal/plan.md)); kept as history
 Specification: [../../docs/specs/gantt.md](../../docs/specs/gantt.md)
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
 Baseline: branch `dev`
@@ -20,6 +20,9 @@ rather than into the monolith.
 ### Checkpoint A
 
 - `pnpm run check` passes with the new/extended characterization tests, before any extraction.
+
+Completed 2026-09-19: focused Gantt tests (18), typecheck, and the full 305-test project check
+pass before extraction begins.
 
 ## Phase 2: Extract modules
 

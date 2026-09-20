@@ -1,6 +1,6 @@
-# Gantt Beta
+# Gantt
 
-Gantt Beta menampilkan note Bases sebagai jadwal berjenjang. Wise View tidak menentukan nama
+Gantt menampilkan note Bases sebagai jadwal berjenjang. Wise View tidak menentukan nama
 properti atau alur kerja Anda: pilih sendiri properti frontmatter yang akan menjadi tanggal,
 label, fase, urutan, progres, warna, dan dependensi.
 
@@ -17,7 +17,7 @@ nama_jadwal: Menyusun prototipe
 ---
 ```
 
-Di pengaturan Gantt Beta, petakan `mulai` ke **Start date**, `selesai` ke **End date**, dan
+Di pengaturan Gantt, petakan `mulai` ke **Start date**, `selesai` ke **End date**, dan
 `nama_jadwal` ke **Label**. Nama properti tersebut hanya contoh; Anda bebas memakai nama lain.
 
 ## Jika ingin X, atur Y
@@ -139,7 +139,7 @@ rantai berikutnya, tetapi tidak mengubah progress. Link yang tidak dapat ditemuk
 di frontmatter dan tidak digambar.
 
 FS, SS, FF, dan SF adalah istilah analisis jadwal yang berguna untuk perangkat manajemen proyek
-lanjutan. Gantt Beta v1 sengaja memakai FS sebagai kontrak tunggal yang mudah dipahami. Critical
+lanjutan. Gantt v1 sengaja memakai FS sebagai kontrak tunggal yang mudah dipahami. Critical
 path, slack, atau pelanggaran dependency nantinya merupakan informasi yang dihitung dari garis dan
 tanggal—bukan teks yang harus ditambahkan pengguna ke setiap note.
 
@@ -156,22 +156,55 @@ tanggal—bukan teks yang harus ditambahkan pengguna ke setiap note.
 Nilai Date harus berbentuk `YYYY-MM-DD`. Datetime memakai ISO, misalnya
 `2026-09-18T09:30`. Nilai dengan offset atau `Z` dibaca dan ditampilkan dalam waktu lokal.
 Datetime dapat menempatkan awal/akhir bar pada jam tertentu dan scale **Day** menampilkan tick
-jam. Namun Gantt Beta belum menawarkan scale Hour/Quarter day/Half day; pilihan scale resminya
+jam. Namun Gantt belum menawarkan scale Hour/Quarter day/Half day; pilihan scale resminya
 tetap Day, Week, Month, Quarter, dan Year.
 
-## Status fitur Beta saat ini
+## Mengedit dari chart
 
-Pemetaan baca saat ini sudah mencakup tanggal, label, Parent, Order, progress, warna, dependensi,
-Group by, fase sintetis, serta opsi tampilan/timeline yang diteruskan ke chart.
+Secara bawaan Gantt hanya menampilkan jadwal: toggle **Read only** menyala. Matikan untuk mengedit.
+Setiap jenis edit punya toggle sendiri (**Move bars**, **Resize bars**, **Edit progress**,
+**Draw/Delete dependencies**, **Reorder rows**, **Create by drawing**), dan edit yang butuh properti
+yang belum dipetakan, atau yang berupa formula, otomatis nonaktif.
 
-Gantt Beta saat ini tetap dipaksa **read-only** selama write path dikerjakan. Karena itu opsi
-**Move bars**, **Resize bars**, **Edit progress**, **Draw/Delete dependencies**, **Reorder rows**,
-**Create by drawing**, **When predecessor moves**, **Snap to working days**, **Write phase dates**,
-dan bagian **Note template** belum menjadi janji perilaku aktif. Opsi tersebut sudah terlihat agar
-kontrak konfigurasi stabil, tetapi baru boleh diandalkan setelah task implementasi write terkait
-selesai dan diterima.
+| Gerakan | Yang ditulis ke note |
+| --- | --- |
+| Geser atau ubah ukuran bar | Start date dan End date. Date ditulis `YYYY-MM-DD` (tanggal akhir inklusif), Date & time ditulis `YYYY-MM-DDTHH:mm` tanpa offset. |
+| Seret pegangan progress | Progress (bilangan bulat 0–100) |
+| Gambar garis dari akhir bar ke awal bar | Menambah link ke **Depends on** pada note penerus |
+| Hapus garis | Menghapus link itu dari **Depends on** |
+| Seret baris ke phase lain | **Parent** |
+| Seret baris dalam phase yang sama | **Order** (perlu properti Order; bernilai 10, 20, 30, …) |
+| Gambar rentang di area kosong atau tombol **Add task** | Note baru dari template, dengan Start dan End terisi |
 
-Tanggal yang berasal dari formula akan tetap tidak dapat digeser atau di-resize, bahkan setelah
-editing aktif, karena formula adalah sumber kebenarannya.
+Hanya properti yang berubah yang ditulis. **Depends on** ditulis sebagai list link sesuai pengaturan
+link vault Anda; nilai lama berupa teks berisi beberapa link tetap terbaca dan dirapikan saat
+dependensi note itu berikutnya diubah.
 
-Untuk kontrak teknis lengkap, lihat [spesifikasi Gantt Beta](specs/gantt-beta.md).
+## Panel detail, Blocks, dan tanda dependensi
+
+Klik bar untuk membuka panel detail: Start, End, Duration, Progress, daftar **Depends on**, daftar
+**Blocks**, dan properti Base yang Anda tampilkan. Mengubah isian di panel menulis melalui jalur yang
+sama dengan menggeser bar.
+
+**Blocks** adalah kebalikan dari Depends on (jika B bergantung pada A, maka A memblokir B) dan
+dihitung otomatis; tidak ada properti tambahan yang perlu Anda isi. Bar diberi tanda:
+
+- **Pudar**: menunggu pendahulu yang belum selesai (progress di bawah 100). Perlu properti Progress.
+- **Garis merah**: task dimulai sebelum pendahulunya selesai.
+
+## Membuka note
+
+- Arahkan mouse dengan **Ctrl/Cmd** untuk Page Preview Obsidian pada bar, baris daftar, judul panel,
+  dan link di panel.
+- Klik kanan untuk membuka note di tab baru, kanan, atas, bawah, kiri, atau jendela baru.
+- **Ctrl/Cmd + klik** membuka note; klik biasa memilih task dan membuka panel detail.
+
+Tanggal yang berasal dari formula tetap tidak dapat digeser atau di-resize, karena formula adalah
+sumber kebenarannya.
+
+## Belum tersedia
+
+Expected progress, scale Hour/Quarter day/Half day, dan menu klik kanan khusus (tambah/hapus
+dependensi) tidak ada. Dependensi selain finish-to-start belum didukung.
+
+Untuk kontrak teknis lengkap, lihat [spesifikasi Gantt](specs/gantt-beta.md).

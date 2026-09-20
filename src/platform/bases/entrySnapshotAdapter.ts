@@ -57,7 +57,7 @@ export function normalizeValue(value: Value | null | undefined): NormalizedValue
 			// time-of-day when it still names the *same* calendar day as dateOnly() — if the day
 			// itself differs, that is the shift artifact, not a real time-of-day, so fall back to
 			// the safe date-only string entirely (matches the established, date-only-safe
-			// pattern in ganttUtils.ts's parseObsidianDate).
+			// pattern of the former Frappe Gantt view's parseObsidianDate, since removed).
 			const dateOnlyText = value.dateOnly().toString();
 			const fullText = value.toString();
 			const sameCalendarDay = fullText.slice(0, 10) === dateOnlyText.slice(0, 10);

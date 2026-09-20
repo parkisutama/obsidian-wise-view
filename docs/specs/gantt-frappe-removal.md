@@ -80,6 +80,13 @@ commands, notices, or docs.
 | Mobile, popout window, and keyboard were not natively verified before the switch | Medium | Waived by the maintainer on 2026-09-20 (gantt-beta.md §11); tracked as follow-ups, checked before the next release |
 | Bundle and stylesheet shrink hides a missing rule | Low | Compare `main.js` and `styles.css` sizes before and after; Gantt has its own CSS file |
 
+### Attribution decision (GFR-005, 2026-09-20)
+
+**Keep** the `obsidian-bases-gantt` notice. `src/main.ts` still carries its "portions adapted" header,
+and a reference search cannot prove that no adapted fragment remains after the Gantt view files were deleted.
+The notice's file list was corrected to what remains. Dropping it is a licensing call for the maintainer
+after reading `src/main.ts` against the upstream file; until then the conservative default stands.
+
 ## 6. Verification policy
 
 1. After each phase: `pnpm run check`.
