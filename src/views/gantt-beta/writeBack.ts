@@ -178,6 +178,10 @@ export class GanttBetaWriteBack {
 		const reversed = nextTasks.find(task => {
 			if (task.id.startsWith(SYNTHETIC_PHASE_PREFIX)) return false;
 			if (!this.properties.end) return false;
+			const baselineTask = previous.find(candidate => candidate.id === task.id);
+			if (baselineTask
+				&& baselineTask.startDate === task.startDate
+				&& baselineTask.endDate === task.endDate) return false;
 			const type = this.properties.dateTypes?.get(task.id)?.start ?? this.properties.start?.type;
 			return type ? hasReversedRange(task, type) : false;
 		});

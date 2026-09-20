@@ -112,6 +112,21 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 		expect(h.writer.tasks).toBe(h.before);
 	});
 
+	it('allows a progress-only edit when the existing note already has a reversed range', async () => {
+		const h = harness();
+		const before = [task('Tasks/A.md', {
+			startDate: '2026-10-03', endDate: '2026-10-03', progress: 20,
+		})];
+		h.writer.replaceBaseline(before);
+
+		await h.writer.onTasksChange([{ ...before[0]!, progress: 45 }]);
+
+		expect(h.date.updateRange).not.toHaveBeenCalled();
+		expect(h.property.setProperties).toHaveBeenCalledWith('Tasks/A.md', { 'note.progress': 45 });
+		expect(h.revertTasks).not.toHaveBeenCalled();
+		expect(h.notice).not.toHaveBeenCalled();
+	});
+
 	it('rejects reversed Date & time ranges but permits a zero-duration milestone', async () => {
 		const h = harness();
 		h.writer.replaceProperties({
