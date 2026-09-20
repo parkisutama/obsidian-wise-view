@@ -18,7 +18,7 @@ function formatFloating(date: Date): string {
 }
 
 /**
- * Normalizes a Date & time property to the local, floating minute precision Gantt Beta stores.
+ * Normalizes a Date & time property to the local, floating minute precision Gantt stores.
  * Zoned inputs name an instant and are converted to local wall-clock parts. Unzoned inputs are
  * already floating, so validating them through UTC avoids rejecting a wall time in a DST gap.
  */

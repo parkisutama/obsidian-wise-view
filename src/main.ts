@@ -21,12 +21,6 @@ import {
 } from './views/BasesCalendarView';
 
 import {
-  BASES_GANTT_VIEW_ID,
-  BasesGanttView,
-  createGanttViewRegistration,
-} from './views/BasesGanttView';
-
-import {
   BASES_TIMELINE_VIEW_ID,
   createTimelineViewRegistration,
 } from './views/timeline';
@@ -40,54 +34,6 @@ import {
 // cards) even after direct fixes, so the maintainer stopped guessing and removed it rather than
 // ship or keep patching it blind. See docs/architecture/upstream-provenance.md's Dynamic Views
 // entry for the history if this is revisited.
-
-/** Command-palette commands scoped to the currently active Gantt view, if any. */
-function buildGanttCommands() {
-  const activeGantt = (): BasesGanttView | null => {
-    for (const inst of BasesGanttView.instances) {
-      if (inst.isInActiveLeaf()) return inst;
-    }
-    return null;
-  };
-
-  const viewModeCommand = (id: string, name: string, mode: string) => ({
-    id,
-    name,
-    checkCallback: (checking: boolean) => {
-      const view = activeGantt();
-      if (!view) return false;
-      if (!checking) view.setViewMode(mode);
-      return true;
-    },
-  });
-
-  return [
-    {
-      id: 'gantt-scroll-today',
-      name: 'Gantt: scroll to today',
-      checkCallback: (checking: boolean) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.scrollToToday();
-        return true;
-      },
-    },
-    {
-      id: 'gantt-create-note',
-      name: 'Gantt: create note at today',
-      checkCallback: (checking: boolean) => {
-        const view = activeGantt();
-        if (!view) return false;
-        if (!checking) view.createNoteAtToday();
-        return true;
-      },
-    },
-    viewModeCommand('gantt-view-day', 'Gantt: day view', 'Day'),
-    viewModeCommand('gantt-view-week', 'Gantt: week view', 'Week'),
-    viewModeCommand('gantt-view-month', 'Gantt: month view', 'Month'),
-    viewModeCommand('gantt-view-year', 'Gantt: year view', 'Year'),
-  ];
-}
 
 export default class WiseViewPlugin extends Plugin {
   settings!: WiseViewSettings;
@@ -111,7 +57,6 @@ export default class WiseViewPlugin extends Plugin {
   private buildViewDescriptors(): ViewDescriptor[] {
     const swimlane = createSwimlaneViewRegistration(this);
     const calendar = createCalendarViewRegistration(this);
-    const gantt = createGanttViewRegistration(this);
     const timeline = createTimelineViewRegistration(this);
     const ganttBeta = createGanttBetaViewRegistration(this,
       () => this.viewRegistry.mutationsFor(BASES_GANTT_BETA_VIEW_ID, this.app));
@@ -136,16 +81,6 @@ export default class WiseViewPlugin extends Plugin {
         capabilities: { legacyMutation: true },
       },
       {
-        id: BASES_GANTT_VIEW_ID,
-        name: gantt.name,
-        icon: gantt.icon,
-        factory: gantt.factory,
-        options: gantt.options,
-        hover: { display: 'Gantt', defaultMod: true },
-        commands: buildGanttCommands(),
-        capabilities: { legacyMutation: true },
-      },
-      {
         id: BASES_TIMELINE_VIEW_ID,
         name: timeline.name,
         icon: timeline.icon,
@@ -160,7 +95,7 @@ export default class WiseViewPlugin extends Plugin {
         icon: ganttBeta.icon,
         factory: ganttBeta.factory,
         options: ganttBeta.options,
-        hover: { display: 'Gantt Beta', defaultMod: true },
+        hover: { display: 'Gantt', defaultMod: true },
         capabilities: { mutations: ['date', 'property', 'dependency', 'fileCreate'] },
       },
     ];
@@ -195,17 +130,17 @@ export default class WiseViewPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const loadedData = await this.loadData() as (Partial<WiseViewSettings> & { kanbanDefaults?: unknown }) | null;
+    const loadedData = await this.loadData() as (Partial<WiseViewSettings> & { kanbanDefaults?: unknown; ganttDefaults?: unknown }) | null;
     // Versions before the Swimlane rename saved every Kanban default, including a forced
-    // "note.status" column property. Drop that key instead of migrating it.
-    const { kanbanDefaults: _legacyKanbanDefaults, ...data } = loadedData ?? {};
+    // "note.status" column property. Drop that key instead of migrating it. The Frappe Gantt view's
+    // "ganttDefaults" are dropped the same way: nothing reads them any more.
+    const { kanbanDefaults: _legacyKanbanDefaults, ganttDefaults: _legacyGanttDefaults, ...data } = loadedData ?? {};
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...data,
       // Deep-merge nested objects so missing sub-keys still get defaults
       calendarDefaults: { ...DEFAULT_SETTINGS.calendarDefaults, ...(data.calendarDefaults ?? {}) },
       swimlaneDefaults: { ...DEFAULT_SETTINGS.swimlaneDefaults, ...(data.swimlaneDefaults ?? {}) },
-      ganttDefaults: { ...DEFAULT_SETTINGS.ganttDefaults, ...(data.ganttDefaults ?? {}) },
       valueStyles: { ...DEFAULT_SETTINGS.valueStyles, ...(data.valueStyles ?? {}) },
     };
   }

@@ -32,7 +32,7 @@ function chartTime(value: string): number {
 
 const EMPTY: DependencyStatus = { blocks: [], dependsOn: [], incomplete: [], conflicts: [] };
 
-/** Finish-to-start only, matching what Gantt Beta stores. Unknown or self predecessors are ignored. */
+/** Finish-to-start only, matching what Gantt stores. Unknown or self predecessors are ignored. */
 export function computeDependencyStatus(
 	tasks: readonly Task[],
 	options: DependencyStatusOptions,

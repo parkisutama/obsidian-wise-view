@@ -9,7 +9,6 @@ import {
 	validateViewDescriptor,
 } from "../src/viewRegistry";
 import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/views/BasesCalendarView";
-import { BASES_GANTT_VIEW_ID, createGanttViewRegistration } from "../src/views/BasesGanttView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { BASES_TIMELINE_VIEW_ID, createTimelineViewRegistration, getTimelineViewOptions } from "../src/views/timeline";
 import { BASES_GANTT_BETA_VIEW_ID, createGanttBetaViewRegistration } from "../src/views/gantt-beta";
@@ -68,7 +67,6 @@ describe("ViewRegistry", () => {
 	it("expresses all views without view-specific registry branching", () => {
 		const registry = new ViewRegistry();
 		const calendar = createCalendarViewRegistration(plugin);
-		const gantt = createGanttViewRegistration(plugin);
 		const swimlane = createSwimlaneViewRegistration(plugin);
 		const timeline = createTimelineViewRegistration(plugin);
 		const ganttBeta = createGanttBetaViewRegistration(plugin);
@@ -78,7 +76,7 @@ describe("ViewRegistry", () => {
 			name: ganttBeta.name,
 			icon: ganttBeta.icon,
 			factory: ganttBeta.factory,
-			hover: { display: "Gantt Beta", defaultMod: true },
+			hover: { display: "Gantt", defaultMod: true },
 			capabilities: { mutations: ["date", "property", "dependency", "fileCreate"] },
 		});
 		registry.register({
@@ -100,15 +98,6 @@ describe("ViewRegistry", () => {
 			capabilities: { legacyMutation: true },
 		});
 		registry.register({
-			id: BASES_GANTT_VIEW_ID,
-			name: gantt.name,
-			icon: gantt.icon,
-			factory: gantt.factory,
-			options: gantt.options,
-			hover: { display: "Gantt", defaultMod: true },
-			capabilities: { legacyMutation: true },
-		});
-		registry.register({
 			id: BASES_SWIMLANE_VIEW_ID,
 			name: swimlane.name,
 			icon: swimlane.icon,
@@ -122,7 +111,6 @@ describe("ViewRegistry", () => {
 			BASES_GANTT_BETA_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
-			BASES_GANTT_VIEW_ID,
 			BASES_SWIMLANE_VIEW_ID,
 		]);
 		for (const descriptor of registry.list()) {
@@ -153,7 +141,7 @@ describe("ViewRegistry", () => {
 });
 
 describe("WiseViewPlugin.onload view registration", () => {
-	it("registers each Bases view, hover source, and Gantt command exactly once", async () => {
+	it("registers each Bases view and hover source exactly once, and no command", async () => {
 		const app = { plugins: { plugins: {} } };
 		const realPlugin = new WiseViewPlugin(app as never, {} as never);
 		const registeredViews: string[] = [];
@@ -179,7 +167,6 @@ describe("WiseViewPlugin.onload view registration", () => {
 		expect(registeredViews).toEqual([
 			BASES_SWIMLANE_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
-			BASES_GANTT_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
 			BASES_GANTT_BETA_VIEW_ID,
 		]);
@@ -187,18 +174,10 @@ describe("WiseViewPlugin.onload view registration", () => {
 		expect(registeredHovers).toEqual([
 			BASES_SWIMLANE_VIEW_ID,
 			BASES_CALENDAR_VIEW_ID,
-			BASES_GANTT_VIEW_ID,
 			BASES_TIMELINE_VIEW_ID,
 			BASES_GANTT_BETA_VIEW_ID,
 		]);
-		expect(registeredCommands).toEqual([
-			"gantt-scroll-today",
-			"gantt-create-note",
-			"gantt-view-day",
-			"gantt-view-week",
-			"gantt-view-month",
-			"gantt-view-year",
-		]);
+		expect(registeredCommands).toEqual([]);
 	});
 });
 
@@ -223,7 +202,7 @@ describe("scoped mutation grants (GBETA-003)", () => {
 	it("gives an approved descriptor exactly the capabilities it declared", () => {
 		const registry = new ViewRegistry();
 		registry.register({
-			...describedView("wise-view-gantt-beta", "Gantt Beta", "gantt"),
+			...describedView("wise-view-gantt-beta", "Gantt", "gantt"),
 			capabilities: { mutations: ["date", "fileCreate"] },
 		});
 
@@ -241,7 +220,7 @@ describe("scoped mutation grants (GBETA-003)", () => {
 
 	it("rejects a descriptor that declares both legacy and scoped mutations", () => {
 		const descriptor = {
-			...describedView("wise-view-gantt-beta", "Gantt Beta", "gantt"),
+			...describedView("wise-view-gantt-beta", "Gantt", "gantt"),
 			capabilities: { legacyMutation: true, mutations: ["date"] as const },
 		};
 

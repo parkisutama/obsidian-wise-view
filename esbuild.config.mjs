@@ -81,7 +81,6 @@ const FIRST_PARTY_CSS = [
 	"src/styles/components/settings.css",
 	"src/styles/views/swimlane.css",
 	"src/styles/views/calendar.css",
-	"src/styles/views/gantt.css",
 	"src/styles/views/timeline.css",
 	"src/styles/views/gantt-beta.css",
 ].map((p) => path.resolve(p));

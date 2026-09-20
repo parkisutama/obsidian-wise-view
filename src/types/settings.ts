@@ -46,30 +46,6 @@ export interface SwimlaneDefaults {
   showPropertyLabels: boolean;
 }
 
-/** Default field mappings for the Gantt view */
-export interface GanttDefaults {
-  /** Frontmatter property used as bar start date. */
-  dateStartField: string;
-  /** Frontmatter property used as bar end date. */
-  dateEndField: string;
-  /** Frontmatter property for task dependencies (wiki-links). */
-  dependenciesField: string;
-  /** Property whose values determine bar color. */
-  colorBy: string;
-  /** Numeric property for completion percentage (0–100). */
-  progressField: string;
-  /** Show the progress bar overlay on tasks. */
-  showProgress: boolean;
-  /** Default zoom level: Quarter day | Half day | Day | Week | Month | Year. */
-  viewMode: string;
-  /** Bar height in pixels (16–60). */
-  barHeight: number;
-  /** Show Obsidian hover-preview on bar click instead of opening the note. */
-  showObsidianPreview: boolean;
-  /** Show the internal Frappe Gantt popup on hover/click. */
-  showInternalPopup: boolean;
-}
-
 /** Shared note template settings used by views that create notes. */
 export interface NoteTemplateDefaults {
   /** Template note path. Blank means create with Bases defaults only. */
@@ -89,7 +65,6 @@ export interface WiseViewSettings {
   // Per-view field defaults (used as fallback when not set in the .base file)
   calendarDefaults: CalendarDefaults;
   swimlaneDefaults: SwimlaneDefaults;
-  ganttDefaults: GanttDefaults;
 
   /**
    * Per-value style map: { fieldName: { value: { color? } } }
@@ -130,19 +105,6 @@ export const DEFAULT_SETTINGS: WiseViewSettings = {
     hideEmptyColumns: false,
     freezeHeaders: 'none',
     showPropertyLabels: true,
-  },
-
-  ganttDefaults: {
-    dateStartField: '',
-    dateEndField: '',
-    dependenciesField: '',
-    colorBy: '',
-    progressField: '',
-    showProgress: false,
-    viewMode: 'Day',
-    barHeight: 30,
-    showObsidianPreview: false,
-    showInternalPopup: true,
   },
 
   valueStyles: {

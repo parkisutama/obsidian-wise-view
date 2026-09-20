@@ -14,7 +14,7 @@ export function createGanttBetaViewRegistration(
 	mutationsFor: () => GrantedMutations = () => ({}),
 ): BasesViewRegistration {
 	return {
-		name: 'Gantt Beta',
+		name: 'Gantt',
 		icon: 'gantt-chart-square',
 		factory: (controller: QueryController, containerEl: HTMLElement) =>
 			new BasesGanttBetaView(controller, containerEl, plugin, undefined, mutationsFor()),

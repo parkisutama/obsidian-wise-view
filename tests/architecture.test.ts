@@ -32,7 +32,6 @@ const FORBIDDEN_MUTATION_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
  */
 const ALLOWED_MUTATION_PATHS = [
 	"src/views/BasesCalendarView.ts",
-	"src/views/BasesGanttView.ts",
 	"src/views/BasesSwimlaneView.ts",
 	"src/platform/mutations/",
 ];

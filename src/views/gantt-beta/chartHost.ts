@@ -21,7 +21,7 @@ function bodyTheme(body: HTMLElement): GanttBetaTheme {
 	return body.classList.contains('theme-dark') ? 'dark' : 'light';
 }
 
-/** Owns the Preact tree and the owning-window theme observer for one Gantt Beta view. */
+/** Owns the Preact tree and the owning-window theme observer for one Gantt view. */
 export class GanttBetaChartHost {
 	private theme: GanttBetaTheme;
 	private readonly observer: MutationObserver;

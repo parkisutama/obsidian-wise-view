@@ -7,16 +7,18 @@ Specification: [../../docs/specs/gantt-frappe-removal.md](../../docs/specs/gantt
 
 ### GFR-001: Rename the new view to "Gantt" and unregister the Frappe view
 
+**Status:** Complete 2026-09-20. The new view is registered as Gantt (ID unchanged); the Frappe registration, hover source, commands, settings, and saved ganttDefaults are gone. The Gantt settings tab keeps only the colour note, which still applies.
+
 **Description:** Change the display name, hover source, and user-facing strings from "Gantt Beta" to
 "Gantt". Remove the Frappe registration, hover source, commands, settings (`GanttDefaults`, defaults,
 settings tab section, load-time merge), and the `legacyMutation` grant for it.
 
 **Acceptance criteria:**
 
-- [ ] The plugin registers exactly one Gantt view, named "Gantt", with ID `wise-view-gantt-beta`.
-- [ ] No Frappe command, setting, or hover source remains in `src/main.ts` or the settings tab.
-- [ ] Saved `ganttDefaults` data loads without error and is not written back.
-- [ ] Registry and architecture tests updated and passing.
+- [x] The plugin registers exactly one Gantt view, named "Gantt", with ID `wise-view-gantt-beta`.
+- [x] No Frappe command, setting, or hover source remains in `src/main.ts` or the settings tab.
+- [x] Saved `ganttDefaults` data loads without error and is not written back.
+- [x] Registry and architecture tests updated and passing.
 
 **Verification:** `pnpm run check`
 
@@ -31,15 +33,17 @@ settings tab section, load-time merge), and the `legacyMutation` grant for it.
 
 ### GFR-002: Delete the Frappe view, utilities, styles, and tests
 
+**Status:** Complete 2026-09-20. BasesGanttView.ts, ganttUtils.ts, frappe-gantt.d.ts, gantt.css, gantt-view.test.ts, and fixtures/gantt.ts are deleted; nothing else imported them (typecheck and the full suite pass). gantt-view.test.ts carried uncommitted characterization tests from the frozen GAN-001 work; they went with the view.
+
 **Description:** Remove every file in the spec's section 3.1 that is code, styles, or tests, after a
 reference search for each symbol another file might still import.
 
 **Acceptance criteria:**
 
-- [ ] `BasesGanttView.ts`, `ganttUtils.ts`, `frappe-gantt.d.ts`, `gantt.css`, `gantt-view.test.ts`, and
+- [x] `BasesGanttView.ts`, `ganttUtils.ts`, `frappe-gantt.d.ts`, `gantt.css`, `gantt-view.test.ts`, and
   `fixtures/gantt.ts` are gone.
-- [ ] No file imports a deleted module; typecheck passes.
-- [ ] Any helper still needed by a live module is moved, not duplicated, with its test.
+- [x] No file imports a deleted module; typecheck passes.
+- [x] Any helper still needed by a live module is moved, not duplicated, with its test.
 
 **Verification:** `pnpm run check`
 

@@ -135,14 +135,14 @@ export class BasesGanttBetaView extends BasesView {
 		const freshCycles = mapped.cycles.filter(path => !this.reportedCycles.has(path));
 		if (freshCycles.length) {
 			freshCycles.forEach(path => this.reportedCycles.add(path));
-			new Notice(`Gantt Beta ignored cyclic parent links: ${freshCycles.join(', ')}`);
+			new Notice(`Gantt ignored cyclic parent links: ${freshCycles.join(', ')}`);
 		}
 		const freshUnresolved = mapped.unresolved.filter(link => !this.reportedUnresolved.has(`${link.path}::${link.target}`));
 		if (freshUnresolved.length) {
 			for (const link of freshUnresolved) this.reportedUnresolved.add(`${link.path}::${link.target}`);
 			const shown = freshUnresolved.slice(0, 5).map(link => `[[${link.target}]] in ${link.path}`).join('; ');
 			const more = freshUnresolved.length > 5 ? ` (and ${freshUnresolved.length - 5} more)` : '';
-			new Notice(`Gantt Beta could not find ${freshUnresolved.length} dependency link${freshUnresolved.length === 1 ? '' : 's'}: ${shown}${more}`);
+			new Notice(`Gantt could not find ${freshUnresolved.length} dependency link${freshUnresolved.length === 1 ? '' : 's'}: ${shown}${more}`);
 		}
 		const mutationProperties = this.mutationProperties(groups, options);
 		this.currentStartType = mutationProperties.start?.type ?? 'date';

@@ -85,7 +85,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 	it('registers the permanent id and display name', () => {
 		const registration = createGanttBetaViewRegistration({} as never);
 		expect(BASES_GANTT_BETA_VIEW_ID).toBe('wise-view-gantt-beta');
-		expect(registration.name).toBe('Gantt Beta');
+		expect(registration.name).toBe('Gantt');
 		expect(registration.factory).toBeTypeOf('function');
 	});
 

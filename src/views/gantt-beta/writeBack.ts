@@ -185,7 +185,7 @@ export class GanttBetaWriteBack {
 			this.pendingDependencyChange = true;
 			return true;
 		}
-		this.options.notice('Gantt Beta currently supports finish-to-start dependencies only.');
+		this.options.notice('Gantt currently supports finish-to-start dependencies only.');
 		return false;
 	}
 
