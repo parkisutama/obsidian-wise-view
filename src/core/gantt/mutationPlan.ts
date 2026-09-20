@@ -6,6 +6,7 @@ import { appendGanttDependency, removeGanttDependency, toGanttWikiLink, type Dep
 import { writeGanttDate, type GanttPropertyDateType } from './dates';
 import type { GanttTaskDiff } from './diff';
 import { SYNTHETIC_PHASE_PREFIX } from './phases';
+import { compareSequence } from './sequence';
 
 export interface GanttMutationPlanItem { path: string; values: Record<string, unknown> }
 export interface GanttMutationPlanOptions {
@@ -32,7 +33,7 @@ function dependencyTargets(values: readonly TaskDependency[] | undefined): Set<s
 }
 
 function sequenceCompare(left: GanttTaskDiff, right: GanttTaskDiff): number {
-	return left.after.sequence.localeCompare(right.after.sequence, undefined, { numeric: true });
+	return compareSequence(left.after.sequence, right.after.sequence);
 }
 
 /** Translates pure chart diffs into changed frontmatter fields, without performing any I/O. */

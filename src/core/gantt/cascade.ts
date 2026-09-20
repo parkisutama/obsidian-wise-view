@@ -39,7 +39,9 @@ export function applyGanttDependencyPolicy(
 
 	const successors = new Map<string, string[]>();
 	for (const task of afterTasks) for (const predecessor of fsPredecessors(task)) {
-		successors.set(predecessor, [...(successors.get(predecessor) ?? []), task.id]);
+		const list = successors.get(predecessor);
+		if (list) list.push(task.id);
+		else successors.set(predecessor, [task.id]);
 	}
 	const reachable = new Set(direct);
 	const discover = [...direct];

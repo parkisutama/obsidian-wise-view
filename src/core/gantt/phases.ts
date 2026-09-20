@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Parkis Utama
 
-import { buildDepthFirstSequence } from './sequence';
+import { buildDepthFirstSequence, compareSequence } from './sequence';
 
 export const SYNTHETIC_PHASE_PREFIX = 'wise-view-synthetic://';
 
@@ -84,7 +84,7 @@ export function buildPhaseTree(inputs: readonly PhaseInput[], useOrder = false):
 	return {
 		nodes: nodes
 			.map(node => ({ ...node, sequence: sequenceById.get(node.id)! }))
-			.sort((left, right) => left.sequence.localeCompare(right.sequence, undefined, { numeric: true })),
+			.sort((left, right) => compareSequence(left.sequence, right.sequence)),
 		cycles: [...cycles].sort(),
 	};
 }

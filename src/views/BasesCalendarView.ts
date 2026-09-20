@@ -6,14 +6,10 @@
 import {
   BasesView,
   BasesViewRegistration,
-  BasesAllOptions,
-  BasesViewConfig,
   BasesEntry,
   BasesPropertyId,
   QueryController,
   setIcon,
-  App,
-  TFile,
   Notice,
 } from 'obsidian';
 import {
@@ -32,78 +28,6 @@ import 'fullcalendar/themes/classic/palette.css';
 import { ViewRuntime } from '../platform/dom/ViewRuntime';
 
 /**
- * Type interfaces for Obsidian's undocumented internal plugins API
- */
-interface DailyNotesPluginOptions {
-  format?: string;
-  folder?: string;
-  template?: string;
-}
-
-interface DailyNotesPluginInstance {
-  options?: DailyNotesPluginOptions;
-}
-
-interface InternalPlugin {
-  enabled?: boolean;
-  instance?: DailyNotesPluginInstance;
-}
-
-interface InternalPluginsManager {
-  getPluginById?(id: string): InternalPlugin | undefined;
-}
-
-interface AppWithInternals extends App {
-  internalPlugins?: InternalPluginsManager;
-}
-
-/**
- * Minimal interface for a note that exists in an obsidian-journal journal
- */
-interface JournalExistingNote {
-  path: string;
-  date: string;
-  journal: string;
-}
-
-/**
- * Minimal interface for a journal metadata entry (note may or may not exist)
- */
-interface JournalNoteMetadata {
-  date: string;
-  journal: string;
-}
-
-/**
- * Minimal interface for a single journal from the obsidian-journal plugin
- */
-interface ObsidianJournalItem {
-  type: string; // 'day' | 'week' | 'month' | ...
-  name: string;
-  get(date: string): (JournalExistingNote | JournalNoteMetadata) | null;
-  open(metadata: JournalExistingNote | JournalNoteMetadata, openMode?: string): Promise<void>;
-}
-
-/**
- * Minimal interface for the obsidian-journal community plugin public API
- */
-interface ObsidianJournalPluginApi {
-  journals: ObsidianJournalItem[];
-  getJournal(name: string): ObsidianJournalItem | undefined;
-}
-
-/**
- * Community plugin manager exposed on App (unofficial, undocumented)
- */
-interface CommunityPluginsManager {
-  getPlugin(id: string): unknown;
-}
-
-interface AppWithPlugins extends App {
-  plugins?: CommunityPluginsManager;
-}
-
-/**
  * Type interface for BasesView grouped data entries
  */
 interface BasesGroupedData {
@@ -112,11 +36,6 @@ interface BasesGroupedData {
   hasKey(): boolean;
 }
 
-/**
- * Generic frontmatter type for date field write-back
- * Field names are dynamic based on user-configured dateStartField / dateEndField
- */
-type EditableFrontmatter = Record<string, unknown>;
 import dayGridPlugin from 'fullcalendar/daygrid';
 import timeGridPlugin from 'fullcalendar/timegrid';
 import listPlugin from 'fullcalendar/list';
@@ -125,13 +44,13 @@ import multiMonthPlugin from 'fullcalendar/multimonth';
 import type WiseViewPlugin from '../main';
 import { openFileInNewTab, showOpenFileMenuWithItems } from '../utils/openFile';
 import type { NoteTemplateDefaults, WeekDay } from '../types/settings';
-import { PropertyTypeService } from '../services/PropertyTypeService';
-import { isOngoing } from '../utils/dateUtils';
-import { NoteTemplateService } from '../services/NoteTemplateService';
-import { resolveColor, type ResolvedColor } from '../platform/colors/ColorResolver';
 import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAdapter';
 import { triggerHoverPreview as dispatchHoverPreview } from '../platform/navigation/NavigationService';
 import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
+import { entryToEvent, toISOString, toLocalISOString } from './calendar/eventMapping';
+import { getJournalNotePathForDate, openJournalOrDailyNote } from './calendar/dailyNote';
+import { createCalendarOptions } from './calendar/options';
+import { createCalendarEventNote } from './calendar/eventNote';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
 
@@ -386,7 +305,7 @@ export class BasesCalendarView extends BasesView {
       eventResizableFromStart: true,
       navLinks: true, // Day numbers and day headers are links
       // Clicking a day number, day header, or list day header opens the journal/daily note
-      navLinkDayClick: (date) => { void this.openJournalOrDailyNote(date); },
+      navLinkDayClick: (date) => { void openJournalOrDailyNote(this.app, date); },
       events: events,
       eventClick: (info) => { void this.handleEventClick(info); },
       eventDidMount: (info) => {
@@ -407,7 +326,7 @@ export class BasesCalendarView extends BasesView {
       select: (info) => this.handleDateSelect(info),
       dayCellDidMount: (arg) => {
         // Compute journal path once at mount time (reused for dot indicator and hover preview)
-        const journalPath = this.getJournalNotePathForDate(arg.date);
+        const journalPath = getJournalNotePathForDate(this.app, arg.date);
         if (!journalPath) return;
         const dayNumberEl = arg.el.querySelector<HTMLElement>('.planner-fc-day-number');
         if (!dayNumberEl) return;
@@ -420,7 +339,7 @@ export class BasesCalendarView extends BasesView {
       dayHeaderDidMount: (arg) => {
         // Only dated headers (day/week views) are links; month view headers are weekday names.
         if (!arg.hasNavLink) return;
-        const journalPath = this.getJournalNotePathForDate(arg.date);
+        const journalPath = getJournalNotePathForDate(this.app, arg.date);
         const textEl = arg.el.querySelector<HTMLElement>('.planner-fc-day-header');
         if (!journalPath || !textEl) return;
         textEl.addEventListener('mouseenter', (e) => {
@@ -428,7 +347,7 @@ export class BasesCalendarView extends BasesView {
         });
       },
       listDayHeaderDidMount: (arg) => {
-        const journalPath = this.getJournalNotePathForDate(arg.date);
+        const journalPath = getJournalNotePathForDate(this.app, arg.date);
         if (!journalPath) return;
         arg.el.querySelectorAll<HTMLElement>('.planner-fc-list-day-text').forEach((textEl) => {
           textEl.addEventListener('mouseenter', (e) => {
@@ -519,7 +438,17 @@ export class BasesCalendarView extends BasesView {
 
     for (const group of groupedData) {
       for (const entry of group.entries) {
-        const event = this.entryToEvent(entry, colorByProp);
+        const event = entryToEvent(entry, {
+          dateStartField: this.getDateStartField(),
+          dateEndField: this.getDateEndField(),
+          titleField: this.getTitleField(),
+          allDayField: this.getAllDayField(),
+          colorByProp,
+          valueStyleColor: (property, value) =>
+            this.plugin.settings.valueStyles[property]?.[value]?.color ?? null,
+          resolvePrettyPropertiesColor: (property, value) =>
+            resolvePrettyPropertiesColor(this.runtime.win, this.runtime.doc, property, value),
+        });
         if (event) {
           events.push(event);
         }
@@ -527,154 +456,6 @@ export class BasesCalendarView extends BasesView {
     }
 
     return events;
-  }
-
-  private entryToEvent(entry: BasesEntry, colorByProp: string): EventInput | null {
-    // Get date fields using configured field names
-    const dateStartField = this.getDateStartField();
-    const dateEndField = this.getDateEndField();
-    const titleField = this.getTitleField();
-
-    const dateStart = entry.getValue(dateStartField as BasesPropertyId);
-    const dateEnd = entry.getValue(dateEndField as BasesPropertyId);
-    const allDayField = this.getAllDayField();
-    const allDayValue = allDayField ? entry.getValue(allDayField as BasesPropertyId) : null;
-
-    // Must have a start date
-    if (!dateStart) return null;
-
-    // Get title using configured field, with fallbacks
-    let title: string;
-    if (!titleField || titleField === 'file.basename') {
-      title = entry.file.basename;
-    } else {
-      const titleValue = entry.getValue(titleField as BasesPropertyId);
-      title = titleValue ? String(titleValue) : entry.file.basename || 'Untitled';
-    }
-
-    // Get color
-    const resolvedColor = this.resolveEntryColor(entry, colorByProp);
-
-    // Convert dates to ISO strings (handles both Date objects and strings)
-    const startStr = this.toISOString(dateStart);
-    const endStr = dateEnd ? this.toISOString(dateEnd) : undefined;
-
-    // Determine if all-day event:
-    // - Explicitly set to true in frontmatter
-    // - OR start date has no time component
-    const isAllDay = this.isAllDayValue(allDayValue) || !this.hasTime(startStr);
-
-    return {
-      id: entry.file.path,
-      title: String(title),
-      start: startStr,
-      end: endStr,
-      allDay: isAllDay,
-      color: resolvedColor.background,
-      contrastColor: resolvedColor.foreground,
-      // Path only — never a live BasesEntry, which Obsidian recreates on the next update
-      // (spec §7.5). Anything needing entry data resolves it fresh, by path, at interaction time.
-      extendedProps: {
-        path: entry.file.path,
-      },
-    };
-  }
-
-  /** Resolves an event's color through the shared ColorResolver (spec §7.8), consolidating what
-   * used to be three private methods (direct-color/folder/Pretty-Properties/valueStyles/hash). */
-  private resolveEntryColor(entry: BasesEntry, colorByProp: string): ResolvedColor {
-    if (colorByProp === 'none' || !colorByProp) return resolveColor({});
-
-    const propName = colorByProp.split('.')[1] || colorByProp;
-
-    if (propName === 'color') {
-      const colorValue = entry.getValue(colorByProp as BasesPropertyId);
-      return resolveColor({ explicitColor: colorValue ? String(colorValue) : null });
-    }
-
-    if (propName === 'folder') {
-      const folderPath = entry.file.parent?.path || '/';
-      const folderName = folderPath === '/' ? 'Root' : entry.file.parent?.name || 'Root';
-      return resolveColor({
-        categoryValue: folderName,
-        valueStyleColor: this.plugin.settings.valueStyles[colorByProp]?.[folderName]?.color ?? null,
-      });
-    }
-
-    const value = entry.getValue(colorByProp as BasesPropertyId);
-    const valueStr = value == null ? null : Array.isArray(value)
-      ? (value[0] != null ? String(value[0]) : null)
-      : String(value);
-
-    return resolveColor({
-      categoryValue: valueStr,
-      resolvePrettyPropertiesColor: (v) => resolvePrettyPropertiesColor(this.runtime.win, this.runtime.doc, propName, v),
-      valueStyleColor: valueStr ? this.plugin.settings.valueStyles[colorByProp]?.[valueStr]?.color ?? null : null,
-    });
-  }
-
-  private hasTime(dateStr: string): boolean {
-    // Check if date string contains a non-midnight time
-    if (!dateStr.includes('T')) return false;
-
-    // Extract time portion and check if it's not midnight
-    const timePart = dateStr.split('T')[1];
-    if (!timePart) return false;
-
-    // Check for midnight patterns: 00:00:00, 00:00:00.000, 00:00:00.000Z, etc.
-    const timeWithoutTz = timePart.replace(/[Z+-].*$/, ''); // Remove timezone
-    return !timeWithoutTz.startsWith('00:00:00');
-  }
-
-  private toISOString(value: unknown): string {
-    // Handle "ongoing" keyword - resolve to current time
-    if (isOngoing(value)) {
-      return new Date().toISOString();
-    }
-    // Handle Date objects
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-    // Handle strings that might be dates
-    if (typeof value === 'string') {
-      return value;
-    }
-    // Handle numbers (timestamps)
-    if (typeof value === 'number') {
-      return new Date(value).toISOString();
-    }
-    // Fallback
-    return String(value);
-  }
-
-  private isAllDayValue(value: unknown): boolean {
-    // Handle explicit boolean true
-    if (value === true) return true;
-    // Handle string "true"
-    if (typeof value === 'string' && value.toLowerCase() === 'true') return true;
-    // Everything else (false, "false", null, undefined) is not all-day
-    return false;
-  }
-
-  /**
-   * Format a Date object as an ISO string with local timezone offset
-   * e.g., "2026-01-06T10:30:00-05:00" instead of "2026-01-06T15:30:00.000Z"
-   */
-  private toLocalISOString(date: Date): string {
-    const tzOffset = date.getTimezoneOffset();
-    const offsetHours = Math.abs(Math.floor(tzOffset / 60));
-    const offsetMinutes = Math.abs(tzOffset % 60);
-    const offsetSign = tzOffset <= 0 ? '+' : '-';
-    const offsetStr = `${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetStr}`;
   }
 
   private getWeekStartDay(): number {
@@ -730,9 +511,9 @@ export class BasesCalendarView extends BasesView {
     const result = await this.mutations.updateRange(
       path,
       this.getDateStartField(),
-      this.toLocalISOString(newStart),
+      toLocalISOString(newStart),
       this.getDateEndField(),
-      newEnd ? this.toLocalISOString(newEnd) : null,
+      newEnd ? toLocalISOString(newEnd) : null,
     );
     if (!result.ok) revert();
   }
@@ -805,91 +586,6 @@ export class BasesCalendarView extends BasesView {
   }
 
   /**
-   * Get the obsidian-journal community plugin API (if installed and enabled)
-   */
-  private getObsidianJournalPlugin(): ObsidianJournalPluginApi | null {
-    const appWithPlugins = this.app as AppWithPlugins;
-    const pluginManager = appWithPlugins.plugins;
-    if (!pluginManager) return null;
-    const plugin = pluginManager.getPlugin('journals');
-    if (!plugin) return null;
-    return plugin as ObsidianJournalPluginApi;
-  }
-
-  /**
-   * Find the file path of an existing journal/daily note for a given date.
-   * Returns null if no note exists for that date.
-   * Checks the obsidian-journal plugin first, then core Daily Notes as fallback.
-   */
-  private getJournalNotePathForDate(date: Date): string | null {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-
-    // Check obsidian-journal plugin (day-type journals)
-    const journalPlugin = this.getObsidianJournalPlugin();
-    if (journalPlugin) {
-      for (const journal of journalPlugin.journals) {
-        if (journal.type === 'day') {
-          const noteData = journal.get(dateStr);
-          if (noteData && 'path' in noteData && noteData.path) {
-            return noteData.path;
-          }
-        }
-      }
-    }
-
-    // Fallback: check core daily notes plugin path
-    const appWithInternals = this.app as AppWithInternals;
-    const dailyNotesPlugin = appWithInternals.internalPlugins?.getPluginById?.('daily-notes');
-    if (dailyNotesPlugin?.enabled && dailyNotesPlugin.instance?.options) {
-      const options = dailyNotesPlugin.instance.options;
-      const format = options.format ?? 'YYYY-MM-DD';
-      const folder = options.folder ?? '';
-      const filename = this.formatDate(date, format);
-      const path = folder ? `${folder}/${filename}.md` : `${filename}.md`;
-      if (this.app.vault.getAbstractFileByPath(path)) return path;
-    }
-
-    // Final fallback: YYYY-MM-DD.md at vault root
-    const fallbackPath = `${dateStr}.md`;
-    if (this.app.vault.getAbstractFileByPath(fallbackPath)) return fallbackPath;
-
-    return null;
-  }
-
-  /**
-   * Open (or create) the journal/daily note for a given date.
-   * Uses the obsidian-journal plugin when available, otherwise falls back to core daily notes.
-   */
-  private async openJournalOrDailyNote(date: Date): Promise<void> {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-
-    // Try obsidian-journal plugin's day journals
-    const journalPlugin = this.getObsidianJournalPlugin();
-    if (journalPlugin) {
-      const dayJournals = journalPlugin.journals.filter(j => j.type === 'day');
-      if (dayJournals.length > 0) {
-        const journal = dayJournals[0];
-        if (journal) {
-          const metadata = journal.get(dateStr);
-          if (metadata) {
-            await journal.open(metadata);
-            return;
-          }
-        }
-      }
-    }
-
-    // Fall back to core daily notes behaviour
-    await this.openDailyNote(date);
-  }
-
-  /**
    * Trigger Obsidian's Page Preview for a file path.
    * Obsidian's Page Preview plugin applies the modifier-key behavior configured
    * for this registered hover source.
@@ -903,123 +599,6 @@ export class BasesCalendarView extends BasesView {
       filePath,
       targetEl,
     });
-  }
-
-  private async openDailyNote(date: Date): Promise<void> {
-    // Format date as YYYY-MM-DD for daily note filename (fallback)
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-
-    // Try to use the daily-notes core plugin settings
-    const appWithInternals = this.app as AppWithInternals;
-    const dailyNotesPlugin = appWithInternals.internalPlugins?.getPluginById?.('daily-notes');
-
-    let path: string;
-    let templatePath: string | undefined;
-    let folder: string | undefined;
-
-    if (dailyNotesPlugin?.enabled && dailyNotesPlugin.instance?.options) {
-      const options = dailyNotesPlugin.instance.options;
-      const format = options.format ?? 'YYYY-MM-DD';
-      folder = options.folder ?? '';
-      templatePath = options.template;
-
-      // Format the date according to the daily notes format
-      const filename = this.formatDate(date, format);
-      path = folder ? `${folder}/${filename}.md` : `${filename}.md`;
-    } else {
-      // Fallback: just use YYYY-MM-DD format
-      path = `${dateStr}.md`;
-    }
-
-    // Check if the file already exists
-    const existingFile = this.app.vault.getAbstractFileByPath(path);
-
-    if (!existingFile) {
-      // File doesn't exist - create it with template if specified
-      let content = '';
-
-      if (templatePath) {
-        // Try to load the template
-        const templateFile = this.app.vault.getAbstractFileByPath(templatePath) ||
-          this.app.vault.getAbstractFileByPath(`${templatePath}.md`);
-        if (templateFile instanceof TFile) {
-          try {
-            content = await this.app.vault.read(templateFile);
-            // Process template variables
-            content = this.processTemplateVariables(content, date);
-          } catch {
-            // Template couldn't be read, use empty content
-            content = '';
-          }
-        }
-      }
-
-      // Ensure folder exists
-      if (folder) {
-        const folderExists = this.app.vault.getAbstractFileByPath(folder);
-        if (!folderExists) {
-          await this.app.vault.createFolder(folder);
-        }
-      }
-
-      // Create the daily note
-      await this.app.vault.create(path, content);
-    }
-
-    // Open the file in new tab
-    openFileInNewTab(this.app, path);
-  }
-
-  private processTemplateVariables(content: string, date: Date): string {
-    // Replace common template variables
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const months = ['January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'];
-
-    return content
-      // Date patterns
-      .replace(/\{\{date\}\}/g, `${year}-${month}-${day}`)
-      .replace(/\{\{date:([^}]+)\}\}/g, (_, format: string) => this.formatDate(date, format))
-      // Title patterns
-      .replace(/\{\{title\}\}/g, `${year}-${month}-${day}`)
-      // Time patterns
-      .replace(/\{\{time\}\}/g, date.toLocaleTimeString())
-      // Day/week patterns
-      .replace(/\{\{weekday\}\}/g, weekdays[date.getDay()] ?? '')
-      .replace(/\{\{month\}\}/g, months[date.getMonth()] ?? '');
-  }
-
-  private formatDate(date: Date, format: string): string {
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const weekdaysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'];
-    const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    // Replace format tokens (order matters - longer tokens first)
-    return format
-      .replace(/YYYY/g, String(year))
-      .replace(/YY/g, String(year).slice(-2))
-      .replace(/MMMM/g, months[month - 1] ?? '')
-      .replace(/MMM/g, monthsShort[month - 1] ?? '')
-      .replace(/MM/g, String(month).padStart(2, '0'))
-      .replace(/M/g, String(month))
-      .replace(/DDDD/g, weekdays[date.getDay()] ?? '')
-      .replace(/DDD/g, weekdaysShort[date.getDay()] ?? '')
-      .replace(/DD/g, String(day).padStart(2, '0'))
-      .replace(/D/g, String(day))
-      .replace(/dddd/g, weekdays[date.getDay()] ?? '')
-      .replace(/ddd/g, weekdaysShort[date.getDay()] ?? '');
   }
 
   private async createNewItem(selection: DateSelectInfo): Promise<void> {
@@ -1036,39 +615,15 @@ export class BasesCalendarView extends BasesView {
   }
 
   private async createNewItemFromDates(start: Date, end: Date | null, allDay: boolean): Promise<void> {
-    const dateStartField = this.getDateStartField();
-    const dateEndField = this.getDateEndField();
-    if (!dateStartField) {
-      new Notice('Configure a date start field before creating calendar events.');
-      return;
-    }
-    if (dateStartField.startsWith('formula.') || dateEndField.startsWith('formula.')) {
-      new Notice('Cannot create calendar events with formula date properties.');
-      return;
-    }
-
-    const startFieldName = this.toFrontmatterFieldName(dateStartField);
-    const endFieldName = this.toFrontmatterFieldName(dateEndField);
-    if (!startFieldName) {
-      new Notice('Configure a writable date start field before creating calendar events.');
-      return;
-    }
-
-    const frontmatter: EditableFrontmatter = {
-      [startFieldName]: this.formatDateForFrontmatter(start, allDay),
-    };
-    if (endFieldName && end) {
-      frontmatter[endFieldName] = this.formatDateForFrontmatter(end, allDay);
-    }
-
-    const title = this.getSelectionFileName(start);
-    await new NoteTemplateService(this.app, this.getTemplateDefaults()).createNote(this, {
-      title,
+    await createCalendarEventNote(
+      this.app,
+      this,
+      this.getTemplateDefaults(),
+      { dateStartField: this.getDateStartField(), dateEndField: this.getDateEndField() },
       start,
       end,
       allDay,
-      frontmatter,
-    });
+    );
   }
 
   private async createNewItemAt(start: Date): Promise<void> {
@@ -1083,36 +638,11 @@ export class BasesCalendarView extends BasesView {
 
   private getEventStartForNewItem(entry: BasesEntry): Date {
     const value = entry.getValue(this.getDateStartField() as BasesPropertyId);
-    const parsed = value ? new Date(this.toISOString(value)) : null;
+    const parsed = value ? new Date(toISOString(value)) : null;
     if (parsed && !isNaN(parsed.getTime())) return parsed;
     return this.calendar?.getDate() ?? new Date();
   }
 
-  private toFrontmatterFieldName(propertyId: string): string {
-    if (!propertyId || propertyId.startsWith('file.') || propertyId.startsWith('formula.')) return '';
-    return propertyId.replace(/^note\./, '');
-  }
-
-  private formatDateForFrontmatter(date: Date, allDay: boolean): string {
-    if (allDay) {
-      return this.formatLocalDate(date);
-    }
-    return this.toLocalISOString(date);
-  }
-
-  private formatLocalDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  private getSelectionFileName(start: Date): string {
-    const date = this.formatLocalDate(start);
-    const hours = String(start.getHours()).padStart(2, '0');
-    const minutes = String(start.getMinutes()).padStart(2, '0');
-    return `Event ${date} ${hours}.${minutes}`;
-  }
 }
 
 /**
@@ -1125,133 +655,6 @@ export function createCalendarViewRegistration(plugin: WiseViewPlugin): BasesVie
     factory: (controller: QueryController, containerEl: HTMLElement) => {
       return new BasesCalendarView(controller, containerEl, plugin);
     },
-    options: (_config: BasesViewConfig): BasesAllOptions[] => [
-      {
-        type: 'dropdown',
-        key: 'weekStartsOn',
-        displayName: 'Week starts on',
-        default: 'monday',
-        options: {
-          'monday': 'Monday',
-          'tuesday': 'Tuesday',
-          'wednesday': 'Wednesday',
-          'thursday': 'Thursday',
-          'friday': 'Friday',
-          'saturday': 'Saturday',
-          'sunday': 'Sunday',
-        },
-      },
-      {
-        type: 'slider',
-        key: 'fontSize',
-        displayName: 'Font size',
-        min: 6,
-        max: 18,
-        step: 1,
-        default: 10,
-      },
-      {
-        type: 'dropdown',
-        key: 'defaultView',
-        displayName: 'Default view',
-        default: 'dayGridMonth',
-        options: {
-          'multiMonthYear': 'Year',
-          'dayGridMonth': 'Month',
-          'timeGridWeek': 'Week',
-          'timeGridDay': 'Day',
-          'listWeek': 'List',
-        },
-      },
-      {
-        type: 'property',
-        key: 'colorBy',
-        displayName: 'Color by',
-        default: '',
-        placeholder: 'Select property',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isCategoricalProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'titleField',
-        displayName: 'Title field',
-        default: '',
-        placeholder: 'File name',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isTextProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'dateStartField',
-        displayName: 'Date start field',
-        default: '',
-        placeholder: 'Select property',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isDateProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'dateEndField',
-        displayName: 'Date end field',
-        default: '',
-        placeholder: 'Select property',
-        filter: (propId: BasesPropertyId) =>
-          PropertyTypeService.isDateProperty(propId, plugin.app),
-      },
-      {
-        type: 'property',
-        key: 'allDayField',
-        displayName: 'All-day field',
-        default: '',
-        placeholder: 'None (use start time)',
-      },
-      {
-        type: 'group',
-        displayName: 'Note template',
-        items: [
-          {
-            type: 'file',
-            key: 'templatePath',
-            displayName: 'Template note',
-            default: '',
-            placeholder: 'Templates/Event.md',
-            filter: (file: TFile) => file.extension === 'md',
-          },
-          {
-            type: 'folder',
-            key: 'targetFolder',
-            displayName: 'Target folder',
-            default: '',
-            placeholder: 'Leave blank to follow Base',
-          },
-          {
-            type: 'text',
-            key: 'titleFormat',
-            displayName: 'Title format',
-            default: 'Event {{date}} {{time}}',
-            placeholder: 'Event {{date}} {{time}}',
-          },
-        ],
-      },
-      {
-        type: 'slider',
-        key: 'yearContinuousRowHeight',
-        displayName: 'Year view (continuous) row height',
-        min: 40,
-        max: 150,
-        step: 10,
-        default: 60,
-      },
-      {
-        type: 'slider',
-        key: 'yearSplitRowHeight',
-        displayName: 'Year view (split) row height',
-        min: 40,
-        max: 150,
-        step: 10,
-        default: 60,
-      },
-    ],
+    options: () => createCalendarOptions(plugin),
   };
 }

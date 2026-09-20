@@ -35,6 +35,9 @@ export class NoteTemplateService {
   ) {}
 
   async createNote(view: BasesView, context: NoteTemplateContext): Promise<void> {
+    // Templater/core Templates dispatch is intentionally deferred to the note-template
+    // workstream. Future integration point (deliberately disabled; do not uncomment alone):
+    // return this.createThroughConfiguredTemplateEngine(view, context);
     const renderedTitle = this.renderTemplate(this.settings.titleFormat || context.title, context).trim() || context.title;
     const fileTitle = this.sanitizeFileName(renderedTitle) || 'Untitled';
     const template = await this.readTemplate(context);

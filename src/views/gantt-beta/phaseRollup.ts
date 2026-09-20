@@ -19,7 +19,9 @@ export function rollUpPhaseDates(tasks: Task[], phaseIds: ReadonlySet<string>): 
 	const byId = new Map(tasks.map(task => [task.id, task]));
 	const children = new Map<string, string[]>();
 	for (const task of tasks) if (task.parentId && byId.has(task.parentId)) {
-		children.set(task.parentId, [...(children.get(task.parentId) ?? []), task.id]);
+		const list = children.get(task.parentId);
+		if (list) list.push(task.id);
+		else children.set(task.parentId, [task.id]);
 	}
 	const visiting = new Set<string>();
 	const rolled = new Set<string>();

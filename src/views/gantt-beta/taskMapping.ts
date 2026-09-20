@@ -6,6 +6,7 @@ import type { EntrySnapshot } from '../../core/entries/EntrySnapshot';
 import type { NormalizedValue } from '../../core/entries/NormalizedValue';
 import { readGanttDate } from '../../core/gantt/dates';
 import { parseGanttDependencies, wikiLinkText } from '../../core/gantt/dependencies';
+import { compareSequence } from '../../core/gantt/sequence';
 import { buildPhaseTree, type PhaseGroup, type PhaseInput } from '../../core/gantt/phases';
 import { parseGanttProgress } from '../../core/gantt/progress';
 import type { EntrySnapshotGroup } from '../../platform/bases/entrySnapshotAdapter';
@@ -113,7 +114,11 @@ export function mapSnapshotsToGanttTasks(
 	}
 
 	const children = new Map<string, string[]>();
-	for (const node of phaseTree.nodes) if (node.parentId) children.set(node.parentId, [...(children.get(node.parentId) ?? []), node.id]);
+	for (const node of phaseTree.nodes) if (node.parentId) {
+		const list = children.get(node.parentId);
+		if (list) list.push(node.id);
+		else children.set(node.parentId, [node.id]);
+	}
 	for (const node of [...phaseTree.nodes].reverse()) {
 		if (tasks.has(node.id)) continue;
 		const span = spanForChildren(node.id, tasks, children);
@@ -122,5 +127,5 @@ export function mapSnapshotsToGanttTasks(
 			sequence: node.sequence, readOnly: node.synthetic, allowMove: false, allowResize: false, allowProgressChange: false,
 			allowLinkCreate: false, allowLinkDelete: false, allowReorder: false });
 	}
-	return { tasks: [...tasks.values()].sort((a, b) => a.sequence.localeCompare(b.sequence, undefined, { numeric: true })), unscheduled, cycles: phaseTree.cycles };
+	return { tasks: [...tasks.values()].sort((a, b) => compareSequence(a.sequence, b.sequence)), unscheduled, cycles: phaseTree.cycles };
 }

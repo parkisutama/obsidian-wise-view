@@ -135,6 +135,7 @@ function snapTask(
  */
 export class GanttBetaWriteBack {
 	private baseline: Task[];
+	private indexed: { source: Task[]; byId: Map<string, Task> } | null = null;
 	private properties: GanttMutationPlanOptions;
 	private queue: Promise<void> = Promise.resolve();
 	private epoch = 0;
@@ -154,6 +155,14 @@ export class GanttBetaWriteBack {
 
 	get tasks(): Task[] {
 		return this.baseline;
+	}
+
+	/** Id lookup for the current baseline, rebuilt only when the baseline is replaced. */
+	private baselineById(): ReadonlyMap<string, Task> {
+		if (this.indexed?.source !== this.baseline) {
+			this.indexed = { source: this.baseline, byId: new Map(this.baseline.map(task => [task.id, task])) };
+		}
+		return this.indexed.byId;
 	}
 
 	replaceProperties(properties: GanttMutationPlanOptions): void {
@@ -232,12 +241,13 @@ export class GanttBetaWriteBack {
 		this.pendingDependencyChange = false;
 		const exactDateTypes = new Map(this.pendingExactDateTypes);
 		this.pendingExactDateTypes.clear();
+		const baselineById = this.baselineById();
 		const dateNormalizedTasks = nextTasks.map(task => {
 			const types = this.properties.dateTypes?.get(task.id);
 			const exactTypes = exactDateTypes.get(task.id);
 			const startType = exactTypes?.start ?? types?.start ?? this.properties.start?.type;
 			const endType = exactTypes?.end ?? types?.end ?? this.properties.end?.type;
-			const baseline = this.baseline.find(candidate => candidate.id === task.id);
+			const baseline = baselineById.get(task.id);
 			const snapped = startType && !exactDateTypes.has(task.id)
 				? snapTask(task, baseline, { start: startType, end: endType ?? startType }, this.scale) : task;
 			const startDate = startType ? canonicalDate(snapped.startDate, startType, 'start') : snapped.startDate;
@@ -245,7 +255,7 @@ export class GanttBetaWriteBack {
 			return startDate === task.startDate && endDate === task.endDate ? task : { ...task, startDate, endDate };
 		});
 		const preservedTasks = allowDependencyChange ? dateNormalizedTasks : dateNormalizedTasks.map(task => {
-			const previous = this.baseline.find(candidate => candidate.id === task.id);
+			const previous = baselineById.get(task.id);
 			if (!previous || task.dependencies === previous.dependencies) return task;
 			return { ...task, dependencies: previous.dependencies };
 		});
@@ -268,6 +278,7 @@ export class GanttBetaWriteBack {
 		dateTypeOverrides: ReadonlyMap<string, Partial<Record<'start' | 'end', 'date' | 'datetime'>>> = new Map(),
 	): Promise<void> {
 		const previous = this.baseline;
+		const previousById = this.baselineById();
 		const dateTypes = new Map(this.properties.dateTypes);
 		for (const [id, override] of dateTypeOverrides) {
 			const current = dateTypes.get(id);
@@ -280,7 +291,7 @@ export class GanttBetaWriteBack {
 			if (task.id.startsWith(SYNTHETIC_PHASE_PREFIX)) return false;
 			if (!this.writePhaseDates && phaseIds.has(task.id)) return false;
 			if (!this.properties.end) return false;
-			const baselineTask = previous.find(candidate => candidate.id === task.id);
+			const baselineTask = previousById.get(task.id);
 			if (baselineTask
 				&& baselineTask.startDate === task.startDate
 				&& baselineTask.endDate === task.endDate) return false;
@@ -365,7 +376,7 @@ export class GanttBetaWriteBack {
 		} else if (end && Object.hasOwn(remaining, end.id)) {
 			const endValue = remaining[end.id];
 			delete remaining[end.id];
-			const current = this.baseline.find(task => task.id === path);
+			const current = this.baselineById().get(path);
 			const startType = properties.dateTypes?.get(path)?.start ?? start?.type;
 			const currentStart = current && startType ? writeGanttDate(current.startDate, startType, 'start') : null;
 			calls.push(currentStart && start ? (this.options.mutations.date?.updateRange(

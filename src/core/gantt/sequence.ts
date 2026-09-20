@@ -13,6 +13,21 @@ export interface NodeSequence {
 	sequence: string;
 }
 
+/**
+ * Orders dotted sequences ("1.2" before "1.10") segment by segment. Sequences are built here from
+ * positive integers, so this needs no locale; `localeCompare` with `numeric` builds a collator on
+ * every call and dominated the cost of mapping a few thousand notes.
+ */
+export function compareSequence(left: string, right: string): number {
+	const a = left.split('.');
+	const b = right.split('.');
+	for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+		const difference = Number(a[index]) - Number(b[index]);
+		if (difference !== 0) return difference;
+	}
+	return a.length - b.length;
+}
+
 /** Assigns depth-first dotted sequences, using Order when configured and input order otherwise. */
 export function buildDepthFirstSequence<T extends SequencedNode>(nodes: readonly T[], useOrder: boolean): NodeSequence[] {
 	const ids = new Set(nodes.map(node => node.id));
