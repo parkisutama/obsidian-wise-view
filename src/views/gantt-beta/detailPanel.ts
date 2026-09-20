@@ -26,7 +26,7 @@ export interface GanttDetailPanelOptions {
 	entry: GanttDetailEntry | null;
 	localTimeZone: string;
 	onOpenNote: (path: string) => void;
-	onExactDateUpdate: (taskId: string) => void;
+	onExactDateUpdate: (taskId: string, boundary: 'start' | 'end', type: GanttPropertyDateType) => void;
 	onRemoveDependency: (taskId: string, dependency: TaskDependency) => boolean;
 	progressProperty: string | null;
 }
@@ -93,13 +93,14 @@ export function renderGanttDetail(
 	const entry = options.entry;
 	const startType = entry?.dateTypes.start ?? 'date';
 	const endType = entry?.dateTypes.end ?? startType;
+	const editableEndType: GanttPropertyDateType = startType === 'datetime' ? 'datetime' : endType;
 	const editableStart = options.canEditStart && !task.readOnly && task.allowMove !== false;
 	const editableEnd = options.canEditEnd && !task.readOnly && task.allowResize !== false;
 	const updateDate = (boundary: 'start' | 'end', value: string) => {
-		const type = boundary === 'start' ? startType : endType;
+		const type = boundary === 'start' ? startType : editableEndType;
 		const next = chartDate(value, type, boundary);
 		if (next) {
-			options.onExactDateUpdate(task.id);
+			options.onExactDateUpdate(task.id, boundary, type);
 			props.update(boundary === 'start' ? { startDate: next } : { endDate: next });
 		}
 	};
@@ -115,17 +116,17 @@ export function renderGanttDetail(
 				disabled: !editableStart, onChange: (event: Event) => updateDate('start', (event.currentTarget as HTMLInputElement).value),
 			})),
 			field('End', h('input', {
-				type: endType === 'date' ? 'date' : 'datetime-local', value: inputDate(task.endDate, endType, 'end'),
+				type: editableEndType === 'date' ? 'date' : 'datetime-local', value: inputDate(task.endDate, editableEndType, 'end'),
 				disabled: !editableEnd, onChange: (event: Event) => updateDate('end', (event.currentTarget as HTMLInputElement).value),
 			})),
 			field('Duration', h('input', {
 				type: 'text', value: duration, disabled: !editableEnd, 'aria-label': 'Duration',
 				onChange: (event: Event) => {
 					const input = event.currentTarget as HTMLInputElement;
-					const endDate = durationEnd(task.startDate, input.value, endType);
+					const endDate = durationEnd(task.startDate, input.value, editableEndType);
 					input.setCustomValidity(endDate ? '' : startType === 'date' && endType === 'date' ? 'Use whole days, for example 2d.' : 'Use minutes, hours, or days, for example 90m, 2h, or 1d.');
 					if (endDate) {
-						options.onExactDateUpdate(task.id);
+						options.onExactDateUpdate(task.id, 'end', editableEndType);
 						props.update({ endDate });
 					}
 				},

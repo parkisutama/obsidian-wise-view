@@ -20,7 +20,7 @@ Tema: light dan dark
 | Ctrl/Cmd + wheel | Lulus; perbaikan tersedia | Picker sekarang terlihat, tersinkron, dan memakai nama resolusi Hours/Days/Weeks/Months/Quarters; perlu konfirmasi native build terbaru. |
 | Today marker | Gagal; perbaikan tersedia | Marker UTC kini digeser ke wall-clock lokal sesuai offset runtime; perlu konfirmasi native build terbaru. |
 | Tooltip | Perlu perbaikan | Tooltip library dan tooltip lain dapat bertumpuk saat hover. |
-| Detail panel | Parsial sesuai tahap | Panel library muncul; renderer detail Wise View belum diimplementasikan. |
+| Detail panel | Implementasi tersedia; perlu uji ulang terarah | Renderer Wise View menyediakan Start, End, Duration, Progress, dependency, dan properti Base. Temuan mixed precision pada End sudah diperbaiki dan perlu konfirmasi native. |
 | Move/resize/dependency drawing | Belum diuji | View masih sengaja dipaksa read-only sampai GBETA-009–GBETA-011 selesai. |
 
 ## Follow-up yang diterima
@@ -105,7 +105,7 @@ setiap baris agar hasil sebelumnya tidak menyamarkan hasil berikutnya.
 | Reparent | Pindahkan Task B dari Phase A ke Phase B. `parent` menjadi `[[Phase B]]`. Drop ke group sintetis harus ditolak. | Belum diuji | |
 | Reorder | Tukar urutan Task A/B dalam phase. `order` sibling menjadi 10, 20; tanpa property Order gesture harus ditolak. | Lulus | Tanpa konfigurasi Order muncul Notice. Nilai 10, 20 memang sengaja diberi jarak agar penyisipan berikutnya dapat memakai nilai di antaranya tanpa selalu menomori ulang semua sibling. |
 | Create | Gambar range di area create. Note baru dibuat melalui template dengan Start/End terisi; Parent memang belum diisi karena draft library tidak membawa row target. | Lulus dengan catatan | Gambar di area kosong terbawah membuat note `New note 2026-09-16`; penamaan/template khusus belum dikonfigurasi. |
-| Detail edit | Ubah tanggal/progress dari panel detail bawaan. Jalur write sama seperti move/progress. | Lulus | Edit tidak menambah atau mengurangi nilai lain. |
+| Detail edit | Ubah tanggal/progress/durasi dari panel detail. Jalur write sama seperti move/progress. | Perlu uji ulang terarah | Edit dasar lulus. Temuan baru: Start Date & time dengan End Date-only sempat membuat hasil Duration kehilangan jam saat ditulis. End kini dipromosikan ke Date & time ketika End atau Duration diedit; perlu konfirmasi bahwa jam tetap ada setelah panel dibuka ulang. |
 | Echo state | Setelah write sukses, horizontal scroll, phase collapse, selection, dan detail panel tetap pada state sebelumnya. | Perlu uji ulang terarah | Cara uji belum jelas bagi penguji; gunakan langkah singkat di bawah tabel. |
 | Failure revert | Dengan target property formula/tidak writable, write menampilkan Notice dan chart kembali ke nilai sebelumnya. | Dicakup tes otomatis | Tidak dipaksakan pada vault acceptance karena membutuhkan kegagalan write yang disengaja. Uji unit memverifikasi kegagalan hasil maupun exception mengembalikan baseline dan menampilkan Notice. |
 
@@ -113,9 +113,11 @@ Uji Echo state: scroll horizontal menjauh dari posisi awal, collapse satu phase,
 buka detailnya, lalu ubah progress task tersebut. Setelah save, posisi scroll, kondisi collapse,
 task terpilih, dan panel detail harus tetap sama.
 
-Catatan UX lanjutan untuk GBETA-014: detail panel custom harus menampilkan Date sebagai rentang
-hari inklusif (tanpa boundary jam tersembunyi) dan menyediakan Duration yang dapat diedit;
-perubahan Duration menghitung dan menulis End melalui jalur mutation yang sama.
+GBETA-014 kini menyediakan detail panel custom: Date ditampilkan sebagai rentang hari inklusif
+(tanpa boundary jam tersembunyi), sedangkan Date & time mempertahankan jam lokal-floating.
+Duration dapat diedit dan menghitung End melalui jalur mutation yang sama. Jika Start sudah Date &
+time tetapi End masih Date-only, edit End/Duration mempromosikan End ke Date & time karena durasi
+sub-hari tidak dapat disimpan secara utuh sebagai Date-only.
 
 Catatan snapping build terbaru: Date selalu bergerak per hari. Date & time hanya mengubah jam
 pada resolusi Hours; Days/Weeks/Months/Quarters mempertahankan jam dan durasi sambil membulatkan

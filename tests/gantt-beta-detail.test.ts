@@ -44,8 +44,24 @@ describe('Gantt Beta detail panel (GBETA-014)', () => {
 		duration.value = '3d';
 		duration.dispatchEvent(new Event('change', { bubbles: true }));
 		expect(h.update).toHaveBeenCalledWith({ endDate: '2026-09-23T00:00:00.000Z' });
-		expect(h.exactDate).toHaveBeenCalledWith('Task.md');
+		expect(h.exactDate).toHaveBeenCalledWith('Task.md', 'end', 'date');
 		expect([...h.host.querySelectorAll('.gantt-beta-detail__property-name')].map(node => node.textContent)).toEqual(['Owner', 'Status']);
+	});
+
+	it('promotes End and Duration to minute precision when Start already has time', () => {
+		const h = mount(task({ startDate: '2026-09-21T23:00', endDate: '2026-09-22T00:00' }), {
+			entry: {
+				dateProperties: { start: 'note.start', end: 'note.end' }, dateTypes: { start: 'datetime', end: 'date' },
+				propertyNames: new Map(), visibleProperties: [], values: new Map(),
+			},
+		});
+		const end = h.host.querySelectorAll<HTMLInputElement>('input[type="datetime-local"]')[1]!;
+		expect(end.value).toBe('2026-09-22T00:00');
+		const duration = h.host.querySelector<HTMLInputElement>('[aria-label="Duration"]')!;
+		duration.value = '2h';
+		duration.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(h.exactDate).toHaveBeenCalledWith('Task.md', 'end', 'datetime');
+		expect(h.update).toHaveBeenCalledWith({ endDate: '2026-09-22T01:00:00.000Z' });
 	});
 
 	it('keeps minute precision and discloses local time only for zoned input', () => {

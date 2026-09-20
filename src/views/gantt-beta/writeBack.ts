@@ -142,7 +142,7 @@ export class GanttBetaWriteBack {
 	private writePhaseDates: boolean;
 	private scale: GanttBetaScale;
 	private pendingDependencyChange = false;
-	private readonly pendingExactDateTasks = new Set<string>();
+	private readonly pendingExactDateTypes = new Map<string, Partial<Record<'start' | 'end', 'date' | 'datetime'>>>();
 
 	constructor(tasks: Task[], private readonly options: GanttBetaWriteBackOptions) {
 		this.baseline = tasks;
@@ -184,8 +184,8 @@ export class GanttBetaWriteBack {
 		return this.onDependencyCreate(change);
 	}
 
-	onExactDateUpdate(taskId: string): void {
-		this.pendingExactDateTasks.add(taskId);
+	onExactDateUpdate(taskId: string, boundary: 'start' | 'end', type: 'date' | 'datetime'): void {
+		this.pendingExactDateTypes.set(taskId, { ...this.pendingExactDateTypes.get(taskId), [boundary]: type });
 	}
 
 	onTaskMove(change: GanttTaskMoveChange): boolean {
@@ -230,14 +230,15 @@ export class GanttBetaWriteBack {
 		const epoch = this.epoch;
 		const allowDependencyChange = this.pendingDependencyChange;
 		this.pendingDependencyChange = false;
-		const exactDateTasks = new Set(this.pendingExactDateTasks);
-		this.pendingExactDateTasks.clear();
+		const exactDateTypes = new Map(this.pendingExactDateTypes);
+		this.pendingExactDateTypes.clear();
 		const dateNormalizedTasks = nextTasks.map(task => {
 			const types = this.properties.dateTypes?.get(task.id);
-			const startType = types?.start ?? this.properties.start?.type;
-			const endType = types?.end ?? this.properties.end?.type;
+			const exactTypes = exactDateTypes.get(task.id);
+			const startType = exactTypes?.start ?? types?.start ?? this.properties.start?.type;
+			const endType = exactTypes?.end ?? types?.end ?? this.properties.end?.type;
 			const baseline = this.baseline.find(candidate => candidate.id === task.id);
-			const snapped = startType && !exactDateTasks.has(task.id)
+			const snapped = startType && !exactDateTypes.has(task.id)
 				? snapTask(task, baseline, { start: startType, end: endType ?? startType }, this.scale) : task;
 			const startDate = startType ? canonicalDate(snapped.startDate, startType, 'start') : snapped.startDate;
 			const endDate = endType ? canonicalDate(snapped.endDate, endType, 'end') : snapped.endDate;
@@ -255,14 +256,24 @@ export class GanttBetaWriteBack {
 			? nextTasks : rolledUpTasks;
 		this.options.gate?.begin();
 		const job = this.queue
-			.then(() => (epoch === this.epoch ? this.apply(normalizedTasks, nextTasks) : undefined))
+			.then(() => (epoch === this.epoch ? this.apply(normalizedTasks, nextTasks, exactDateTypes) : undefined))
 			.finally(() => this.options.gate?.end());
 		this.queue = job.catch(() => undefined);
 		return job;
 	}
 
-	private async apply(nextTasks: Task[], sourceTasks: Task[] = nextTasks): Promise<void> {
+	private async apply(
+		nextTasks: Task[],
+		sourceTasks: Task[] = nextTasks,
+		dateTypeOverrides: ReadonlyMap<string, Partial<Record<'start' | 'end', 'date' | 'datetime'>>> = new Map(),
+	): Promise<void> {
 		const previous = this.baseline;
+		const dateTypes = new Map(this.properties.dateTypes);
+		for (const [id, override] of dateTypeOverrides) {
+			const current = dateTypes.get(id);
+			if (current) dateTypes.set(id, { start: override.start ?? current.start, end: override.end ?? current.end });
+		}
+		const effectiveProperties = { ...this.properties, dateTypes };
 		const ids = new Set(nextTasks.map(task => task.id));
 		const phaseIds = new Set(nextTasks.map(task => task.parentId).filter((id): id is string => id !== null && ids.has(id)));
 		const reversed = nextTasks.find(task => {
@@ -273,7 +284,7 @@ export class GanttBetaWriteBack {
 			if (baselineTask
 				&& baselineTask.startDate === task.startDate
 				&& baselineTask.endDate === task.endDate) return false;
-			const type = this.properties.dateTypes?.get(task.id)?.end ?? this.properties.end.type;
+			const type = effectiveProperties.dateTypes.get(task.id)?.end ?? this.properties.end.type;
 			return type ? hasReversedRange(task, type) : false;
 		});
 		if (reversed) {
@@ -284,7 +295,7 @@ export class GanttBetaWriteBack {
 		}
 		const scheduledTasks = applyGanttDependencyPolicy(previous, nextTasks, this.dependencyPolicy);
 		const plan = buildGanttMutationPlan(diffGanttTasks(previous, scheduledTasks), {
-			...this.properties, phaseIds, writePhaseDates: this.writePhaseDates,
+			...effectiveProperties, phaseIds, writePhaseDates: this.writePhaseDates,
 		});
 		if (plan.length === 0) {
 			this.baseline = scheduledTasks;
@@ -294,7 +305,7 @@ export class GanttBetaWriteBack {
 
 		let failureMessage: string | null = null;
 		try {
-			const results = await Promise.all(plan.flatMap(item => this.writeItem(item.path, item.values)));
+			const results = await Promise.all(plan.flatMap(item => this.writeItem(item.path, item.values, effectiveProperties)));
 			const failure = results.find(result => !result.ok);
 			if (failure && !failure.ok) failureMessage = failure.message;
 		} catch (error) {
@@ -311,11 +322,15 @@ export class GanttBetaWriteBack {
 		if (scheduledTasks.some((task, index) => task !== sourceTasks[index])) this.options.renderTasks?.(scheduledTasks);
 	}
 
-	private writeItem(path: string, values: Record<string, unknown>): Promise<MutationResult>[] {
+	private writeItem(
+		path: string,
+		values: Record<string, unknown>,
+		properties: GanttMutationPlanOptions = this.properties,
+	): Promise<MutationResult>[] {
 		const remaining = { ...values };
 		const calls: Promise<MutationResult>[] = [];
-		const start = this.properties.start;
-		const end = this.properties.end;
+		const start = properties.start;
+		const end = properties.end;
 
 		if (start && Object.hasOwn(remaining, start.id)) {
 			const startValue = remaining[start.id];
@@ -329,7 +344,7 @@ export class GanttBetaWriteBack {
 			const endValue = remaining[end.id];
 			delete remaining[end.id];
 			const current = this.baseline.find(task => task.id === path);
-			const startType = this.properties.dateTypes?.get(path)?.start ?? start?.type;
+			const startType = properties.dateTypes?.get(path)?.start ?? start?.type;
 			const currentStart = current && startType ? writeGanttDate(current.startDate, startType, 'start') : null;
 			calls.push(currentStart && start ? (this.options.mutations.date?.updateRange(
 				path, start.id, currentStart, end.id, endValue == null ? null : String(endValue),
@@ -337,7 +352,7 @@ export class GanttBetaWriteBack {
 				: Promise.resolve(failed('The task start date is unavailable.')));
 		}
 
-		const dependency = this.properties.dependsOn;
+		const dependency = properties.dependsOn;
 		if (dependency && Object.hasOwn(remaining, dependency)) {
 			const value = remaining[dependency];
 			delete remaining[dependency];

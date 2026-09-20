@@ -169,7 +169,7 @@ export class BasesGanttBetaView extends BasesView {
 			dependsOnProperty: options.dependsOn, progressProperty: options.progress, entry: detailEntry(detailProps.task.id),
 			localTimeZone: timezone,
 			onOpenNote: path => { if (entriesByPath.has(path)) void this.app.workspace.openLinkText(path, '', false); },
-			onExactDateUpdate: taskId => writer.onExactDateUpdate(taskId),
+			onExactDateUpdate: (taskId, boundary, type) => writer.onExactDateUpdate(taskId, boundary, type),
 			onRemoveDependency: removeDependency,
 		});
 		const model: GanttBetaChartModel = {

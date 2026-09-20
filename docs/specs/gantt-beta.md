@@ -145,7 +145,9 @@ Rules:
 - **Detail edits.** The custom detail panel calls the chart's `update` function, so Start, End,
   Duration, Progress, and dependency removal reach the same task-array diff and capability batch
   as gestures. Exact date fields and Duration bypass gesture-scale snapping but retain range
-  validation and dependency scheduling.
+  validation and dependency scheduling. When a task has a Date & time Start but a Date-only End,
+  editing End or Duration promotes End to Date & time before writing. This preserves the visible
+  sub-day boundary instead of silently truncating it to midnight in frontmatter.
 
 ### 3.5 Dependency schedule policy (D6)
 
@@ -203,7 +205,9 @@ fight over a `.base` file.
   through the existing CSS merge plugin without rewriting (it has no `:root` selectors).
 - **Detail panel (D9):** note title (opens the note), start/end, progress, Depends on links
   (each removable), and the Base's visible properties (`config.getOrder()`)
-  rendered read-only. Date/progress fields are editable and write back via §3.4.
+  rendered read-only. Date/progress fields and Duration are editable and write back via §3.4.
+  A mixed Date & time Start / Date-only End is shown and persisted with Date & time precision for
+  End as soon as End or Duration is edited.
 - **Click / hover (D8):** `onTaskClick` opens the note through the existing navigation helper
   (respecting modifiers); hover preview uses a delegated `mouseover` listener reading
   `data-task-id`, like the other views.

@@ -169,12 +169,30 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 	it('keeps an exact detail-panel date edit independent of the visible resolution', async () => {
 		const h = harness({ scale: 'month' });
 		h.writer.replaceBaseline([task('Tasks/A.md', { startDate: '2026-10-01', endDate: '2026-10-03' })]);
-		h.writer.onExactDateUpdate('Tasks/A.md');
+		h.writer.onExactDateUpdate('Tasks/A.md', 'end', 'date');
 
 		await h.writer.onTasksChange([task('Tasks/A.md', { startDate: '2026-10-01', endDate: '2026-10-04' })]);
 
 		expect(h.date.updateRange).toHaveBeenCalledWith(
 			'Tasks/A.md', 'note.start', '2026-10-01', 'note.end', '2026-10-03',
+		);
+	});
+
+	it('persists a detail-panel End as Date & time when a mixed range is promoted', async () => {
+		const h = harness({ scale: 'month' });
+		h.writer.replaceProperties({
+			start: { id: 'note.start', type: 'datetime' }, end: { id: 'note.end', type: 'date' },
+			dateTypes: new Map([['Tasks/A.md', { start: 'datetime', end: 'date' }]]),
+		});
+		h.writer.replaceBaseline([task('Tasks/A.md', { startDate: '2026-09-21T23:00', endDate: '2026-09-22T00:00' })]);
+		h.writer.onExactDateUpdate('Tasks/A.md', 'end', 'datetime');
+
+		await h.writer.onTasksChange([task('Tasks/A.md', {
+			startDate: '2026-09-21T23:00', endDate: '2026-09-22T01:00:00.000Z',
+		})]);
+
+		expect(h.date.updateRange).toHaveBeenCalledWith(
+			'Tasks/A.md', 'note.start', '2026-09-21T23:00', 'note.end', '2026-09-22T01:00',
 		);
 	});
 
