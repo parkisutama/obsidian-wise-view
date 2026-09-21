@@ -76,6 +76,9 @@ already organized by it works without moving files.
       underlined as a link hint (the underline is the affordance, matching the maintainer's
       reference), opening or creating that period's note; an existence dot marks notes that exist.
     - **Day:** unchanged (day number link plus dot).
+14. **Unconfigured means no links.** A period with no path pattern set on the Base gets no link,
+    no underline, no dot, and no created notes; the rest of the calendar is unchanged. There is no
+    global fallback (decision 2).
 13. **24-hour clock.** Event times and time-grid slot labels use 24-hour format, never AM/PM.
     Done 2026-09-21 as a fixed default (no new option key); list view already read well.
 

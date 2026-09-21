@@ -5,6 +5,7 @@
 
 import type { BasesAllOptions, BasesPropertyId, TFile } from 'obsidian';
 import type WiseViewPlugin from '../../main';
+import { createPeriodicOptions } from './periodic/options';
 import { PropertyTypeService } from '../../services/PropertyTypeService';
 
 /** The Bases options schema for the Calendar view. Keys are persisted in `.base` files. */
@@ -136,5 +137,6 @@ export function createCalendarOptions(plugin: WiseViewPlugin): BasesAllOptions[]
       step: 10,
       default: 60,
     },
+    ...createPeriodicOptions(),
   ];
 }
