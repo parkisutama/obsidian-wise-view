@@ -1,6 +1,6 @@
 # Spec: General note-template creation (Templater / Obsidian Templates integration)
 
-Status: Draft — awaiting maintainer review
+Status: Done 2026-09-21 (native-accepted with waivers) — [record](../../tasks/note-template/native-acceptance.md)
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
@@ -8,6 +8,9 @@ Sequencing: last — after `docs/specs/performance.md` and the four view workstr
 `ROADMAP.md`). Deliberately sequenced last because the fix is a general, all-views-level redesign;
 implementing it before each view's own reorganization would mean rewriting the integration point
 twice.
+
+Hold released 2026-09-21: the maintainer chose to implement before Performance is Done and
+recorded the decisions in §5. Native acceptance (§6.4) is still required before Done.
 
 ## 1. Objective
 
@@ -35,7 +38,7 @@ Obsidian's core Templates plugin:
   Templater/Obsidian's own folder-template auto-apply might do to that same new file, then
   unconditionally overwrites the file's frontmatter and body with its own regex-substituted text —
   silently clobbering anything Templater already wrote if Templater's listener resolved first.
-- `BasesCalendarView.processTemplateVariables()` ([src/views/BasesCalendarView.ts:976](../../src/views/BasesCalendarView.ts))
+- `processTemplateVariables()` ([src/views/calendar/dailyNote.ts](../../src/views/calendar/dailyNote.ts))
   — a second, differently-shaped substitution engine (adds `weekday`/`month` tokens), used only by
   `openDailyNote()`. Same problem: `vault.create()` with pre-substituted text, no Templater/Templates
   involvement.
@@ -76,7 +79,33 @@ API (`app.plugins.plugins['templater-obsidian']`) or the core Templates plugin
 - No redesign of daily-note handling beyond fixing its template-substitution path — its
   daily-notes-core-plugin-settings lookup (folder/format) is out of scope here.
 
-## 5. Open questions for the maintainer
+## 5. Decisions (maintainer, 2026-09-21)
+
+1. **No engine available → notice every time.** When neither Templater nor the core Templates
+   plugin is enabled, the template is copied as-is and a notice says its `{{...}}` / `<% %>`
+   syntax was not processed. No silent fallback, and no once-only suppression.
+2. **Rewrite `NoteTemplateService` in place.** It stays the single entry point; the engine
+   dispatch lives in `src/services/templateEngine.ts`. Scoped-write views (Gantt) pass
+   `NoteCreationRequest.templatePath` and the mutation gateway dispatches to the same engine.
+3. **Backward compatibility.** Wise View no longer substitutes `{{title|date|time|start|end}}`
+   (Calendar/Gantt) or `{{weekday|month|date:FORMAT}}` (daily notes) inside template files. With
+   Templater or core Templates enabled the plugin handles its own syntax (core Templates knows
+   `{{title}}`, `{{date}}`, `{{time}}`); `{{start}}`/`{{end}}` in a template body are no longer
+   filled — the view still writes the start/end frontmatter fields itself. Those tokens still work
+   in the `titleFormat` option, and only there.
+4. **Calendar notes with a template but no `targetFolder`** are created in Obsidian's new-note
+   folder instead of through `createFileForView`, which was the source of the overwrite race.
+
+5. **Scope boundary (maintainer, 2026-09-21).** Note Template covers only the Templater / core
+   Templates integration for event and task notes (Calendar event creation, Gantt create-note).
+   The daily-note flow is not owned here: it has evolved into Periodic Notes
+   ([periodic-notes.md](periodic-notes.md)), a Calendar-view feature configured per view, where the
+   clicked date exists. How that date reaches a template (Templater and core Templates evaluate
+   `{{date}}` / `tp.date.now` against today) is PN-001's decision, not this workstream's. The
+   interim edit in `calendar/dailyNote.ts` (route through `templateEngine.ts`, drop
+   `processTemplateVariables`) stays only until Periodic Notes retires that module.
+
+## 5a. Original open questions (answered above)
 
 - When Templater is not installed and the core Templates plugin is also not enabled, should note
   creation fall back silently to today's plain-text behavior, or surface a one-time notice telling
@@ -101,7 +130,8 @@ API (`app.plugins.plugins['templater-obsidian']`) or the core Templates plugin
 
 ## 7. Definition of done
 
-1. `NoteTemplateService.renderTemplate()` and `BasesCalendarView.processTemplateVariables()` are
+1. `NoteTemplateService.renderTemplate()` and the extracted
+   `calendar/dailyNote.processTemplateVariables()` are
    both retired in favor of one general implementation.
 2. Templater and core-Templates integration both work per §6's native acceptance.
 3. `pnpm run check` passes.

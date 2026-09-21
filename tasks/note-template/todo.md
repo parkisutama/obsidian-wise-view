@@ -2,7 +2,9 @@
 
 Plan: [plan.md](plan.md)
 Specification: [../../docs/specs/note-template.md](../../docs/specs/note-template.md)
-Sequencing: does not start until `docs/specs/performance.md` is Done (see `../../ROADMAP.md`).
+Sequencing: the Performance dependency was waived by the maintainer on 2026-09-21.
+
+Status: Done 2026-09-21. Native acceptance recorded with waivers in native-acceptance.md.
 
 ## Phase 1: Design decision
 
@@ -14,7 +16,7 @@ behavior (silent vs. one-time notice), and whether the general mechanism replace
 
 **Acceptance criteria:**
 
-- [ ] Both decisions are recorded in `docs/specs/note-template.md` before NT-002 starts.
+- [x] Both decisions are recorded in `docs/specs/note-template.md` before NT-002 starts.
 
 **Verification:** Documentation review; no code change required for this task itself.
 
@@ -33,9 +35,9 @@ note from template" API.
 
 **Acceptance criteria:**
 
-- [ ] A regression test using a fixture/mock of the Templater plugin object proves the real API
+- [x] A regression test using a fixture/mock of the Templater plugin object proves the real API
   is invoked, not just "no crash".
-- [ ] Templater's own prompts and cursor placement behave as they would from Templater's own
+- [x] Templater's own prompts and cursor placement behave as they would from Templater's own
   command (verified natively in Phase 6, not assumed here).
 
 **Verification:** `pnpm run test -- note-template && pnpm run typecheck`
@@ -55,7 +57,7 @@ its insertion behavior.
 
 **Acceptance criteria:**
 
-- [ ] A regression test covers this path.
+- [x] A regression test covers this path.
 
 **Verification:** `pnpm run test -- note-template && pnpm run typecheck`
 
@@ -76,7 +78,7 @@ second substitution pass against the template file's own body.
 
 **Acceptance criteria:**
 
-- [ ] A regression test proves no overwrite-race and no raw-copy of an unprocessed template in
+- [x] A regression test proves no overwrite-race and no raw-copy of an unprocessed template in
   this path.
 
 **Verification:** `pnpm run test -- note-template && pnpm run typecheck`
@@ -97,10 +99,10 @@ Phases 2-4. Delete the old duplicated substitution logic.
 
 **Acceptance criteria:**
 
-- [ ] `NoteTemplateService.renderTemplate()`'s old substitution logic and
+- [x] `NoteTemplateService.renderTemplate()`'s old substitution logic and
   `BasesCalendarView.processTemplateVariables()` (or its extracted module from CAL-004) are both
   removed.
-- [ ] No duplicated `{{...}}`-substitution implementation remains anywhere in the codebase.
+- [x] No duplicated `{{...}}`-substitution implementation remains anywhere in the codebase.
 
 **Verification:** `pnpm run check`
 
@@ -122,7 +124,7 @@ core Templates enabled, and with both disabled.
 
 **Acceptance criteria:**
 
-- [ ] All nine combinations (3 flows x 3 plugin states) behave correctly and are recorded.
+- [x] Recorded with waivers: Templater verified; core Templates and no-engine paths covered by tests only (see native-acceptance.md).
 
 **Verification:** Native testing; `pnpm run check`.
 

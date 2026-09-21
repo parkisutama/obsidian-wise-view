@@ -1,10 +1,12 @@
 # Implementation plan: General note-template creation
 
-Status: Draft; implementation requires approval
+Status: Done 2026-09-21 (native-accepted with waivers)
 Specification: [../../docs/specs/note-template.md](../../docs/specs/note-template.md)
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
 Baseline: branch `dev`
-Sequencing: does not start until `docs/specs/performance.md` is Done (see `ROADMAP.md`).
+Sequencing: the Performance dependency was waived by the maintainer on 2026-09-21.
+
+Hold released 2026-09-21 by the maintainer; decisions are recorded in spec §5.
 
 ## Overview
 
