@@ -34,6 +34,7 @@ the same `dev` branch, instead of one large document that has to move together.
 | Timeline | [docs/specs/timeline.md](docs/specs/timeline.md) | [tasks/timeline/plan.md](tasks/timeline/plan.md) | [tasks/timeline/todo.md](tasks/timeline/todo.md) | Implemented; native acceptance pending |
 | Performance | [docs/specs/performance.md](docs/specs/performance.md) | [tasks/performance/plan.md](tasks/performance/plan.md) | [tasks/performance/todo.md](tasks/performance/todo.md) | Blocked — waits for the four view workstreams |
 | Note Template | [docs/specs/note-template.md](docs/specs/note-template.md) | [tasks/note-template/plan.md](tasks/note-template/plan.md) | [tasks/note-template/todo.md](tasks/note-template/todo.md) | Blocked — waits for Performance |
+| Periodic Notes | [docs/specs/periodic-notes.md](docs/specs/periodic-notes.md) | [tasks/periodic-notes/plan.md](tasks/periodic-notes/plan.md) | [tasks/periodic-notes/todo.md](tasks/periodic-notes/todo.md) | Blocked — waits for Note Template; Calendar-only, native (no plugin dependencies) |
 
 Status values: **Not started**, **In progress**, **Blocked — <reason>**, **Frozen — <reason>**, **Done (native-accepted
 <date>)**. Update this table as the source of truth; do not let an individual workstream's own
