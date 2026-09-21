@@ -1,6 +1,10 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCalendarViewRegistration } from "../src/views/BasesCalendarView";
+import { processTemplateVariables } from "../src/views/calendar/dailyNote";
+import { entryToEvent } from "../src/views/calendar/eventMapping";
+import { createCalendarEventNote } from "../src/views/calendar/eventNote";
+import { NoteTemplateService } from "../src/services/NoteTemplateService";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import type WiseViewPlugin from "../src/main";
 import { type CalendarHarness, createCalendarHarness, dayOffset } from "./fixtures/calendar";
@@ -41,6 +45,74 @@ const activeButtons = (h: CalendarHarness) =>
 		(el) => el.className.match(/planner-fc-button-(\w+)/)?.[1],
 	);
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+describe("Calendar extracted behavior", () => {
+	it("maps the configured date, title, and color fields into a FullCalendar event", () => {
+		const entry = {
+			file: { path: "Projects/Launch.md", basename: "Launch", parent: { path: "Projects", name: "Projects" } },
+			getValue: (id: string) => ({
+				"note.date_start": "2026-09-19T10:00:00",
+				"note.date_end": "2026-09-19T12:00:00",
+				"note.title": "Launch review",
+				"note.status": "active",
+			}[id] ?? null),
+		};
+
+		expect(entryToEvent(entry as never, {
+			dateStartField: "note.date_start",
+			dateEndField: "note.date_end",
+			titleField: "note.title",
+			allDayField: null,
+			colorByProp: "note.status",
+			valueStyleColor: () => "#123456",
+			resolvePrettyPropertiesColor: () => null,
+		})).toMatchObject({
+			title: "Launch review",
+			start: "2026-09-19T10:00:00",
+			end: "2026-09-19T12:00:00",
+			allDay: false,
+			color: "#123456",
+			extendedProps: { path: "Projects/Launch.md" },
+		});
+	});
+
+	it("keeps deferred Templater syntax unprocessed in the characterized baseline", () => {
+		const date = new Date(2026, 8, 19, 10, 30);
+		const template = "Created <% tp.date.now(\"YYYY-MM-DD\") %> on {{date}}";
+		expect(processTemplateVariables(template, date)).toBe(
+			"Created <% tp.date.now(\"YYYY-MM-DD\") %> on 2026-09-19",
+		);
+	});
+
+	it("routes event-note creation through NoteTemplateService with configured fields", async () => {
+		const createNote = vi.spyOn(NoteTemplateService.prototype, "createNote").mockResolvedValue();
+		const start = new Date(2026, 8, 19, 10, 30);
+		const end = new Date(2026, 8, 19, 11, 30);
+		const view = {} as never;
+		await createCalendarEventNote(
+			{} as never,
+			view,
+			{ templatePath: "", targetFolder: "", titleFormat: "Event {{date}} {{time}}" },
+			{ dateStartField: "note.date_start", dateEndField: "note.date_end" },
+			start,
+			end,
+			false,
+		);
+
+		expect(createNote).toHaveBeenCalledWith(view, expect.objectContaining({
+			title: "Event 2026-09-19 10.30",
+			start,
+			end,
+			allDay: false,
+			frontmatter: {
+				date_start: expect.stringMatching(/^2026-09-19T10:30:00[+-]\d{2}:\d{2}$/),
+				date_end: expect.stringMatching(/^2026-09-19T11:30:00[+-]\d{2}:\d{2}$/),
+			},
+		}));
+		createNote.mockRestore();
+	});
+});
+
 describe("BasesCalendarView toolbar", () => {
 	it("renders the configured default view with its button active", () => {
 		const h = mount({ config: { defaultView: "timeGridWeek" } });

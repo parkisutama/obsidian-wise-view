@@ -1,6 +1,6 @@
 # Implementation plan: Calendar code quality and organization
 
-Status: Draft; implementation requires approval
+Status: Phases 1-3 complete; native acceptance pending
 Specification: [../../docs/specs/calendar.md](../../docs/specs/calendar.md)
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
 Baseline: branch `dev`

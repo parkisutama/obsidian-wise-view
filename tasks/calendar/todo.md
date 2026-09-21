@@ -3,6 +3,8 @@
 Plan: [plan.md](plan.md)
 Specification: [../../docs/specs/calendar.md](../../docs/specs/calendar.md)
 
+Status: CAL-001 through CAL-004 complete; CAL-005 awaits maintainer native testing.
+
 ## Phase 1: Characterize current behavior
 
 ### CAL-001: Add characterization tests for event mapping, daily notes, and event-template creation
@@ -14,9 +16,9 @@ Templater behavior — characterize as-is), and the "Note template" event-creati
 
 **Acceptance criteria:**
 
-- [ ] Event-mapping tests assert on the mapped event objects' actual fields (date, color, title),
+- [x] Event-mapping tests assert on the mapped event objects' actual fields (date, color, title),
   not just "no crash".
-- [ ] The daily-note test explicitly documents today's behavior (raw template text copied
+- [x] The daily-note test explicitly documents today's behavior (raw template text copied
   unprocessed when Templater syntax is used) as the characterized baseline, not a bug to fix here.
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`
@@ -35,7 +37,7 @@ Templater behavior — characterize as-is), and the "Note template" event-creati
 
 **Acceptance criteria:**
 
-- [ ] CAL-001's event-mapping tests pass unchanged.
+- [x] CAL-001's event-mapping tests pass unchanged.
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`
 
@@ -51,8 +53,8 @@ Templater behavior — characterize as-is), and the "Note template" event-creati
 
 **Acceptance criteria:**
 
-- [ ] The options schema's serialized shape is unchanged.
-- [ ] No Bases-reserved view-config key is used.
+- [x] The options schema's serialized shape is unchanged.
+- [x] No Bases-reserved view-config key is used.
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`
 
@@ -72,9 +74,9 @@ module. This is a pure extraction — the defect stays, on purpose, for
 
 **Acceptance criteria:**
 
-- [ ] CAL-001's daily-note characterization test (including the documented defect) passes
+- [x] CAL-001's daily-note characterization test (including the documented defect) passes
   unchanged.
-- [ ] The extracted module's public surface is a clean seam a future fix can call into without
+- [x] The extracted module's public surface is a clean seam a future fix can call into without
   re-touching `BasesCalendarView.ts`.
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`

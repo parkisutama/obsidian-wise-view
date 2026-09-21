@@ -1,6 +1,6 @@
 # Spec: Calendar code quality and organization
 
-Status: Draft — awaiting maintainer review
+Status: Implemented — native acceptance pending
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
