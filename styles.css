@@ -1168,6 +1168,15 @@
 	justify-content: center;
 }
 
+/* Themes such as Baseline frame buttons with an inset 1px box-shadow. Stacked on FullCalendar's own
+   side borders it leaves a small notch at the top-left corner of every button, so the toolbar
+   buttons use only FullCalendar's borders. Focus outlines are untouched. */
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button,
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button:hover,
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button:active {
+	box-shadow: none;
+}
+
 .planner-bases-calendar .planner-fc-button-yearButton,
 .planner-bases-calendar .planner-fc-button-dayGridMonth,
 .planner-bases-calendar .planner-fc-button-timeGridWeek,
@@ -1184,9 +1193,6 @@
 	background-color: var(--interactive-accent);
 	border-color: var(--interactive-accent);
 	color: var(--text-on-accent);
-	/* Themes such as Baseline frame buttons with an inset 1px box-shadow; drawn over the accent fill
-	   it leaves an unfilled sliver at the corners, so the active button frames itself in accent. */
-	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 	/* FullCalendar rounds only the last button in a group (`border-start-end-radius` on the last child).
 	   With Baseline's fractional side borders that corner rendered an unfilled sliver on the active
 	   button, so the active button is a plain filled rectangle. */
