@@ -3,16 +3,19 @@
 // Copyright (C) 2025 Sawyer Rensel
 // Modifications Copyright (C) 2026 Parkis Utama
 
-import { type App, TFile } from 'obsidian';
+import { type App } from 'obsidian';
+import {
+  createNoteFromTemplate,
+  detectTemplateEngine,
+  ensureFolder,
+  noticePlainTemplate,
+} from '../../services/templateEngine';
 import { openFileInNewTab } from '../../utils/openFile';
 
 /**
- * Daily-note / journal lookup and creation for a clicked calendar date.
- *
- * `processTemplateVariables` is a second, independent `{{...}}` engine (distinct from
- * `NoteTemplateService.renderTemplate()`). It never runs Templater or the core Templates
- * plugin, so Templater syntax is copied in unprocessed. That is a known defect, kept as-is here
- * on purpose: docs/specs/note-template.md owns the fix, and this module is the seam it lands in.
+ * Daily-note / journal lookup and creation for a clicked calendar date. The daily-note template
+ * is processed by Templater or the core Templates plugin (services/templateEngine.ts); this
+ * module no longer substitutes any `{{...}}` tokens itself.
  */
 
 /** Type interfaces for Obsidian's undocumented internal plugins API. */
@@ -108,22 +111,6 @@ export function formatDate(date: Date, format: string): string {
     .replace(/D/g, String(day))
     .replace(/dddd/g, WEEKDAYS[date.getDay()] ?? '')
     .replace(/ddd/g, WEEKDAYS_SHORT[date.getDay()] ?? '');
-}
-
-export function processTemplateVariables(content: string, date: Date): string {
-  const isoDate = formatIsoDate(date);
-
-  return content
-    // Date patterns
-    .replace(/\{\{date\}\}/g, isoDate)
-    .replace(/\{\{date:([^}]+)\}\}/g, (_, format: string) => formatDate(date, format))
-    // Title patterns
-    .replace(/\{\{title\}\}/g, isoDate)
-    // Time patterns
-    .replace(/\{\{time\}\}/g, date.toLocaleTimeString())
-    // Day/week patterns
-    .replace(/\{\{weekday\}\}/g, WEEKDAYS[date.getDay()] ?? '')
-    .replace(/\{\{month\}\}/g, MONTHS[date.getMonth()] ?? '');
 }
 
 /** Get the obsidian-journal community plugin API (if installed and enabled). */
@@ -224,38 +211,23 @@ export async function openDailyNote(app: App, date: Date): Promise<void> {
   const existingFile = app.vault.getAbstractFileByPath(path);
 
   if (!existingFile) {
-    // File doesn't exist - create it with template if specified
-    let content = '';
+    const templateFile = templatePath
+      ? app.vault.getFileByPath(templatePath) ?? app.vault.getFileByPath(`${templatePath}.md`)
+      : null;
+    const engine = detectTemplateEngine(app);
 
-    if (templatePath) {
-      // Try to load the template
-      const templateFile = app.vault.getAbstractFileByPath(templatePath) ||
-        app.vault.getAbstractFileByPath(`${templatePath}.md`);
-      if (templateFile instanceof TFile) {
-        try {
-          content = await app.vault.read(templateFile);
-          // Templater/core Templates integration is intentionally deferred to NT-002..NT-005.
-          // Future integration point (deliberately disabled; do not uncomment independently):
-          // content = await renderWithConfiguredTemplateEngine(app, templateFile, date);
-          // Process template variables
-          content = processTemplateVariables(content, date);
-        } catch {
-          // Template couldn't be read, use empty content
-          content = '';
-        }
+    if (templateFile && engine !== 'plain') {
+      await createNoteFromTemplate(app, engine, { template: templateFile, path });
+    } else {
+      // Nothing will process the template: copy it as-is and say so.
+      let content = '';
+      if (templateFile) {
+        content = await app.vault.cachedRead(templateFile);
+        noticePlainTemplate();
       }
+      await ensureFolder(app, folder ?? '');
+      await app.vault.create(path, content);
     }
-
-    // Ensure folder exists
-    if (folder) {
-      const folderExists = app.vault.getAbstractFileByPath(folder);
-      if (!folderExists) {
-        await app.vault.createFolder(folder);
-      }
-    }
-
-    // Create the daily note
-    await app.vault.create(path, content);
   }
 
   // Open the file in new tab

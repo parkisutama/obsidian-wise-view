@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCalendarViewRegistration } from "../src/views/BasesCalendarView";
-import { processTemplateVariables } from "../src/views/calendar/dailyNote";
 import { entryToEvent } from "../src/views/calendar/eventMapping";
 import { createCalendarEventNote } from "../src/views/calendar/eventNote";
 import { NoteTemplateService } from "../src/services/NoteTemplateService";
@@ -74,14 +73,6 @@ describe("Calendar extracted behavior", () => {
 			color: "#123456",
 			extendedProps: { path: "Projects/Launch.md" },
 		});
-	});
-
-	it("keeps deferred Templater syntax unprocessed in the characterized baseline", () => {
-		const date = new Date(2026, 8, 19, 10, 30);
-		const template = "Created <% tp.date.now(\"YYYY-MM-DD\") %> on {{date}}";
-		expect(processTemplateVariables(template, date)).toBe(
-			"Created <% tp.date.now(\"YYYY-MM-DD\") %> on 2026-09-19",
-		);
 	});
 
 	it("routes event-note creation through NoteTemplateService with configured fields", async () => {

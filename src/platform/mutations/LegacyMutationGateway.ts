@@ -11,6 +11,7 @@
  */
 
 import { TFile, type App } from 'obsidian';
+import { createNoteFromTemplate, detectTemplateEngine } from '../../services/templateEngine';
 import type {
 	DateMutationCapability,
 	DependencyMutationCapability,
@@ -149,6 +150,12 @@ export class LegacyMutationGateway
 
 	async createNote(request: NoteCreationRequest): Promise<MutationResult> {
 		try {
+			const template = request.templatePath ? this.resolveFile(request.templatePath) : null;
+			const engine = detectTemplateEngine(this.app);
+			if (template && engine !== 'plain') {
+				await createNoteFromTemplate(this.app, engine, { template, path: request.path, frontmatter: request.frontmatter });
+				return { ok: true };
+			}
 			const folder = request.path.includes('/') ? request.path.slice(0, request.path.lastIndexOf('/')) : '';
 			if (folder && !this.app.vault.getAbstractFileByPath(folder)) {
 				await this.app.vault.createFolder(folder);

@@ -40,6 +40,11 @@ export interface NoteCreationRequest {
 	path: string;
 	frontmatter?: Readonly<Record<string, unknown>>;
 	body?: string;
+	/**
+	 * Vault path of a template to create the note through Templater or the core Templates plugin.
+	 * When set, `body` is ignored and `frontmatter` is merged over what the template wrote.
+	 */
+	templatePath?: string;
 }
 
 /** Creates a new note, e.g. "new note at today" from the Calendar/Gantt command palette. */

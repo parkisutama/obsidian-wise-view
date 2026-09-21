@@ -7,13 +7,18 @@ import {
   Notice,
   parseYaml,
   stringifyYaml,
-  TAbstractFile,
   TFile,
-  TFolder,
   normalizePath,
 } from 'obsidian';
 import type { NoteTemplateDefaults } from '../types/settings';
 import type { NoteCreationRequest } from '../platform/mutations/types';
+import {
+  availablePath,
+  createNoteFromTemplate,
+  detectTemplateEngine,
+  ensureFolder,
+  noticePlainTemplate,
+} from './templateEngine';
 
 export interface NoteTemplateContext {
   title: string;
@@ -28,6 +33,13 @@ interface TemplateParts {
   body: string;
 }
 
+/**
+ * Creates notes for Calendar events and Gantt tasks (docs/specs/note-template.md).
+ *
+ * The template file is processed by Templater or the core Templates plugin (see
+ * `templateEngine.ts`); Wise View's `{{title|date|time|start|end}}` tokens apply only to the
+ * title format, whose values the view itself computed, never to the template's own text.
+ */
 export class NoteTemplateService {
   constructor(
     private readonly app: App,
@@ -35,69 +47,86 @@ export class NoteTemplateService {
   ) {}
 
   async createNote(view: BasesView, context: NoteTemplateContext): Promise<void> {
-    // Templater/core Templates dispatch is intentionally deferred to the note-template
-    // workstream. Future integration point (deliberately disabled; do not uncomment alone):
-    // return this.createThroughConfiguredTemplateEngine(view, context);
-    const renderedTitle = this.renderTemplate(this.settings.titleFormat || context.title, context).trim() || context.title;
-    const fileTitle = this.sanitizeFileName(renderedTitle) || 'Untitled';
-    const template = await this.readTemplate(context);
-    const frontmatter = { ...template.frontmatter, ...context.frontmatter };
+    const fileTitle = this.fileTitle(context);
+    const template = this.getTemplateFile();
 
-    if (this.settings.targetFolder) {
-      const file = await this.createDirectly(fileTitle, frontmatter, template.body);
-      await this.app.workspace.getLeaf(false).openFile(file);
+    if (!template) {
+      await this.createWithoutTemplate(view, fileTitle, context);
       return;
     }
 
-    if (!this.settings.templatePath) {
-      await view.createFileForView(fileTitle, (fm: Record<string, unknown>) => {
-        Object.assign(fm, context.frontmatter);
-      });
-      return;
-    }
-
-    const createdFile = await this.createThroughBases(view, fileTitle, frontmatter);
-    if (!createdFile) {
-      new Notice('Could not apply the template because no new note was detected.');
-      return;
-    }
-
-    await this.applyTemplateToFile(createdFile, frontmatter, template.body);
+    const folder = normalizePath(this.settings.targetFolder || this.newNoteFolder());
+    const path = availablePath(this.app, folder, fileTitle);
+    const engine = detectTemplateEngine(this.app);
+    const file = engine === 'plain'
+      ? await this.createPlain(path, template, context)
+      : await createNoteFromTemplate(this.app, engine, { template, path, frontmatter: context.frontmatter });
+    await this.app.workspace.getLeaf(false).openFile(file);
   }
 
   /**
-   * Renders the same title/template contract without writing. Scoped-write views pass the
+   * Resolves the same title/template contract without writing. Scoped-write views pass the
    * result to FileCreateCapability instead of receiving direct vault access.
    */
   async prepareNote(context: NoteTemplateContext, fallbackFolder = ''): Promise<NoteCreationRequest> {
-    const renderedTitle = this.renderTemplate(this.settings.titleFormat || context.title, context).trim() || context.title;
-    const fileTitle = this.sanitizeFileName(renderedTitle) || 'Untitled';
-    const template = await this.readTemplate(context);
-    const frontmatter = { ...template.frontmatter, ...context.frontmatter };
+    const fileTitle = this.fileTitle(context);
+    const template = this.getTemplateFile();
     const folder = normalizePath(this.settings.targetFolder || fallbackFolder);
-    const path = await this.getAvailablePath(folder, fileTitle);
-    return { path, frontmatter, body: template.body };
+    const path = availablePath(this.app, folder, fileTitle);
+
+    if (template && detectTemplateEngine(this.app) !== 'plain') {
+      return { path, frontmatter: context.frontmatter, templatePath: template.path };
+    }
+    if (!template) return { path, frontmatter: context.frontmatter, body: '' };
+
+    const parts = await this.readPlainTemplate(template);
+    noticePlainTemplate();
+    return { path, frontmatter: { ...parts.frontmatter, ...context.frontmatter }, body: parts.body };
   }
 
-  private async readTemplate(context: NoteTemplateContext): Promise<TemplateParts> {
+  private async createWithoutTemplate(
+    view: BasesView,
+    fileTitle: string,
+    context: NoteTemplateContext,
+  ): Promise<void> {
+    if (this.settings.targetFolder) {
+      const folder = normalizePath(this.settings.targetFolder);
+      await ensureFolder(this.app, folder);
+      const file = await this.app.vault.create(
+        availablePath(this.app, folder, fileTitle),
+        this.compose(context.frontmatter, ''),
+      );
+      await this.app.workspace.getLeaf(false).openFile(file);
+      return;
+    }
+    await view.createFileForView(fileTitle, (fm: Record<string, unknown>) => {
+      Object.assign(fm, context.frontmatter);
+    });
+  }
+
+  /** Last resort: nothing will process the template, so copy it as-is and say so. */
+  private async createPlain(path: string, template: TFile, context: NoteTemplateContext): Promise<TFile> {
+    const parts = await this.readPlainTemplate(template);
+    noticePlainTemplate();
+    await ensureFolder(this.app, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
+    return this.app.vault.create(path, this.compose({ ...parts.frontmatter, ...context.frontmatter }, parts.body));
+  }
+
+  private async readPlainTemplate(template: TFile): Promise<TemplateParts> {
+    return this.parseTemplate(await this.app.vault.cachedRead(template));
+  }
+
+  private getTemplateFile(): TFile | null {
     const templatePath = normalizePath(this.settings.templatePath);
-    if (!templatePath) {
-      return { frontmatter: {}, body: '' };
-    }
-
-    const file = this.getTemplateFile(templatePath);
-    if (!file) {
-      new Notice(`Template note not found: ${templatePath}`);
-      return { frontmatter: {}, body: '' };
-    }
-
-    const content = this.renderTemplate(await this.app.vault.cachedRead(file), context);
-    return this.parseTemplate(content);
+    if (!templatePath) return null;
+    const file = this.app.vault.getFileByPath(templatePath) ??
+      this.app.vault.getFileByPath(`${templatePath}.md`);
+    if (!file) new Notice(`Template note not found: ${templatePath}`);
+    return file;
   }
 
-  private getTemplateFile(templatePath: string): TFile | null {
-    return this.app.vault.getFileByPath(templatePath) ??
-      this.app.vault.getFileByPath(`${templatePath}.md`);
+  private newNoteFolder(): string {
+    return this.app.fileManager.getNewFileParent(this.app.workspace.getActiveFile()?.path ?? '').path;
   }
 
   private parseTemplate(content: string): TemplateParts {
@@ -120,104 +149,20 @@ export class NoteTemplateService {
     }
   }
 
-  private async createThroughBases(
-    view: BasesView,
-    title: string,
-    frontmatter: Record<string, unknown>,
-  ): Promise<TFile | null> {
-    const created = this.waitForCreatedMarkdownFile();
-    await view.createFileForView(title, (fm: Record<string, unknown>) => {
-      Object.assign(fm, frontmatter);
-    });
-    return created;
-  }
-
-  private waitForCreatedMarkdownFile(): Promise<TFile | null> {
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = (file: TFile | null) => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timeoutId);
-        this.app.vault.offref(ref);
-        resolve(file);
-      };
-
-      const ref = this.app.vault.on('create', (file: TAbstractFile) => {
-        if (file instanceof TFile && file.extension === 'md') {
-          finish(file);
-        }
-      });
-
-      const timeoutId = window.setTimeout(() => finish(null), 30_000);
-    });
-  }
-
-  private async createDirectly(
-    title: string,
-    frontmatter: Record<string, unknown>,
-    body: string,
-  ): Promise<TFile> {
-    const folder = normalizePath(this.settings.targetFolder);
-    await this.ensureFolder(folder);
-    const path = await this.getAvailablePath(folder, title);
-    return this.app.vault.create(path, this.composeContent(frontmatter, body));
-  }
-
-  private async ensureFolder(folder: string): Promise<void> {
-    if (!folder || this.app.vault.getFolderByPath(folder)) return;
-
-    const parts = folder.split('/').filter(Boolean);
-    let current = '';
-    for (const part of parts) {
-      current = current ? `${current}/${part}` : part;
-      if (!this.app.vault.getFolderByPath(current)) {
-        await this.app.vault.createFolder(current);
-      }
-    }
-  }
-
-  private async getAvailablePath(folder: string, title: string): Promise<string> {
-    const safeTitle = this.sanitizeFileName(title) || 'Untitled';
-    let path = normalizePath(folder ? `${folder}/${safeTitle}.md` : `${safeTitle}.md`);
-    let counter = 2;
-    while (this.app.vault.getAbstractFileByPath(path)) {
-      path = normalizePath(folder ? `${folder}/${safeTitle} ${counter}.md` : `${safeTitle} ${counter}.md`);
-      counter += 1;
-    }
-    return path;
-  }
-
-  private async applyTemplateToFile(
-    file: TFile,
-    frontmatter: Record<string, unknown>,
-    body: string,
-  ): Promise<void> {
-    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-      Object.assign(fm, frontmatter);
-    });
-
-    if (!body.trim()) return;
-    const content = await this.app.vault.read(file);
-    await this.app.vault.modify(file, this.replaceBody(content, body));
-  }
-
-  private replaceBody(content: string, body: string): string {
-    const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
-    if (!match) {
-      return this.composeContent({}, body);
-    }
-    return `${match[0]}${body.trimStart()}`;
-  }
-
-  private composeContent(frontmatter: Record<string, unknown>, body: string): string {
+  private compose(frontmatter: Record<string, unknown>, body: string): string {
     const yaml = stringifyYaml(frontmatter).trim();
     const renderedBody = body.trimStart();
     if (!yaml) return renderedBody;
     return `---\n${yaml}\n---\n${renderedBody}`;
   }
 
-  private renderTemplate(template: string, context: NoteTemplateContext): string {
+  private fileTitle(context: NoteTemplateContext): string {
+    const rendered = this.renderTitleFormat(this.settings.titleFormat || context.title, context).trim() || context.title;
+    return this.sanitizeFileName(rendered) || 'Untitled';
+  }
+
+  /** Substitutes the values the view computed. Only ever used on the title format. */
+  private renderTitleFormat(format: string, context: NoteTemplateContext): string {
     const start = context.start;
     const end = context.end ?? undefined;
     const replacements: Record<string, string> = {
@@ -228,7 +173,7 @@ export class NoteTemplateService {
       end: end ? this.formatLocalDateTime(end, context.allDay ?? false) : '',
     };
 
-    return template.replace(/\{\{\s*(title|date|time|start|end)\s*\}\}/g, (_, key: string) => replacements[key] ?? '');
+    return format.replace(/\{\{\s*(title|date|time|start|end)\s*\}\}/g, (_, key: string) => replacements[key] ?? '');
   }
 
   private formatLocalDateTime(date: Date, allDay: boolean): string {
