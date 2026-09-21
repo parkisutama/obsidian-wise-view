@@ -59,6 +59,9 @@ type CalendarViewType = 'multiMonthYear' | 'dayGridYear' | 'dayGridMonth' | 'tim
 /** Toolbar buttons whose DOM is adjusted after FullCalendar mounts them. */
 type ManagedButton = 'yearButton' | 'yearToggleButton';
 
+/** 24-hour clock everywhere (event times, time-grid slot labels), never AM/PM. */
+const TIME_24H = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const;
+
 const isYearView = (view: string | null | undefined): boolean =>
   view === 'multiMonthYear' || view === 'dayGridYear';
 
@@ -365,6 +368,8 @@ export class BasesCalendarView extends BasesView {
       },
       height: '100%',
       expandRows: true,
+      eventTimeFormat: TIME_24H,
+      slotHeaderFormat: TIME_24H,
       nowIndicator: true,
       dayMaxEvents: true,
       // FullCalendar 7 resizes with its container and always attaches drag mirrors to <body>,

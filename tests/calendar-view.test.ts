@@ -351,3 +351,13 @@ describe("BasesCalendarView lifecycle", () => {
 		}).not.toThrow();
 	});
 });
+
+describe("BasesCalendarView time format", () => {
+	it("shows time-grid slot labels on a 24-hour clock", async () => {
+		const h = mount({ config: { defaultView: "timeGridWeek" } });
+		await flush();
+		const labels = [...h.host.querySelectorAll(".planner-fc-slot-label")].map((el) => el.textContent ?? "");
+		expect(labels.join(" ")).not.toMatch(/\b(AM|PM)\b/i);
+		expect(labels.some((text) => /^(1[3-9]|2[0-3])(:|$)/.test(text.trim()))).toBe(true);
+	});
+});
