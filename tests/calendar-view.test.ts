@@ -456,15 +456,88 @@ describe("BasesCalendarView title links", () => {
 		expect(title(h)?.textContent?.replace(/\s+/g, " ").trim()).toBe(monthTitle(next));
 	});
 
-	it("shows a linked year in year views and plain FullCalendar text elsewhere", async () => {
+	it("shows a linked year in year views", async () => {
 		const h = mount({ config: all });
 		internals(h).calendar.changeView("multiMonthYear");
 		await flush();
 		expect(links(h).map((el) => el.textContent)).toEqual([formatPeriodicTokens("YYYY", now())]);
-		internals(h).calendar.changeView("timeGridWeek");
-		await flush();
-		expect(links(h)).toHaveLength(0);
-		expect(title(h)?.textContent).not.toBe("");
+	});
+
+	describe("week, 3-day, and day views", () => {
+		const every = { ...all, periodicWeekPath: "j/GGGG-[W]WW", periodicDayPath: "j/YYYY-MM-DD" };
+		const at = (h: CalendarHarness, view: string) => {
+			internals(h).calendar.changeView(view);
+			return flush();
+		};
+		const isoWeek = (date: Date) => `W${formatPeriodicTokens("W", date)}`;
+		/** Thursday of the week containing today (Monday start): the anchor the title resolves from. */
+		const weekThursday = () => {
+			const t = now();
+			return new Date(t.getFullYear(), t.getMonth(), t.getDate() - ((t.getDay() + 6) % 7) + 3);
+		};
+		const monthParts = (date: Date) => [
+			formatPeriodicTokens("MMMM", date),
+			formatPeriodicTokens("YYYY", date),
+			`Q${formatPeriodicTokens("Q", date)}`,
+		];
+
+		it("links the week, then the month, year, and quarter of its middle day", async () => {
+			const h = mount({ config: every });
+			await at(h, "timeGridWeek");
+			const anchor = weekThursday();
+			expect(links(h).map((el) => el.textContent)).toEqual([isoWeek(anchor), ...monthParts(anchor)]);
+			expect(title(h)?.textContent?.replace(/s+/g, " ").trim()).toBe(
+				`${isoWeek(anchor)} · ${monthTitle(anchor)}`,
+			);
+		});
+
+		it("does the same for the 3-day view, resolved from its middle day", async () => {
+			const h = mount({ config: every });
+			await at(h, "timeGridThreeDay");
+			const middle = new Date(now().getFullYear(), now().getMonth(), now().getDate() + 1);
+			expect(links(h).map((el) => el.textContent)).toEqual([isoWeek(middle), ...monthParts(middle)]);
+		});
+
+		it("leads the day view with a day link, then the week, month, year, and quarter", async () => {
+			const h = mount({ config: every });
+			await at(h, "timeGridDay");
+			expect(links(h).map((el) => el.textContent)).toEqual([
+				formatPeriodicTokens("ddd D", now()),
+				isoWeek(now()),
+				...monthParts(now()),
+			]);
+		});
+
+		it("opens the week and day notes that exist from the title", async () => {
+			const today = formatPeriodicTokens("YYYY-MM-DD", now());
+			const week = formatPeriodicTokens("GGGG-[W]WW", now());
+			const h = mount({ config: every, existingFiles: [`j/${today}.md`, `j/${week}.md`] });
+			await at(h, "timeGridDay");
+			const [day, wk] = links(h);
+			expect(day?.querySelector(".planner-title-dot")).not.toBeNull();
+			expect(wk?.querySelector(".planner-title-dot")).not.toBeNull();
+			day?.click();
+			wk?.click();
+			await flush();
+			expect(h.opened).toEqual([`j/${today}.md`, `j/${week}.md`]);
+		});
+
+		it("keeps FullCalendar's title where no part of the view is linkable", async () => {
+			const h = mount({ config: { periodicDayPath: "j/YYYY-MM-DD" } });
+			await at(h, "timeGridWeek");
+			expect(links(h)).toHaveLength(0);
+			expect(title(h)?.textContent).not.toMatch(/·/);
+			expect(title(h)?.textContent).not.toBe("");
+			await at(h, "dayGridMonth");
+			expect(links(h)).toHaveLength(0);
+		});
+
+		it("leaves the list view on FullCalendar's own title", async () => {
+			const h = mount({ config: every });
+			await at(h, "listWeek");
+			expect(links(h)).toHaveLength(0);
+			expect(title(h)?.textContent).not.toBe("");
+		});
 	});
 });
 

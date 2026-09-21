@@ -75,7 +75,13 @@ already organized by it works without moving files.
     - **Month, year, quarter:** the toolbar title becomes `September 2026 (Q3)` with each part
       underlined as a link hint (the underline is the affordance, matching the maintainer's
       reference), opening or creating that period's note; an existence dot marks notes that exist.
-    - **Day:** unchanged (day number link plus dot).
+    - **Day:** day number link plus dot (unchanged).
+    - **Week, 3-day, and day views (added 2026-09-21):** the title leads with the periods of the
+      range and follows with the month, year, and quarter of its middle day: week and 3-day read
+      `W39 · September 2026 (Q3)`; the day view reads `Tue 22 · W39 · September 2026 (Q3)` with the
+      day link first. A 3-day range resolves from its middle day (a range crossing a month is
+      ambiguous; the middle day decides). List views keep FullCalendar's own title. When no part of
+      a view's title is a configured period, FullCalendar's own title is shown unchanged.
 14. **Unconfigured means no links.** A period with no path pattern set on the Base gets no link,
     no underline, no dot, and no created notes; the rest of the calendar is unchanged. There is no
     global fallback (decision 2).
