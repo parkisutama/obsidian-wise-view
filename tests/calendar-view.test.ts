@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCalendarViewRegistration } from "../src/views/BasesCalendarView";
+import { formatPeriodicTokens } from "../src/views/calendar/periodic/resolver";
 import { entryToEvent } from "../src/views/calendar/eventMapping";
 import { createCalendarEventNote } from "../src/views/calendar/eventNote";
 import { NoteTemplateService } from "../src/services/NoteTemplateService";
@@ -368,6 +369,40 @@ describe("BasesCalendarView periodic day notes", () => {
 		await flush();
 		expect(h.hovered).toContain(`journal/${inThreeDays}.md`);
 		expect(h.opened).toContain(`journal/${inThreeDays}.md`);
+	});
+});
+
+describe("BasesCalendarView week-number links", () => {
+	const week = { periodicWeekPath: "journal/GGGG-[W]WW" };
+	const isoWeekOfToday = () => formatPeriodicTokens("GGGG-[W]WW", new Date());
+	const cells = (h: CalendarHarness) => [...h.host.querySelectorAll<HTMLElement>(".planner-fc-week-number")];
+
+	it("shows no week numbers until weekly notes are configured", () => {
+		const h = mount();
+		expect(cells(h)).toHaveLength(0);
+	});
+
+	it("labels each row with its ISO week number", () => {
+		const h = mount({ config: week });
+		const labels = cells(h).map((el) => el.textContent?.trim());
+		expect(labels.length).toBeGreaterThanOrEqual(4);
+		// Rows are consecutive weeks, so the numbers rise by one (or wrap at year end).
+		expect(labels.every((label) => /^\d{1,2}$/.test(label ?? ""))).toBe(true);
+		const thisWeek = Number(isoWeekOfToday().split("W")[1]);
+		expect(labels).toContain(String(thisWeek));
+	});
+
+	it("marks and opens only the weeks whose note exists", async () => {
+		const h = mount({ config: week, existingFiles: [`journal/${isoWeekOfToday()}.md`] });
+		const dots = h.host.querySelectorAll(".planner-fc-week-number .planner-week-dot");
+		expect(dots).toHaveLength(1);
+
+		const cell = dots[0]?.closest<HTMLElement>(".planner-fc-week-number");
+		cell?.dispatchEvent(new MouseEvent("mouseenter"));
+		cell?.click();
+		await flush();
+		expect(h.hovered).toContain(`journal/${isoWeekOfToday()}.md`);
+		expect(h.opened).toContain(`journal/${isoWeekOfToday()}.md`);
 	});
 });
 

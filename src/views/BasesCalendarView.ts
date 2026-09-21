@@ -52,6 +52,7 @@ import { getJournalNotePathForDate, openJournalOrDailyNote } from './calendar/da
 import { createCalendarOptions } from './calendar/options';
 import { createCalendarEventNote } from './calendar/eventNote';
 import { type PeriodicConfig, readPeriodicConfig } from './calendar/periodic/config';
+import { weekAnchor, weekLabel } from './calendar/periodic/weekLinks';
 import { eventTemplateDefaults, existingPeriodicNotePath, isPeriodicNote, openPeriodicNote } from './calendar/periodic/notes';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
@@ -247,6 +248,7 @@ export class BasesCalendarView extends BasesView {
 
     const weekStartsOn = this.getWeekStartDay();
     const events = this.getEventsFromData();
+    const periodic = this.getPeriodicConfig();
 
     // Use provided view, or current view if re-rendering, or config default for first render
     const viewToUse = initialView || this.currentView || this.getDefaultView();
@@ -332,6 +334,19 @@ export class BasesCalendarView extends BasesView {
       navLinks: true, // Day numbers and day headers are links
       // Clicking a day number, day header, or list day header opens the journal/daily note
       navLinkDayClick: (date) => { void this.openDayNote(date); },
+      // Week numbers appear only when the Base configures weekly notes; each links to that week's note.
+      weekNumbers: periodic.periods.week.pattern !== '',
+      inlineWeekNumberClass: 'planner-fc-week-number',
+      inlineWeekNumberContent: (info) => (info.date ? { html: weekLabel(info.date, periodic) } : true),
+      inlineWeekNumberDidMount: (arg) => {
+        const path = existingPeriodicNotePath(this.app, weekAnchor(arg.date), 'week', periodic);
+        if (!path) return;
+        arg.el.createSpan({ cls: 'planner-journal-dot planner-week-dot' });
+        arg.el.addEventListener('mouseenter', (e) => {
+          this.triggerHoverPreview(e, path, arg.el);
+        });
+      },
+      navLinkWeekClick: (weekStart) => { void openPeriodicNote(this.app, weekAnchor(weekStart), 'week', periodic); },
       events: events,
       eventClick: (info) => { void this.handleEventClick(info); },
       eventDidMount: (info) => {

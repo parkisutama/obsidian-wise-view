@@ -137,9 +137,9 @@ that opens or creates that week's note. Shown only when the week period is confi
 
 **Acceptance criteria:**
 
-- [ ] Numbers follow the configured week numbering (ISO by default).
-- [ ] Dot shows for existing notes; click opens or creates through the general mechanism.
-- [ ] Not configured means no column links (plain numbers or none).
+- [x] Numbers follow the configured week numbering (ISO by default).
+- [x] Dot shows for existing notes; click opens or creates through the general mechanism.
+- [x] Not configured means no column links (plain numbers or none).
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`
 

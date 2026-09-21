@@ -1285,6 +1285,26 @@
 	padding: 2px 8px;
 }
 
+/* Week-number links: underlined as a hint, like the periodic links in the toolbar title. */
+.planner-bases-calendar .planner-fc-week-number {
+	color: var(--text-muted);
+	font-size: var(--planner-calendar-font-size, 10px);
+	text-decoration: underline;
+	text-decoration-color: var(--background-modifier-border-hover);
+	text-underline-offset: 3px;
+	cursor: pointer;
+}
+
+.planner-bases-calendar .planner-fc-week-number:hover {
+	color: var(--text-normal);
+	text-decoration-color: var(--interactive-accent);
+}
+
+.planner-bases-calendar .planner-fc-week-number .planner-week-dot {
+	display: block;
+	margin: 2px auto 0;
+}
+
 .planner-journal-dot {
 	display: inline-flex;
 	flex-shrink: 0;
