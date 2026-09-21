@@ -79,6 +79,16 @@ already organized by it works without moving files.
 14. **Unconfigured means no links.** A period with no path pattern set on the Base gets no link,
     no underline, no dot, and no created notes; the rest of the calendar is unchanged. There is no
     global fallback (decision 2).
+15. **Who decides the folder.** Wise View only supplies the *initial* folder; whatever the template
+    engine does afterwards wins, because it runs after creation.
+    - **Event notes:** template move (`tp.file.move`, Templater folder templates) > the Base's
+      `targetFolder` > the start day's daily folder > Obsidian's new-note folder.
+    - **Period notes:** the path pattern is the source of truth, because Calendar finds the note
+      by resolving that path (dot, hover, hiding it from events). If a template moves a period note
+      elsewhere, Calendar opens the moved note and tells the user it will not be marked or reused
+      there. Period templates should therefore not move the note.
+    - Unverified: whether Templater's own folder-template setting also fires on a note created
+      through its API, which could apply a template twice. Check in native acceptance (PN-006).
 13. **24-hour clock.** Event times and time-grid slot labels use 24-hour format, never AM/PM.
     Done 2026-09-21 as a fixed default (no new option key); list view already read well.
 

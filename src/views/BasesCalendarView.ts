@@ -52,7 +52,7 @@ import { getJournalNotePathForDate, openJournalOrDailyNote } from './calendar/da
 import { createCalendarOptions } from './calendar/options';
 import { createCalendarEventNote } from './calendar/eventNote';
 import { type PeriodicConfig, readPeriodicConfig } from './calendar/periodic/config';
-import { eventTemplateDefaults, existingPeriodicNotePath, openPeriodicNote } from './calendar/periodic/notes';
+import { eventTemplateDefaults, existingPeriodicNotePath, isPeriodicNote, openPeriodicNote } from './calendar/periodic/notes';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
 
@@ -461,6 +461,7 @@ export class BasesCalendarView extends BasesView {
 
   private getEventsFromData(): EventInput[] {
     const events: EventInput[] = [];
+    const periodic = this.getPeriodicConfig();
     const groupedData = this.data.groupedData as BasesGroupedData[];
     const colorByProp = this.getColorByField();
 
@@ -477,7 +478,8 @@ export class BasesCalendarView extends BasesView {
           resolvePrettyPropertiesColor: (property, value) =>
             resolvePrettyPropertiesColor(this.runtime.win, this.runtime.doc, property, value),
         });
-        if (event) {
+        // Period notes are reached through the calendar's period links, not drawn as events.
+        if (event && !isPeriodicNote(String(event.id), String(event.start), periodic)) {
           events.push(event);
         }
       }

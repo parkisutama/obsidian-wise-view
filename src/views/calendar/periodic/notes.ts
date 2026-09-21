@@ -10,7 +10,7 @@ import {
 } from '../../../services/templateEngine';
 import type { NoteTemplateDefaults } from '../../../types/settings';
 import { openFileInNewTab } from '../../../utils/openFile';
-import type { PeriodicConfig } from './config';
+import { PERIODIC_KINDS, type PeriodicConfig } from './config';
 import { type PeriodicKind, resolvePeriodicPath } from './resolver';
 
 /**
@@ -59,6 +59,9 @@ export async function openPeriodicNote(
     return;
   }
 
+  // Opened by the path the note actually ended up at: a template may move it (Templater's
+  // tp.file.move), and opening the pattern's path then would create a second, empty note.
+  let openPath = target.path;
   if (!app.vault.getAbstractFileByPath(target.path)) {
     const templatePath = config.periods[kind].template;
     const template = templatePath
@@ -68,7 +71,11 @@ export async function openPeriodicNote(
 
     const engine = detectTemplateEngine(app);
     if (template && engine !== 'plain') {
-      await createNoteFromTemplate(app, engine, { template, path: target.path });
+      const created = await createNoteFromTemplate(app, engine, { template, path: target.path });
+      openPath = created.path;
+      if (openPath !== target.path) {
+        new Notice(`The template moved the ${kind} note to ${openPath}. Calendar looks for it at ${target.path}, so it will not be marked or reused.`);
+      }
     } else {
       // Nothing will process the template: copy it as-is and say so.
       let content = '';
@@ -80,7 +87,7 @@ export async function openPeriodicNote(
       await app.vault.create(target.path, content);
     }
   }
-  openFileInNewTab(app, target.path);
+  openFileInNewTab(app, openPath);
 }
 
 /**
@@ -102,4 +109,25 @@ export function eventTemplateDefaults(
     return null;
   }
   return { ...defaults, targetFolder: target.folder };
+}
+
+/** Local calendar date of a frontmatter value; date-only strings must not shift with the time zone. */
+function localDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  const date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * True when `path` is the period note for its own start date in any configured period. Such a
+ * note is reached through the calendar's period links, so it is not drawn as an event. Checked
+ * by resolving the path forward, so no pattern has to be parsed backwards.
+ */
+export function isPeriodicNote(path: string, start: string, config: PeriodicConfig): boolean {
+  const date = localDate(start);
+  if (!date) return false;
+  return PERIODIC_KINDS.some((kind) => {
+    const target = periodicNoteTarget(date, kind, config);
+    return target.status === 'ok' && target.path === path;
+  });
 }

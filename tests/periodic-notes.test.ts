@@ -5,6 +5,7 @@ import { periodicKeys, readPeriodicConfig, WEEK_NUMBERING_KEY } from "../src/vie
 import {
 	eventTemplateDefaults,
 	existingPeriodicNotePath,
+	isPeriodicNote,
 	openPeriodicNote,
 	periodicNoteTarget,
 } from "../src/views/calendar/periodic/notes";
@@ -16,7 +17,7 @@ const dayConfig = (extra: Record<string, unknown> = {}) => configFrom({ [periodi
 const d = (y: number, m: number, day: number) => new Date(y, m - 1, day);
 
 /** A vault of `files` (path -> content) plus recorders for what the code under test does. */
-function fakeApp(files: Record<string, string> = {}, options: { templater?: boolean } = {}) {
+function fakeApp(files: Record<string, string> = {}, options: { templater?: boolean; movedTo?: string } = {}) {
 	const store = new Map(Object.entries(files));
 	const calls = { created: [] as string[], folders: [] as string[], opened: [] as string[], templater: [] as string[] };
 	const app = {
@@ -48,7 +49,8 @@ function fakeApp(files: Record<string, string> = {}, options: { templater?: bool
 							templater: {
 								create_new_note_from_template: async (_template: TFile, _folder: unknown, name: string) => {
 									calls.templater.push(name);
-									return new TFile(name);
+									// A template may move the note (tp.file.move); otherwise it lands in the folder given.
+									return new TFile(options.movedTo ?? `${calls.folders[calls.folders.length - 1]}/${name}.md`);
 								},
 							},
 						},
@@ -111,6 +113,16 @@ describe("openPeriodicNote", () => {
 		expect(calls.opened).toEqual(["timeline/2026/2026-09/2026-09-22.md"]);
 	});
 
+	it("opens the path a template moved the note to, never the pattern's path", async () => {
+		const { app, calls } = fakeApp({ "templates/daily.md": "<%* await tp.file.move('Inbox/x') %>" }, {
+			templater: true,
+			movedTo: "Inbox/2026-09-22.md",
+		});
+		const config = dayConfig({ [periodicKeys("day").template]: "templates/daily.md" });
+		await openPeriodicNote(app, d(2026, 9, 22), "day", config);
+		expect(calls.opened).toEqual(["Inbox/2026-09-22.md"]);
+	});
+
 	it("without any engine copies the template unprocessed and creates the folders", async () => {
 		const { app, calls } = fakeApp({ "templates/daily.md": "Hello {{date}}" });
 		const config = dayConfig({ [periodicKeys("day").template]: "templates/daily.md" });
@@ -136,6 +148,37 @@ describe("openPeriodicNote", () => {
 		await openPeriodicNote(app, d(2026, 9, 22), "day", configFrom({ [periodicKeys("day").path]: "/abs/YYYY" }));
 		expect(calls.created).toEqual([]);
 		expect(calls.opened).toEqual([]);
+	});
+});
+
+describe("isPeriodicNote", () => {
+	const all = configFrom({
+		[periodicKeys("day").path]: "timeline/YYYY/YYYY-MM/YYYY-MM-DD",
+		[periodicKeys("week").path]: "timeline/GGGG/GGGG-[W]WW",
+		[periodicKeys("month").path]: "timeline/YYYY/YYYY-MM",
+		[periodicKeys("quarter").path]: "timeline/YYYY/YYYY-[Q]Q",
+		[periodicKeys("year").path]: "timeline/YYYY",
+	});
+
+	it.each([
+		["timeline/2026/2026-09/2026-09-21.md", "2026-09-21"],
+		["timeline/2026/2026-W39.md", "2026-09-21"],
+		["timeline/2026/2026-09.md", "2026-09-01"],
+		["timeline/2026/2026-Q3.md", "2026-07-01"],
+		["timeline/2026.md", "2026-01-01"],
+		["timeline/2026/2026-09/2026-09-21.md", "2026-09-21T00:00:00+07:00"],
+	])("hides %s starting %s", (path, start) => {
+		expect(isPeriodicNote(path, start, all)).toBe(true);
+	});
+
+	it("keeps ordinary events, and periodic notes whose date does not match their own path", () => {
+		expect(isPeriodicNote("Projects/Launch.md", "2026-09-21", all)).toBe(false);
+		expect(isPeriodicNote("timeline/2026/2026-09/2026-09-21.md", "2026-09-22", all)).toBe(false);
+		expect(isPeriodicNote("timeline/2026/2026-09/2026-09-21.md", "not a date", all)).toBe(false);
+	});
+
+	it("hides nothing when no period is configured", () => {
+		expect(isPeriodicNote("timeline/2026/2026-09/2026-09-21.md", "2026-09-21", configFrom({}))).toBe(false);
 	});
 });
 

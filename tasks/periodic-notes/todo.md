@@ -98,9 +98,9 @@ resolving each period's path for that date and comparing), so they are no longer
 
 **Acceptance criteria:**
 
-- [ ] A day/week/month/quarter/year note is not rendered as an event.
-- [ ] Ordinary events whose path matches no period path are unaffected.
-- [ ] With no period configured, nothing is hidden.
+- [x] A day/week/month/quarter/year note is not rendered as an event.
+- [x] Ordinary events whose path matches no period path are unaffected.
+- [x] With no period configured, nothing is hidden.
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`
 

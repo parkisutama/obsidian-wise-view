@@ -371,6 +371,23 @@ describe("BasesCalendarView periodic day notes", () => {
 	});
 });
 
+describe("BasesCalendarView periodic notes as events", () => {
+	const notes = [
+		{ path: `journal/${dayOffset(0)}.md`, title: "Daily", date_start: dayOffset(0), date_end: dayOffset(0), status: "planned" },
+		{ path: "Projects/Meeting.md", title: "Meeting", date_start: dayOffset(0, 9), date_end: dayOffset(0, 10), status: "active" },
+	];
+
+	it("does not draw a period note as an event once its period is configured", () => {
+		const h = mount({ notes, config: { periodicDayPath: "journal/YYYY-MM-DD" } });
+		expect(internals(h).calendar.getEvents().map((e) => e.title)).toEqual(["Meeting"]);
+	});
+
+	it("draws everything while no period is configured", () => {
+		const h = mount({ notes });
+		expect(internals(h).calendar.getEvents().map((e) => e.title).sort()).toEqual(["Daily", "Meeting"]);
+	});
+});
+
 describe("BasesCalendarView time format", () => {
 	it("shows time-grid slot labels on a 24-hour clock", async () => {
 		const h = mount({ config: { defaultView: "timeGridWeek" } });
