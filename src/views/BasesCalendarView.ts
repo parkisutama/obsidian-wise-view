@@ -53,6 +53,7 @@ import { createCalendarOptions } from './calendar/options';
 import { createCalendarEventNote } from './calendar/eventNote';
 import { type PeriodicConfig, readPeriodicConfig } from './calendar/periodic/config';
 import { weekAnchor, weekLabel } from './calendar/periodic/weekLinks';
+import { hasTitleLinks, renderTitleLinks } from './calendar/periodic/titleLinks';
 import { eventTemplateDefaults, existingPeriodicNotePath, isPeriodicNote, openPeriodicNote } from './calendar/periodic/notes';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
@@ -249,6 +250,10 @@ export class BasesCalendarView extends BasesView {
     const weekStartsOn = this.getWeekStartDay();
     const events = this.getEventsFromData();
     const periodic = this.getPeriodicConfig();
+    // One persistent element: FullCalendar's toolbar element generator never receives the date, so
+    // `datesSet` rewrites it on load, navigation, and view changes.
+    const titleEl = hasTitleLinks(periodic) ? this.runtime.doc.createElement('span') : null;
+    if (titleEl) titleEl.className = 'planner-fc-title';
 
     // Use provided view, or current view if re-rendering, or config default for first render
     const viewToUse = initialView || this.currentView || this.getDefaultView();
@@ -261,8 +266,17 @@ export class BasesCalendarView extends BasesView {
       // View buttons are named after their views so FullCalendar tracks which one is selected.
       headerToolbar: {
         left: 'yearToggleButton,yearButton,dayGridMonth,timeGridWeek,timeGridThreeDay,timeGridDay,listWeek',
-        center: 'title',
+        center: titleEl ? 'periodTitle' : 'title',
         right: 'refreshButton prev,todayButton,next',
+      },
+      toolbarElements: titleEl ? { periodTitle: () => ({ domNodes: [titleEl] }) } : undefined,
+      datesSet: (info) => {
+        if (!titleEl) return;
+        renderTitleLinks(titleEl, info.view, periodic, {
+          existingPath: (date, kind) => existingPeriodicNotePath(this.app, date, kind, periodic),
+          open: (date, kind) => { void openPeriodicNote(this.app, date, kind, periodic); },
+          preview: (event, path, target) => this.triggerHoverPreview(event, path, target),
+        });
       },
       views: {
         timeGridThreeDay: {

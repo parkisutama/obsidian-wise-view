@@ -157,9 +157,9 @@ Only periods that are configured render as links.
 
 **Acceptance criteria:**
 
-- [ ] Parts reflect the visible date and update on navigation and view change.
-- [ ] Unconfigured periods render as plain text, without underline.
-- [ ] Works in dark and light themes using Obsidian CSS variables, no hardcoded colors.
+- [x] Parts reflect the visible date and update on navigation and view change.
+- [x] Unconfigured periods render as plain text, without underline.
+- [x] Works in dark and light themes using Obsidian CSS variables, no hardcoded colors.
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`
 

@@ -1305,6 +1305,26 @@
 	margin: 2px auto 0;
 }
 
+/* Period links in the toolbar title: underlined hint, dot when the note exists. */
+.planner-bases-calendar .planner-fc-title-link {
+	cursor: pointer;
+	text-decoration: underline;
+	text-decoration-color: var(--background-modifier-border-hover);
+	text-underline-offset: 4px;
+}
+
+.planner-bases-calendar .planner-fc-title-link:hover,
+.planner-bases-calendar .planner-fc-title-link:focus-visible {
+	color: var(--text-accent);
+	text-decoration-color: var(--interactive-accent);
+}
+
+.planner-bases-calendar .planner-fc-title-link .planner-title-dot {
+	display: inline-block;
+	margin-left: 3px;
+	vertical-align: super;
+}
+
 .planner-journal-dot {
 	display: inline-flex;
 	flex-shrink: 0;

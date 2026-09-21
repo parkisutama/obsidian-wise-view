@@ -406,6 +406,68 @@ describe("BasesCalendarView week-number links", () => {
 	});
 });
 
+describe("BasesCalendarView title links", () => {
+	const all = { periodicMonthPath: "j/YYYY-MM", periodicQuarterPath: "j/YYYY-[Q]Q", periodicYearPath: "j/YYYY" };
+	const now = () => new Date();
+	const title = (h: CalendarHarness) => q(h, ".planner-fc-title");
+	const links = (h: CalendarHarness) => [...h.host.querySelectorAll<HTMLElement>(".planner-fc-title-link")];
+	const monthTitle = (date: Date) =>
+		`${formatPeriodicTokens("MMMM YYYY", date)} (Q${formatPeriodicTokens("Q", date)})`;
+
+	it("keeps FullCalendar's title, unlinked, while no title period is configured", () => {
+		const h = mount();
+		expect(links(h)).toHaveLength(0);
+		expect(title(h)?.textContent).not.toBe("");
+	});
+
+	it("reads Month YYYY (Qn) with a link for each configured part", () => {
+		const h = mount({ config: all });
+		expect(title(h)?.textContent?.replace(/\s+/g, " ").trim()).toBe(monthTitle(now()));
+		expect(links(h).map((el) => el.textContent)).toEqual([
+			formatPeriodicTokens("MMMM", now()),
+			formatPeriodicTokens("YYYY", now()),
+			`Q${formatPeriodicTokens("Q", now())}`,
+		]);
+	});
+
+	it("links only the configured periods and leaves the rest plain", () => {
+		const h = mount({ config: { periodicYearPath: "j/YYYY" } });
+		expect(links(h).map((el) => el.textContent)).toEqual([formatPeriodicTokens("YYYY", now())]);
+		expect(title(h)?.textContent?.replace(/\s+/g, " ").trim()).toBe(monthTitle(now()));
+	});
+
+	it("marks a part whose note exists, and opens it on click", async () => {
+		const h = mount({ config: all, existingFiles: [`j/${formatPeriodicTokens("YYYY-MM", now())}.md`] });
+		const [month, year] = links(h);
+		expect(month?.querySelector(".planner-title-dot")).not.toBeNull();
+		expect(year?.querySelector(".planner-title-dot")).toBeNull();
+		month?.dispatchEvent(new MouseEvent("mouseenter"));
+		month?.click();
+		await flush();
+		expect(h.hovered).toEqual([`j/${formatPeriodicTokens("YYYY-MM", now())}.md`]);
+		expect(h.opened).toEqual([`j/${formatPeriodicTokens("YYYY-MM", now())}.md`]);
+	});
+
+	it("follows navigation to the next month", async () => {
+		const h = mount({ config: all });
+		button(h, "next").click();
+		await flush();
+		const next = new Date(now().getFullYear(), now().getMonth() + 1, 1);
+		expect(title(h)?.textContent?.replace(/\s+/g, " ").trim()).toBe(monthTitle(next));
+	});
+
+	it("shows a linked year in year views and plain FullCalendar text elsewhere", async () => {
+		const h = mount({ config: all });
+		internals(h).calendar.changeView("multiMonthYear");
+		await flush();
+		expect(links(h).map((el) => el.textContent)).toEqual([formatPeriodicTokens("YYYY", now())]);
+		internals(h).calendar.changeView("timeGridWeek");
+		await flush();
+		expect(links(h)).toHaveLength(0);
+		expect(title(h)?.textContent).not.toBe("");
+	});
+});
+
 describe("BasesCalendarView periodic notes as events", () => {
 	const notes = [
 		{ path: `journal/${dayOffset(0)}.md`, title: "Daily", date_start: dayOffset(0), date_end: dayOffset(0), status: "planned" },
