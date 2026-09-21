@@ -1188,6 +1188,20 @@
 	font-size: 0.72em;
 }
 
+/* FullCalendar rounds only the last button of a group (`.last-child` gives it
+   `border-start-end-radius` and `border-end-end-radius`). Under Baseline's fractional 0.876px side
+   borders, that one rounded corner makes the group's buttons render a small triangle at their
+   top-left corner; removing the radius (checked in DevTools) removes it. The view buttons are
+   square tabs instead. Same specificity as the theme rules, so this wins on source order below. */
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button-yearButton,
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button-dayGridMonth,
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button-timeGridWeek,
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button-timeGridThreeDay,
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button-timeGridDay,
+.planner-bases-calendar .planner-fc-toolbar .planner-fc-button-listWeek {
+	border-radius: 0;
+}
+
 .planner-bases-calendar .planner-fc-button.is-active,
 .planner-bases-calendar .planner-fc-button[data-planner-active] {
 	background-color: var(--interactive-accent);
