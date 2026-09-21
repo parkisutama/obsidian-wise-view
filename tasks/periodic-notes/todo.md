@@ -5,7 +5,8 @@ Specification: [../../docs/specs/periodic-notes.md](../../docs/specs/periodic-no
 Sequencing: does not start until `docs/specs/note-template.md` is Done (see `../../ROADMAP.md`).
 
 Status: In progress. PN-001 accepted with two verification notes (week-number link styling; Notebook
-Navigator `GGGG` support); PN-002 and PN-003 done 2026-09-21. PN-004 is split into
+Navigator `GGGG` support); PN-002, PN-003, and PN-004 done 2026-09-21 (PN-004 keeps the old journal
+lookups as a fallback for Bases with no day pattern until PN-005). PN-004 is split into
 PN-004b/p/c/d.
 
 ## Phase 1: Design decisions
@@ -78,8 +79,8 @@ creation goes through the general mechanism from `note-template`.
 
 **Acceptance criteria:**
 
-- [ ] A non-empty `targetFolder` still wins for event notes.
-- [ ] A multi-day event creates exactly one note, in the start day's folder.
+- [x] A non-empty `targetFolder` still wins for event notes.
+- [x] A multi-day event creates exactly one note, in the start day's folder.
 
 **Verification:** `pnpm run test -- calendar && pnpm run typecheck`
 

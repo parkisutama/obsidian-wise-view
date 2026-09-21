@@ -51,6 +51,8 @@ import { entryToEvent, toISOString, toLocalISOString } from './calendar/eventMap
 import { getJournalNotePathForDate, openJournalOrDailyNote } from './calendar/dailyNote';
 import { createCalendarOptions } from './calendar/options';
 import { createCalendarEventNote } from './calendar/eventNote';
+import { type PeriodicConfig, readPeriodicConfig } from './calendar/periodic/config';
+import { eventTemplateDefaults, existingPeriodicNotePath, openPeriodicNote } from './calendar/periodic/notes';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
 
@@ -140,6 +142,27 @@ export class BasesCalendarView extends BasesView {
   private getFontSize(): number {
     const value = this.config.get('fontSize') as number | undefined;
     return value ?? this.plugin.settings.calendarDefaults.fontSize;
+  }
+
+  private getPeriodicConfig(): PeriodicConfig {
+    return readPeriodicConfig((key) => this.config.get(key), this.getWeekStartDay());
+  }
+
+  /** Existing daily note for the dot and hover preview. */
+  private getDayNotePath(date: Date): string | null {
+    const config = this.getPeriodicConfig();
+    // Until the old journal lookups are retired (PN-005), an unconfigured Base keeps using them.
+    if (!config.periods.day.pattern) return getJournalNotePathForDate(this.app, date);
+    return existingPeriodicNotePath(this.app, date, 'day', config);
+  }
+
+  private async openDayNote(date: Date): Promise<void> {
+    const config = this.getPeriodicConfig();
+    if (!config.periods.day.pattern) {
+      await openJournalOrDailyNote(this.app, date);
+      return;
+    }
+    await openPeriodicNote(this.app, date, 'day', config);
   }
 
   private getTemplateDefaults(): NoteTemplateDefaults {
@@ -308,7 +331,7 @@ export class BasesCalendarView extends BasesView {
       eventResizableFromStart: true,
       navLinks: true, // Day numbers and day headers are links
       // Clicking a day number, day header, or list day header opens the journal/daily note
-      navLinkDayClick: (date) => { void openJournalOrDailyNote(this.app, date); },
+      navLinkDayClick: (date) => { void this.openDayNote(date); },
       events: events,
       eventClick: (info) => { void this.handleEventClick(info); },
       eventDidMount: (info) => {
@@ -329,7 +352,7 @@ export class BasesCalendarView extends BasesView {
       select: (info) => this.handleDateSelect(info),
       dayCellDidMount: (arg) => {
         // Compute journal path once at mount time (reused for dot indicator and hover preview)
-        const journalPath = getJournalNotePathForDate(this.app, arg.date);
+        const journalPath = this.getDayNotePath(arg.date);
         if (!journalPath) return;
         const dayNumberEl = arg.el.querySelector<HTMLElement>('.planner-fc-day-number');
         if (!dayNumberEl) return;
@@ -342,7 +365,7 @@ export class BasesCalendarView extends BasesView {
       dayHeaderDidMount: (arg) => {
         // Only dated headers (day/week views) are links; month view headers are weekday names.
         if (!arg.hasNavLink) return;
-        const journalPath = getJournalNotePathForDate(this.app, arg.date);
+        const journalPath = this.getDayNotePath(arg.date);
         const textEl = arg.el.querySelector<HTMLElement>('.planner-fc-day-header');
         if (!journalPath || !textEl) return;
         textEl.addEventListener('mouseenter', (e) => {
@@ -350,7 +373,7 @@ export class BasesCalendarView extends BasesView {
         });
       },
       listDayHeaderDidMount: (arg) => {
-        const journalPath = getJournalNotePathForDate(this.app, arg.date);
+        const journalPath = this.getDayNotePath(arg.date);
         if (!journalPath) return;
         arg.el.querySelectorAll<HTMLElement>('.planner-fc-list-day-text').forEach((textEl) => {
           textEl.addEventListener('mouseenter', (e) => {
@@ -620,10 +643,12 @@ export class BasesCalendarView extends BasesView {
   }
 
   private async createNewItemFromDates(start: Date, end: Date | null, allDay: boolean): Promise<void> {
+    const defaults = eventTemplateDefaults(this.getTemplateDefaults(), start, this.getPeriodicConfig());
+    if (!defaults) return;
     await createCalendarEventNote(
       this.app,
       this,
-      this.getTemplateDefaults(),
+      defaults,
       { dateStartField: this.getDateStartField(), dateEndField: this.getDateEndField() },
       start,
       end,

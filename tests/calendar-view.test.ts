@@ -352,6 +352,25 @@ describe("BasesCalendarView lifecycle", () => {
 	});
 });
 
+describe("BasesCalendarView periodic day notes", () => {
+	const today = dayOffset(0);
+	const inThreeDays = dayOffset(3);
+	const config = { periodicDayPath: "journal/YYYY-MM-DD" };
+
+	it("marks and previews days from the configured pattern, not from root-level notes", async () => {
+		const h = mount({ config, existingFiles: [`journal/${inThreeDays}.md`, `${today}.md`] });
+		expect(q(h, `[data-date="${inThreeDays}"]`)?.querySelector(".planner-journal-dot")).not.toBeNull();
+		expect(q(h, `[data-date="${today}"] .planner-journal-dot`)).toBeNull();
+
+		const number = q(h, `[data-date="${inThreeDays}"] .planner-fc-day-number`);
+		number?.dispatchEvent(new MouseEvent("mouseenter"));
+		number?.click();
+		await flush();
+		expect(h.hovered).toContain(`journal/${inThreeDays}.md`);
+		expect(h.opened).toContain(`journal/${inThreeDays}.md`);
+	});
+});
+
 describe("BasesCalendarView time format", () => {
 	it("shows time-grid slot labels on a 24-hour clock", async () => {
 		const h = mount({ config: { defaultView: "timeGridWeek" } });
