@@ -91,6 +91,9 @@
 	background-color: var(--interactive-accent);
 	border-color: var(--interactive-accent);
 	color: var(--text-on-accent);
+	/* Themes such as Baseline frame buttons with an inset 1px box-shadow; drawn over the accent fill
+	   it leaves an unfilled sliver at the corners, so the active button frames itself in accent. */
+	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
 .planner-bases-calendar .planner-fc-button-prev,
