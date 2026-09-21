@@ -110,7 +110,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Preact (dependency of FullCalendar; runtime for Gantt Beta)
+## Preact (dependency of FullCalendar; runtime for Gantt)
 
 - Source: <https://github.com/preactjs/preact>
 - Packages: `preact@10.29.8`
@@ -146,7 +146,7 @@ SOFTWARE.
 - Source: <https://github.com/jaeungkim/gantt-chart>
 - Packages: `@jaeungkim/gantt-chart@1.5.1`
 - License: MIT
-- Used for: Gantt Beta view; JavaScript bundled in `main.js` (rendered through Preact), unmodified stylesheet included in `styles.css`
+- Used for: Gantt view; JavaScript bundled in `main.js` (rendered through Preact), unmodified stylesheet included in `styles.css`
 
 ```text
 MIT License
@@ -177,7 +177,7 @@ SOFTWARE.
 - Source: <https://github.com/iamkun/dayjs>
 - Packages: none separately bundled; `dayjs@1.11.23` is inlined in `@jaeungkim/gantt-chart@1.5.1`'s `dist`
 - License: MIT
-- Used for: Date math inside the Gantt Beta chart; bundled in `main.js`
+- Used for: Date math inside the Gantt chart; bundled in `main.js`
 
 ```text
 MIT License
@@ -208,7 +208,7 @@ SOFTWARE.
 - Source: <https://github.com/pmndrs/zustand>
 - Packages: none separately bundled; `zustand@5.0.15` is inlined in `@jaeungkim/gantt-chart@1.5.1`'s `dist`
 - License: MIT
-- Used for: State store inside the Gantt Beta chart; bundled in `main.js`
+- Used for: State store inside the Gantt chart; bundled in `main.js`
 
 ```text
 MIT License
