@@ -119,8 +119,8 @@ links. Record what works, what needs a custom element, and the chosen approach.
 
 **Acceptance criteria:**
 
-- [ ] Findings recorded in `docs/specs/periodic-notes.md` (one short section).
-- [ ] No production code is required to land with this task.
+- [x] Findings recorded in `docs/specs/periodic-notes.md` (one short section).
+- [x] No production code is required to land with this task.
 
 **Verification:** Documentation review; a throwaway harness test or screenshot as evidence.
 

@@ -149,6 +149,28 @@ Consequences for this spec:
   Base filter `file.folder.contains("timeline")`, so they also show up as events in the same
   Calendar. That is the maintainer's data model, not something this spec changes.
 
+## 2c. PN-004p findings: what FullCalendar 7.1 allows (2026-09-21)
+
+Checked by rendering a real `Calendar` (dayGrid + interaction) in the test DOM and reading its
+types. Layout and styling were not visible there, so placement is confirmed natively in PN-004c/d.
+
+- **Week links work.** `weekNumbers: true` plus `inlineWeekNumberContent(info)` renders one custom
+  element per week row (six for September 2026). `info` carries `num`, `date`, `text`, and
+  `hasNavLink`. With `navLinks: true`, a click on it calls `navLinkWeekClick(weekStart, event)`
+  with the week's first day (Monday 31 Aug for week 36). Hooks `inlineWeekNumberClass` /
+  `DidMount` exist for classes and the existence dot.
+- **Use our own numbers.** The label must come from `weekInfo()` in the resolver, not `info.num`,
+  so it always matches the file name the pattern produces (ISO or the locale rule).
+- **Title parts need a custom toolbar element.** `toolbarElements: { name: () => ({ domNodes }) }`
+  accepts a DOM node and `headerToolbar.center` can name it instead of `title`. The builtin title
+  is then absent. The generator does not receive the date, so keep one persistent element and
+  rewrite its spans from `datesSet` (fires with `view.title` on load and navigation).
+- **Not verified:** where the week element sits visually (a column left of the grid or inside the
+  row) and whether `weekNumberHeaderContent` renders a header cell. Both are styling questions for
+  PN-004c, not blockers.
+- **Decision:** proceed with PN-004c (week column) and PN-004d (custom title element). No
+  fallback design is needed.
+
 ## 3. Scope
 
 1. **Per-period configuration** on the Calendar view, for each of day, week, month, quarter, year:
