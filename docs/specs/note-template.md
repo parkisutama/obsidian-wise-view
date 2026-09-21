@@ -38,7 +38,8 @@ Obsidian's core Templates plugin:
   Templater/Obsidian's own folder-template auto-apply might do to that same new file, then
   unconditionally overwrites the file's frontmatter and body with its own regex-substituted text —
   silently clobbering anything Templater already wrote if Templater's listener resolved first.
-- `processTemplateVariables()` ([src/views/calendar/dailyNote.ts](../../src/views/calendar/dailyNote.ts))
+- `processTemplateVariables()` (`src/views/calendar/dailyNote.ts`, retired here; the whole file was
+  later removed by `docs/specs/periodic-notes.md` PN-005)
   — a second, differently-shaped substitution engine (adds `weekday`/`month` tokens), used only by
   `openDailyNote()`. Same problem: `vault.create()` with pre-substituted text, no Templater/Templates
   involvement.

@@ -1,6 +1,6 @@
 # Spec: Native periodic notes for Calendar
 
-Status: Draft — awaiting maintainer review
+Status: Done 2026-09-21 (native-accepted with waivers) — [record](../../tasks/periodic-notes/native-acceptance.md)
 Baseline branch: `dev`
 Prepared: 2026-09-21
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)

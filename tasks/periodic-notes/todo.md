@@ -4,10 +4,7 @@ Plan: [plan.md](plan.md)
 Specification: [../../docs/specs/periodic-notes.md](../../docs/specs/periodic-notes.md)
 Sequencing: does not start until `docs/specs/note-template.md` is Done (see `../../ROADMAP.md`).
 
-Status: In progress. PN-001 accepted with two verification notes (week-number link styling; Notebook
-Navigator `GGGG` support); PN-002, PN-003, and PN-004 done 2026-09-21 (PN-004 keeps the old journal
-lookups as a fallback for Bases with no day pattern until PN-005). PN-004 is split into
-PN-004b/p/c/d.
+Status: Done 2026-09-21 (native-accepted with waivers) — [record](native-acceptance.md).
 
 ## Phase 1: Design decisions
 
@@ -176,8 +173,8 @@ substitution code; replace their characterization tests with resolver-based ones
 
 **Acceptance criteria:**
 
-- [ ] No reference to `journals`, `daily-notes`, or `processTemplateVariables` remains.
-- [ ] `pnpm run check` passes.
+- [x] No reference to `journals`, `daily-notes`, or `processTemplateVariables` remains.
+- [x] `pnpm run check` passes.
 
 **Verification:** `pnpm run check`
 
@@ -195,9 +192,9 @@ substitution code; replace their characterization tests with resolver-based ones
 
 **Acceptance criteria:**
 
-- [ ] Existing notes found (dot, hover, open); missing ones created with the template.
-- [ ] Findings recorded in `tasks/periodic-notes/native-acceptance.md`.
-- [ ] `ROADMAP.md` row updated to Done.
+- [x] Existing notes found (dot, hover, open); missing ones created with the template.
+- [x] Findings recorded in `tasks/periodic-notes/native-acceptance.md`.
+- [x] `ROADMAP.md` row updated to Done.
 
 **Verification:** Native testing; `pnpm run check`.
 

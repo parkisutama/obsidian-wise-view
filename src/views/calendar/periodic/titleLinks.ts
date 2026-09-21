@@ -30,6 +30,11 @@ export function hasTitleLinks(config: PeriodicConfig): boolean {
   return PERIODIC_KINDS.some((kind) => config.periods[kind].pattern !== '');
 }
 
+/** Whether any day or week link exists to make interactive (title parts render their own links). */
+export function hasPeriodLinks(config: PeriodicConfig): boolean {
+  return config.periods.day.pattern !== '' || config.periods.week.pattern !== '';
+}
+
 const addDays = (date: Date, days: number): Date =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 

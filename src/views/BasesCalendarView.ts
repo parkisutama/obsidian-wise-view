@@ -48,12 +48,11 @@ import { resolvePrettyPropertiesColor } from '../integrations/PrettyPropertiesAd
 import { triggerHoverPreview as dispatchHoverPreview } from '../platform/navigation/NavigationService';
 import { LegacyMutationGateway } from '../platform/mutations/LegacyMutationGateway';
 import { entryToEvent, toISOString, toLocalISOString } from './calendar/eventMapping';
-import { getJournalNotePathForDate, openJournalOrDailyNote } from './calendar/dailyNote';
 import { createCalendarOptions } from './calendar/options';
 import { createCalendarEventNote } from './calendar/eventNote';
 import { type PeriodicConfig, readPeriodicConfig } from './calendar/periodic/config';
 import { weekAnchor, weekLabel } from './calendar/periodic/weekLinks';
-import { hasTitleLinks, renderTitleLinks } from './calendar/periodic/titleLinks';
+import { hasPeriodLinks, hasTitleLinks, renderTitleLinks } from './calendar/periodic/titleLinks';
 import { eventTemplateDefaults, existingPeriodicNotePath, isPeriodicNote, openPeriodicNote } from './calendar/periodic/notes';
 
 export const BASES_CALENDAR_VIEW_ID = 'wise-view-calendar';
@@ -150,21 +149,14 @@ export class BasesCalendarView extends BasesView {
     return readPeriodicConfig((key) => this.config.get(key), this.getWeekStartDay());
   }
 
-  /** Existing daily note for the dot and hover preview. */
+  /** Existing daily note for the dot and hover preview; null when the day period is not configured. */
   private getDayNotePath(date: Date): string | null {
-    const config = this.getPeriodicConfig();
-    // Until the old journal lookups are retired (PN-005), an unconfigured Base keeps using them.
-    if (!config.periods.day.pattern) return getJournalNotePathForDate(this.app, date);
-    return existingPeriodicNotePath(this.app, date, 'day', config);
+    return existingPeriodicNotePath(this.app, date, 'day', this.getPeriodicConfig());
   }
 
+  /** Opens or creates the day's note; does nothing when the day period is not configured. */
   private async openDayNote(date: Date): Promise<void> {
-    const config = this.getPeriodicConfig();
-    if (!config.periods.day.pattern) {
-      await openJournalOrDailyNote(this.app, date);
-      return;
-    }
-    await openPeriodicNote(this.app, date, 'day', config);
+    await openPeriodicNote(this.app, date, 'day', this.getPeriodicConfig());
   }
 
   private getTemplateDefaults(): NoteTemplateDefaults {
@@ -345,8 +337,10 @@ export class BasesCalendarView extends BasesView {
       eventStartEditable: true,
       eventDurationEditable: true,
       eventResizableFromStart: true,
-      navLinks: true, // Day numbers and day headers are links
-      // Clicking a day number, day header, or list day header opens the journal/daily note
+      // Day numbers, day headers, and week numbers are links only while a period they open is
+      // configured; a Base with no periodic settings has no links.
+      navLinks: hasPeriodLinks(periodic),
+      // Clicking a day number, day header, or list day header opens the day's periodic note
       navLinkDayClick: (date) => { void this.openDayNote(date); },
       // Week numbers appear only when the Base configures weekly notes; each links to that week's note.
       weekNumbers: periodic.periods.week.pattern !== '',

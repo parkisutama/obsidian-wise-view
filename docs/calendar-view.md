@@ -11,8 +11,9 @@ note, lalu memetakannya menjadi event kalender tanpa memaksakan workflow task te
 - Membuka note dari event kalender dengan sekali klik.
 - Mengubah tanggal event lewat drag-and-drop atau resize, jika properti tanggal dapat ditulis.
 - Membuat note/event baru dari slot waktu pada tampilan Week, 3-day, atau Day.
-- Membuka journal atau daily note dari tanggal kalender.
-- Mendukung hover preview Obsidian untuk event dan journal/daily note yang sudah ada.
+- Membuka atau membuat periodical notes (harian sampai tahunan) dari tanggal, minggu, bulan, kuartal,
+  dan tahun di kalender.
+- Mendukung hover preview Obsidian untuk event dan periodical notes yang sudah ada.
 - Mewarnai event berdasarkan properti pilihan, Pretty Properties, atau konfigurasi `valueStyles`.
 - Menyesuaikan awal minggu, ukuran teks, default view, dan tinggi baris Year view.
 
@@ -127,17 +128,47 @@ Token template yang didukung:
 Frontmatter dari template akan digabung dengan frontmatter event. Nilai tanggal dari event menang
 jika ada kunci yang sama.
 
-## Integrasi journal dan daily note
+## Periodical notes
 
-Tanggal pada kalender dapat diklik untuk membuka journal atau daily note:
+Satu file `.base` adalah satu journal: setiap Base mengatur periodical notes-nya sendiri, tanpa
+plugin lain. Pengaturannya ada di grup **Daily notes**, **Weekly notes**, **Monthly notes**,
+**Quarterly notes**, dan **Yearly notes**. Tiap grup punya dua opsi:
 
-- Jika plugin Obsidian Journal tersedia dan punya journal bertipe day, Calendar memakai journal itu.
-- Jika tidak, Calendar memakai core Daily Notes.
-- Jika Daily Notes tidak aktif, Calendar memakai fallback `YYYY-MM-DD.md` di root vault.
+- **Path pattern**: folder dan nama file dalam satu pola, dipisah `/`, memakai token gaya moment.
+  Contoh: `timeline/YYYY/YYYY-MM/YYYY-MM-DD`. Periode tanpa pola dianggap tidak dikonfigurasi dan
+  tidak mendapat link.
+- **Template note**: template yang dipakai saat note dibuat.
 
-Jika daily note belum ada, Calendar dapat membuatnya dan menerapkan template Daily Notes jika
-terkonfigurasi. Tanggal yang sudah punya journal/daily note ditandai dengan dot kecil pada Month dan
-Year view.
+Token yang didukung: `YYYY YY MMMM MMM MM M DD D dddd ddd Q`, minggu ISO 8601 `GGGG WW W`, minggu
+menurut locale `gggg ww w`, dan teks literal dalam `[...]`. Contoh preset ISO (root diisi sendiri):
+
+| Periode | Pola |
+|---|---|
+| Daily | `timeline/YYYY/YYYY-MM/YYYY-MM-DD` |
+| Weekly | `timeline/GGGG/GGGG-[W]WW` |
+| Monthly | `timeline/YYYY/YYYY-MM` |
+| Quarterly | `timeline/YYYY/YYYY-[Q]Q` |
+| Yearly | `timeline/YYYY` |
+
+Penomoran minggu memakai ISO 8601 (Senin, minggu 1 memuat 4 Januari) kecuali opsi **Week numbering**
+pada Weekly notes diubah agar mengikuti "Week starts on".
+
+Yang muncul di kalender untuk periode yang dikonfigurasi:
+
+- Angka tanggal membuka atau membuat note harian; angka minggu di Month view membuka note mingguan.
+- Judul toolbar menampilkan bulan, tahun, dan kuartal (`September 2026 (Q3)`) sebagai link
+  bergaris bawah. Week dan 3-day menampilkan `W39 · September 2026 (Q3)`; Day menambahkan link hari.
+- Titik kecil menandai periode yang note-nya sudah ada, dan hover preview aktif.
+- Note periodical tidak digambar sebagai event.
+
+Note yang belum ada dibuat lewat Templater (atau core Templates) dengan nama dari tanggal yang
+diklik, termasuk tanggal masa depan. Tanpa keduanya, template disalin apa adanya dan Anda diberi
+notifikasi. Template sebaiknya membaca tanggal dari nama file (misalnya `tp.file.title`) dan tidak
+memindahkan note; jika template memindahkannya, Calendar membuka note yang dipindahkan tetapi tidak
+akan menandainya di lokasi baru.
+
+Event lintas hari tetap satu note, disimpan di folder hari mulai (kecuali **Target folder** pada
+Note template diisi).
 
 ## Pewarnaan event
 

@@ -180,6 +180,7 @@ describe("BasesCalendarView year views", () => {
 describe("BasesCalendarView day cells and daily notes", () => {
 	const today = dayOffset(0);
 	const inThreeDays = dayOffset(3);
+	const daily = { periodicDayPath: "YYYY-MM-DD" };
 
 	it("adds stable classes for today's day number and header", () => {
 		const h = mount();
@@ -189,14 +190,25 @@ describe("BasesCalendarView day cells and daily notes", () => {
 	});
 
 	it("shows a journal dot only for days with an existing daily note", () => {
-		const h = mount({ existingFiles: [`${inThreeDays}.md`] });
+		const h = mount({ config: daily, existingFiles: [`${inThreeDays}.md`] });
 		const withNote = q(h, `[data-date="${inThreeDays}"]`);
 		expect(withNote?.querySelector(".planner-journal-dot")).not.toBeNull();
 		expect(q(h, `[data-date="${today}"] .planner-journal-dot`)).toBeNull();
 	});
 
+	it("has no day links, dots, or note creation when no period is configured", async () => {
+		const h = mount({ existingFiles: [`${today}.md`, `${inThreeDays}.md`] });
+		expect(h.host.querySelectorAll(".planner-journal-dot")).toHaveLength(0);
+		const number = q(h, `[data-date="${today}"] .planner-fc-day-number`);
+		number?.dispatchEvent(new MouseEvent("mouseenter"));
+		number?.click();
+		await flush();
+		expect(h.hovered).toEqual([]);
+		expect(h.opened).toEqual([]);
+	});
+
 	it("previews and opens the daily note from the day number", async () => {
-		const h = mount({ existingFiles: [`${today}.md`] });
+		const h = mount({ config: daily, existingFiles: [`${today}.md`] });
 		const number = q(h, `[data-date="${today}"] .planner-fc-day-number`);
 		expect(number).not.toBeNull();
 		number?.dispatchEvent(new MouseEvent("mouseenter"));
@@ -207,7 +219,7 @@ describe("BasesCalendarView day cells and daily notes", () => {
 	});
 
 	it("previews the daily note from week and list day headers", async () => {
-		const h = mount({ config: { defaultView: "timeGridWeek" }, existingFiles: [`${today}.md`] });
+		const h = mount({ config: { ...daily, defaultView: "timeGridWeek" }, existingFiles: [`${today}.md`] });
 		q(h, ".planner-fc-day-header.is-today")?.dispatchEvent(new MouseEvent("mouseenter"));
 		expect(h.hovered).toEqual([`${today}.md`]);
 

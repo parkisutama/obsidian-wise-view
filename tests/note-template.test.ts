@@ -4,7 +4,6 @@ import { notices, TFile as FakeFile } from "./fixtures/obsidian";
 import { NoteTemplateService } from "../src/services/NoteTemplateService";
 import { detectTemplateEngine, PLAIN_TEMPLATE_NOTICE } from "../src/services/templateEngine";
 import { LegacyMutationGateway } from "../src/platform/mutations/LegacyMutationGateway";
-import { openDailyNote } from "../src/views/calendar/dailyNote";
 
 vi.mock("../src/utils/openFile", () => ({ openFileInNewTab: vi.fn() }));
 
@@ -19,7 +18,7 @@ interface Fixture {
 	open: ReturnType<typeof vi.fn>;
 }
 
-function createApp(engines: { templater?: boolean; core?: boolean; dailyTemplate?: string } = {}): Fixture {
+function createApp(engines: { templater?: boolean; core?: boolean } = {}): Fixture {
 	const files = new Map<string, string>([["Templates/Event.md", TEMPLATE_TEXT]]);
 	const tfiles = new Map<string, TFile>();
 	const fileFor = (path: string) => {
@@ -64,9 +63,6 @@ function createApp(engines: { templater?: boolean; core?: boolean; dailyTemplate
 		internalPlugins: {
 			getPluginById: (id: string) => {
 				if (id === "templates") return { enabled: Boolean(engines.core), instance: { insertTemplate } };
-				if (id === "daily-notes") {
-					return { enabled: true, instance: { options: { format: "YYYY-MM-DD", folder: "Daily", template: engines.dailyTemplate ?? "" } } };
-				}
 				return undefined;
 			},
 		},
@@ -176,23 +172,5 @@ describe("LegacyMutationGateway.createNote with a template", () => {
 		expect(result).toEqual({ ok: true });
 		expect(f.templater).toHaveBeenCalledTimes(1);
 		expect(f.processFrontMatter).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe("daily-note creation", () => {
-	const date = new Date(2026, 8, 19);
-
-	it("creates the daily note through Templater", async () => {
-		const f = createApp({ templater: true, dailyTemplate: "Templates/Event" });
-		await openDailyNote(f.app, date);
-		expect(f.templater).toHaveBeenCalledTimes(1);
-		expect(f.templater.mock.calls[0]?.[2]).toBe("2026-09-19");
-	});
-
-	it("copies the template unprocessed with a notice when no engine is available", async () => {
-		const f = createApp({ dailyTemplate: "Templates/Event" });
-		await openDailyNote(f.app, date);
-		expect(f.files.get("Daily/2026-09-19.md")).toBe(TEMPLATE_TEXT);
-		expect(notices).toEqual([PLAIN_TEMPLATE_NOTICE]);
 	});
 });
