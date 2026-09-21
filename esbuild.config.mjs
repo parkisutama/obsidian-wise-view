@@ -43,7 +43,7 @@ const FIRST_PARTY_CSS = [
 	"src/styles/views/swimlane.css",
 	"src/styles/views/calendar.css",
 	"src/styles/views/timeline.css",
-	"src/styles/views/gantt-beta.css",
+	"src/styles/views/gantt.css",
 ].map((p) => path.resolve(p));
 
 // Merge first-party sources, imported CSS, and the Gantt Chart stylesheet (which nothing imports)
@@ -131,7 +131,7 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const context = await esbuild.context({
-	// React-targeting libraries (Gantt Beta) run on Preact; see scripts/ui-runtime-aliases.mjs.
+	// React-targeting libraries (Gantt) run on Preact; see scripts/ui-runtime-aliases.mjs.
 	alias: UI_RUNTIME_ALIASES,
 	banner: {
 		js: banner,

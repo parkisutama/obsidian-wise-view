@@ -3,11 +3,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentChild, VNode } from 'preact';
 import { DateValue, notices } from './fixtures/obsidian';
-import { BasesGanttBetaView } from '../src/views/gantt-beta';
+import { BasesGanttView } from '../src/views/gantt';
 import {
 	GANTT_OPTION_KEYS, LEGACY_IMPORT_MARKER, migrateLegacyOptions, type LegacyOptionConfig,
-} from '../src/views/gantt-beta/legacyOptions';
-import { getGanttBetaViewOptions } from '../src/views/gantt-beta/options';
+} from '../src/views/gantt/legacyOptions';
+import { getGanttViewOptions } from '../src/views/gantt/options';
 
 function fakeConfig(initial: Record<string, unknown>) {
 	const values: Record<string, unknown> = { ...initial };
@@ -21,7 +21,7 @@ function fakeConfig(initial: Record<string, unknown>) {
 
 describe('Gantt option keys and the permanent view id', () => {
 	it('lists exactly the keys the option schema defines, plus the stored collapse state', () => {
-		const schemaKeys = [...JSON.stringify(getGanttBetaViewOptions({} as never)).matchAll(/"key":"(gantt[A-Za-z]+)"/g)].map(match => match[1]);
+		const schemaKeys = [...JSON.stringify(getGanttViewOptions({} as never)).matchAll(/"key":"(gantt[A-Za-z]+)"/g)].map(match => match[1]);
 		expect(schemaKeys.length).toBeGreaterThan(30);
 		for (const key of schemaKeys) expect(GANTT_OPTION_KEYS).toContain(key);
 		expect(GANTT_OPTION_KEYS.filter(key => !schemaKeys.includes(key))).toEqual(['ganttCollapsedIds']);
@@ -129,7 +129,7 @@ describe('the view on a base saved by an earlier version', () => {
 				getAsPropertyId: (key: string) => stored[key] ?? null, getOrder: () => [], getDisplayName: (id: string) => id,
 			},
 		};
-		const view = new BasesGanttBetaView(controller as never, host, { app, settings: { valueStyles: {} } } as never,
+		const view = new BasesGanttView(controller as never, host, { app, settings: { valueStyles: {} } } as never,
 			(node, container) => { renders.push(node); container.replaceChildren(); }, {});
 		view.onDataUpdated();
 		return { view, renders, stored };

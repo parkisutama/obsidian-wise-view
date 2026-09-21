@@ -11,7 +11,7 @@
  * silently guessed at read time. The old keys are left in the file untouched.
  */
 
-/** Every option key this view stores. `tests/gantt-beta-legacy-options.test.ts` checks it against the schema. */
+/** Every option key this view stores. `tests/gantt-legacy-options.test.ts` checks it against the schema. */
 export const GANTT_OPTION_KEYS = [
 	'ganttStart', 'ganttEnd', 'ganttLabel', 'ganttParent', 'ganttOrder', 'ganttProgress', 'ganttColorBy',
 	'ganttDependencyFS', 'ganttScale', 'ganttShowNonWorkingDays', 'ganttWorkingWeekdays', 'ganttHolidays',

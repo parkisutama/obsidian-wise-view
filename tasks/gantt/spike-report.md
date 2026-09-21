@@ -1,6 +1,6 @@
 # GBETA-001 spike report
 
-Branch: `codex/spike-gantt-beta`
+Branch: `codex/spike-gantt`
 Library: `@jaeungkim/gantt-chart@1.5.1`
 Runtime: `preact@10.29.8` through esbuild aliases for `react`, `react-dom`, and
 `react/jsx-runtime`
@@ -21,7 +21,7 @@ until every native row has been reviewed on the stated surface.
 
 ## Native interaction review
 
-Use a Base and select **Gantt Beta spike**. Open Developer Tools during every check and record any
+Use a Base and select **Gantt spike**. Open Developer Tools during every check and record any
 warning or error in Notes. Refresh the plugin between surfaces so mount/unmount is exercised.
 
 | Surface | Interaction | Result | Notes |
@@ -30,10 +30,10 @@ warning or error in Notes. Refresh the plugin between surfaces so mount/unmount 
 | Desktop main window | Move task | Pass | |
 | Desktop main window | Resize task | Pass | |
 | Desktop main window | Progress drag | Pass | |
-| Desktop main window | Draw dependency | Pass | Callback logs `[Gantt Beta spike] dependency created` |
-| Desktop main window | Delete dependency | Pass | Callback logs `[Gantt Beta spike] dependency deleted` |
+| Desktop main window | Draw dependency | Pass | Callback logs `[Gantt spike] dependency created` |
+| Desktop main window | Delete dependency | Pass | Callback logs `[Gantt spike] dependency deleted` |
 | Desktop main window | Collapse/expand phase | Pass | `Discovery phase` is the parent row |
-| Desktop main window | Reorder row | Pass | Callback logs `[Gantt Beta spike] task reordered` |
+| Desktop main window | Reorder row | Pass | Callback logs `[Gantt spike] task reordered` |
 | Desktop main window | Draw range to create | Pass | Creates a volatile `Drawn task` row |
 | Desktop main window | Open/close built-in detail panel | Pass | Panel opens; editing a field through the panel works |
 | Desktop main window | Keyboard navigation/edit | Not tested | |

@@ -1,6 +1,6 @@
 # Spec: Remove Frappe Gantt and make Gantt the only Gantt view
 
-Status: Approved 2026-09-20 (maintainer decision recorded in [gantt-beta.md §11](gantt-beta.md))
+Status: Approved 2026-09-20 (maintainer decision recorded in [gantt.md §11](gantt.md))
 Baseline branch: `dev`
 Prepared: 2026-09-20
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
@@ -19,10 +19,11 @@ commands, notices, or docs.
 | # | Topic | Decision |
 |---|---|---|
 | R1 | Timing | Remove now, in this workstream, on `dev`. Nothing here has shipped to users from `dev`, so no deprecation release. |
-| R2 | Display name | The new view's display name becomes **Gantt** (registration name and hover source). The id was first kept as `wise-view-gantt-beta`; R6 replaces that. The source folder stays `src/views/gantt-beta/`. |
+| R2 | Display name | The new view's display name becomes **Gantt** (registration name and hover source). The id was first kept as `wise-view-gantt-beta`; R6 replaces that. The source folder stays `src/views/gantt/`. |
 | R3 | Existing `.base` files | Originally: hard removal, so a `wise-view-gantt` base showed an unknown view. **Superseded by R6:** the id `wise-view-gantt` is reused, so those bases open in Gantt with their settings imported. |
-| R4 | Commands and settings | Frappe's command-palette commands (`gantt-scroll-today`, `gantt-create-note`, `gantt-view-*`) and the "Gantt defaults" settings section are removed with it. Gantt does not carry them over (gantt-beta.md D6). Saved `ganttDefaults` data is ignored on load, then dropped on the next save. |
-| R6 | Permanent id and keys | **2026-09-21.** The permanent id is `wise-view-gantt` and every stored option key drops the `Beta` prefix (`ganttStart`, ...). `wise-view-gantt-beta` was never released and is not registered. Settings saved by the released Frappe view and by development builds are imported once (gantt-beta.md §3.8), with Read only as the default so a legacy base cannot write until the user opts in. |
+| R4 | Commands and settings | Frappe's command-palette commands (`gantt-scroll-today`, `gantt-create-note`, `gantt-view-*`) and the "Gantt defaults" settings section are removed with it. Gantt does not carry them over (gantt.md D6). Saved `ganttDefaults` data is ignored on load, then dropped on the next save. |
+| R6 | Permanent id and keys | **2026-09-21.** The permanent id is `wise-view-gantt` and every stored option key drops the `Beta` prefix (`ganttStart`, ...). `wise-view-gantt-beta` was never released and is not registered. Settings saved by the released Frappe view and by development builds are imported once (gantt.md §3.8), with Read only as the default so a legacy base cannot write until the user opts in. |
+| R7 | One name everywhere | **2026-09-21.** Internal names match the public one, so a maintainer never has to map "beta" to "Gantt". `src/views/gantt-beta/` is `src/views/gantt/`, `BasesGanttBetaView` is `BasesGanttView`, identifiers drop `Beta`, tests are `tests/gantt-*.test.ts`, the specification and tasks are `docs/specs/gantt.md` and `tasks/gantt/` (the Frappe history moved to `gantt-frappe.md` and `tasks/gantt-frappe/`), and CSS classes use the `wise-view-gantt-*` namespace (the library already owns `gantt-*`, including `gantt-detail`). Task ids keep the `GBETA-` prefix. What still says "beta" is deliberate: the legacy import of `ganttBeta*` keys, and prose about the never-released `wise-view-gantt-beta` id. |
 | R5 | Attribution | `frappe-gantt` leaves the bundle, so its notice and banner entry go. The `obsidian-bases-gantt` attribution stays until a maintainer review confirms no adapted code remains (§5). |
 
 ## 3. Scope
@@ -42,18 +43,18 @@ commands, notices, or docs.
 
 ### 3.2 Change
 
-- Rename the display name and user-facing strings "Gantt Beta" to "Gantt" (view name, hover source,
+- Rename the display name and user-facing strings "Gantt" to "Gantt" (view name, hover source,
   Notice texts, spec and README wording). Keep the ID, folder, class names, and option keys.
 - `tests/architecture.test.ts`: drop `BasesGanttView.ts` from the legacy mutation allowlist; assert
   `frappe-gantt` is not a dependency.
-- `docs/specs/gantt.md` and `tasks/gantt/*`: status "Superseded — removed by gantt-frappe-removal",
+- `docs/specs/gantt-frappe.md` and `tasks/gantt-frappe/*` (moved from `gantt.md` and `tasks/gantt/`): status "Superseded — removed by gantt-frappe-removal",
   kept as history.
 - README: describe the single Gantt view, list the breaking changes, and explain how to move an old
   base (§4).
 
 ### 3.3 Keep
 
-- Every Gantt Beta behavior, option key, and test. This workstream removes code; it adds none except
+- Every Gantt behavior, option key, and test. This workstream removes code; it adds none except
   the rename.
 - Calendar, Swimlane, Timeline, and shared platform code, unless a file is only used by the Frappe view.
   Anything shared is checked with a reference search before deletion.
@@ -74,7 +75,7 @@ commands, notices, or docs.
 | A shared helper is deleted while something else imports it | High | Reference search before each deletion; typecheck and the full test suite after each phase |
 | `obsidian-bases-gantt` attribution dropped while adapted code remains | High (license) | Keep the entry; remove only after a maintainer review of `src/main.ts` and remaining files (GFR-005) |
 | Users with existing Frappe bases lose the view | Medium | Accepted (R3); README and release notes carry the migration steps |
-| Mobile, popout window, and keyboard were not natively verified before the switch | Medium | Waived by the maintainer on 2026-09-20 (gantt-beta.md §11); tracked as follow-ups, checked before the next release |
+| Mobile, popout window, and keyboard were not natively verified before the switch | Medium | Waived by the maintainer on 2026-09-20 (gantt.md §11); tracked as follow-ups, checked before the next release |
 | Bundle and stylesheet shrink hides a missing rule | Low | Compare `main.js` and `styles.css` sizes before and after; Gantt has its own CSS file |
 
 ### Attribution decision (GFR-005, 2026-09-20)

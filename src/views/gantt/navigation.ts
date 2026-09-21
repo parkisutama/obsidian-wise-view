@@ -6,7 +6,7 @@ import type { ViewRuntime } from '../../platform/dom/ViewRuntime';
 import { openPath, triggerHoverPreview } from '../../platform/navigation/NavigationService';
 import { showOpenFileMenu } from '../../utils/openFile';
 
-export interface GanttBetaNavigationOptions {
+export interface GanttNavigationOptions {
 	app: App;
 	/** Contains the chart, its task list, and the detail panel. */
 	root: HTMLElement;
@@ -20,7 +20,7 @@ export interface GanttBetaNavigationOptions {
 }
 
 /** Set on the root while Ctrl/Cmd is held, so the library's hover card can step aside for Page Preview. */
-export const PREVIEWING_CLASS = 'gantt-beta-previewing';
+export const PREVIEWING_CLASS = 'wise-view-gantt-previewing';
 
 /**
  * Note-opening behaviour Obsidian users expect, as delegated listeners so it survives the chart's
@@ -28,7 +28,7 @@ export const PREVIEWING_CLASS = 'gantt-beta-previewing';
  * modifier-click to open. Plain clicks are left to the library (they select the task and open the
  * detail panel), except on the panel's own note links, which handle their click themselves.
  */
-export function installGanttBetaNavigation(options: GanttBetaNavigationOptions): void {
+export function installGanttNavigation(options: GanttNavigationOptions): void {
 	const { app, root, runtime } = options;
 
 	const resolve = (target: EventTarget | null): { path: string; el: HTMLElement } | null => {

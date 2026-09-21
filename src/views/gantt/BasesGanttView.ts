@@ -19,18 +19,18 @@ import { openPath } from '../../platform/navigation/NavigationService';
 import { PropertyTypeService } from '../../services/PropertyTypeService';
 import { EchoGate } from './echoGate';
 import { renderGanttDetail, type GanttDetailEntry } from './detailPanel';
-import { GanttBetaChartHost, type ChartRender, type GanttBetaChartModel } from './chartHost';
-import { ganttBetaRequestedProperties, readGanttBetaOptions } from './options';
-import type { GanttBetaOptions } from './options';
+import { GanttChartHost, type ChartRender, type GanttChartModel } from './chartHost';
+import { ganttRequestedProperties, readGanttOptions } from './options';
+import type { GanttOptions } from './options';
 import { mapSnapshotsToGanttTasks } from './taskMapping';
-import { installGanttBetaNavigation } from './navigation';
+import { installGanttNavigation } from './navigation';
 import { migrateLegacyOptions } from './legacyOptions';
-import { GanttBetaToolbar } from './toolbar';
-import { GanttBetaWriteBack } from './writeBack';
+import { GanttToolbar } from './toolbar';
+import { GanttWriteBack } from './writeBack';
 
 export const BASES_GANTT_VIEW_ID = 'wise-view-gantt';
 
-const PIXELS_PER_MINUTE: Record<GanttBetaOptions['scale'], number> = {
+const PIXELS_PER_MINUTE: Record<GanttOptions['scale'], number> = {
 	day: 12 / 60,
 	week: 18 / (6 * 60),
 	month: 18 / (24 * 60),
@@ -38,29 +38,29 @@ const PIXELS_PER_MINUTE: Record<GanttBetaOptions['scale'], number> = {
 	year: 28 / (28 * 24 * 60),
 };
 
-export function localTodayOffsetPx(scale: GanttBetaOptions['scale'], timezoneOffsetMinutes: number): number {
+export function localTodayOffsetPx(scale: GanttOptions['scale'], timezoneOffsetMinutes: number): number {
 	return -timezoneOffsetMinutes * PIXELS_PER_MINUTE[scale];
 }
 
-export class BasesGanttBetaView extends BasesView {
+export class BasesGanttView extends BasesView {
 	type = BASES_GANTT_VIEW_ID;
 	private readonly runtime: ViewRuntime;
-	private readonly chart: GanttBetaChartHost;
-	private readonly toolbar: GanttBetaToolbar;
+	private readonly chart: GanttChartHost;
+	private readonly toolbar: GanttToolbar;
 	private reportedCycles = new Set<string>();
 	private reportedUnresolved = new Set<string>();
 	private legacyOptionsChecked = false;
 	private lastGroups: unknown = null;
 	private lastNonCssConfig = '';
-	private lastModel: GanttBetaChartModel | null = null;
-	private writer: GanttBetaWriteBack | null = null;
-	private currentOptions: GanttBetaOptions | null = null;
+	private lastModel: GanttChartModel | null = null;
+	private writer: GanttWriteBack | null = null;
+	private currentOptions: GanttOptions | null = null;
 	private currentStartType: GanttPropertyDateType = 'date';
 	private creationFolder = '';
 	/** Paths of the notes currently in the chart; phase rows made up for grouping are not notes. */
 	private notePaths: ReadonlySet<string> = new Set();
 	private readonly echoGate: EchoGate;
-	private activeScale: GanttBetaOptions['scale'] | null = null;
+	private activeScale: GanttOptions['scale'] | null = null;
 
 	constructor(
 		controller: QueryController,
@@ -71,15 +71,15 @@ export class BasesGanttBetaView extends BasesView {
 	) {
 		super(controller);
 		this.runtime = new ViewRuntime(containerEl);
-		this.containerEl.addClass('bases-gantt-beta-view');
+		this.containerEl.addClass('wise-view-gantt');
 		const toolbarEl = containerEl.createDiv();
-		const chartEl = containerEl.createDiv({ cls: 'gantt-beta-chart' });
-		this.chart = this.runtime.own(new GanttBetaChartHost(chartEl, this.runtime, renderChart));
-		installGanttBetaNavigation({
+		const chartEl = containerEl.createDiv({ cls: 'wise-view-gantt-chart' });
+		this.chart = this.runtime.own(new GanttChartHost(chartEl, this.runtime, renderChart));
+		installGanttNavigation({
 			app: this.app, root: chartEl, runtime: this.runtime, hoverParent: this.plugin,
 			sourceId: BASES_GANTT_VIEW_ID, isNote: path => this.notePaths.has(path),
 		});
-		this.toolbar = new GanttBetaToolbar(toolbarEl, this.runtime, {
+		this.toolbar = new GanttToolbar(toolbarEl, this.runtime, {
 			onScale: scale => this.setScale(scale),
 			onToday: () => this.chart.scrollToToday(),
 			onZoomToFit: () => this.chart.zoomToFit(),
@@ -99,7 +99,7 @@ export class BasesGanttBetaView extends BasesView {
 		// Bases echoes our own writes file by file; render once they have settled, from the latest data.
 		if (this.echoGate.hold()) return;
 		this.importLegacyOptions();
-		const options = readGanttBetaOptions(this.config);
+		const options = readGanttOptions(this.config);
 		this.currentOptions = options;
 		this.containerEl.style.setProperty('--gantt-row-height', `${options.rowHeight}px`);
 		this.setTodayOffset(options.scale);
@@ -110,7 +110,7 @@ export class BasesGanttBetaView extends BasesView {
 			this.chart.update(this.lastModel);
 			return;
 		}
-		const groups = createEntrySnapshotGroups(this.data.groupedData, ganttBetaRequestedProperties(options, visibleProperties));
+		const groups = createEntrySnapshotGroups(this.data.groupedData, ganttRequestedProperties(options, visibleProperties));
 		const entries = groups.flatMap(group => group.entries);
 		const entriesByPath = new Map(entries.map(entry => [entry.path, entry]));
 		this.notePaths = new Set(entriesByPath.keys());
@@ -154,7 +154,7 @@ export class BasesGanttBetaView extends BasesView {
 			this.writer.replaceScheduleOptions(options.dependencyShift, options.writePhaseDates, options.scale);
 			this.writer.replaceBaseline(chartTasks, mutationProperties);
 		} else {
-			this.writer = new GanttBetaWriteBack(chartTasks, {
+			this.writer = new GanttWriteBack(chartTasks, {
 				mutations: this.mutations,
 				properties: mutationProperties,
 				revertTasks: tasks => this.revertTaskArray(tasks),
@@ -210,7 +210,7 @@ export class BasesGanttBetaView extends BasesView {
 			onExactDateUpdate: (taskId, boundary, type) => writer.onExactDateUpdate(taskId, boundary, type),
 			onRemoveDependency: removeDependency,
 		});
-		const model: GanttBetaChartModel = {
+		const model: GanttChartModel = {
 			tasks: chartTasks, unscheduledCount: mapped.unscheduled.length, rowHeight: options.rowHeight,
 			props: {
 				defaultScale: options.scale, readOnly: options.readOnly, hierarchy: options.phases, showTaskList: options.showTaskList,
@@ -251,19 +251,19 @@ export class BasesGanttBetaView extends BasesView {
 		this.toolbar.update(this.activeScale, canAddTask);
 	}
 
-	private setScale(scale: GanttBetaOptions['scale']): void {
+	private setScale(scale: GanttOptions['scale']): void {
 		this.chart.setScale(scale);
 		this.persistScale(scale);
 	}
 
-	private persistScale(scale: GanttBetaOptions['scale']): void {
+	private persistScale(scale: GanttOptions['scale']): void {
 		this.activeScale = scale;
 		this.setTodayOffset(scale);
 		this.toolbar.update(scale, Boolean(this.lastModel?.props.allowTaskCreate));
 		if (this.config.get('ganttScale') !== scale) this.config.set('ganttScale', scale);
 	}
 
-	private setTodayOffset(scale: GanttBetaOptions['scale']): void {
+	private setTodayOffset(scale: GanttOptions['scale']): void {
 		this.containerEl.style.setProperty('--gantt-local-today-offset', `${localTodayOffsetPx(scale, new Date().getTimezoneOffset())}px`);
 	}
 
@@ -310,7 +310,7 @@ export class BasesGanttBetaView extends BasesView {
 		this.chart.update(this.lastModel);
 	}
 
-	private mutationProperties(groups: readonly EntrySnapshotGroup[], options: GanttBetaOptions) {
+	private mutationProperties(groups: readonly EntrySnapshotGroup[], options: GanttOptions) {
 		const entries = groups.flatMap(group => group.entries);
 		const dateType = (property: string | null): GanttPropertyDateType => {
 			if (!property) return 'date';
@@ -359,7 +359,7 @@ export class BasesGanttBetaView extends BasesView {
 		};
 	}
 
-	private async createTask(draft: GanttTaskDraft, options: GanttBetaOptions, dateType: GanttPropertyDateType): Promise<void> {
+	private async createTask(draft: GanttTaskDraft, options: GanttOptions, dateType: GanttPropertyDateType): Promise<void> {
 		if (!options.start || options.start.startsWith('formula.')) throw new Error('Configure a writable Start date property first.');
 		if (!this.mutations.fileCreate) throw new Error('File creation capability is unavailable.');
 		const fieldName = (property: string) => property.replace(/^note\./, '');
@@ -382,7 +382,7 @@ export class BasesGanttBetaView extends BasesView {
 
 	onunload(): void {
 		this.runtime.dispose();
-		this.containerEl.removeClass('bases-gantt-beta-view');
+		this.containerEl.removeClass('wise-view-gantt');
 		this.containerEl.replaceChildren();
 	}
 }

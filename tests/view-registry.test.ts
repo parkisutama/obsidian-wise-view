@@ -11,7 +11,7 @@ import {
 import { BASES_CALENDAR_VIEW_ID, createCalendarViewRegistration } from "../src/views/BasesCalendarView";
 import { BASES_SWIMLANE_VIEW_ID, createSwimlaneViewRegistration } from "../src/views/BasesSwimlaneView";
 import { BASES_TIMELINE_VIEW_ID, createTimelineViewRegistration, getTimelineViewOptions } from "../src/views/timeline";
-import { BASES_GANTT_VIEW_ID, createGanttBetaViewRegistration } from "../src/views/gantt-beta";
+import { BASES_GANTT_VIEW_ID, createGanttViewRegistration } from "../src/views/gantt";
 import { DEFAULT_SETTINGS } from "../src/types/settings";
 import WiseViewPlugin from "../src/main";
 
@@ -69,13 +69,13 @@ describe("ViewRegistry", () => {
 		const calendar = createCalendarViewRegistration(plugin);
 		const swimlane = createSwimlaneViewRegistration(plugin);
 		const timeline = createTimelineViewRegistration(plugin);
-		const ganttBeta = createGanttBetaViewRegistration(plugin);
+		const gantt = createGanttViewRegistration(plugin);
 
 		registry.register({
 			id: BASES_GANTT_VIEW_ID,
-			name: ganttBeta.name,
-			icon: ganttBeta.icon,
-			factory: ganttBeta.factory,
+			name: gantt.name,
+			icon: gantt.icon,
+			factory: gantt.factory,
 			hover: { display: "Gantt", defaultMod: true },
 			capabilities: { mutations: ["date", "property", "dependency", "fileCreate"] },
 		});

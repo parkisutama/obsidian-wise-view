@@ -5,15 +5,15 @@ import type { ComponentChild, VNode } from 'preact';
 import { render as renderPreact } from 'preact/compat';
 import type { GanttHandle } from '@jaeungkim/gantt-chart';
 import { DateValue, StringValue } from './fixtures/obsidian';
-import { BasesGanttBetaView, BASES_GANTT_VIEW_ID, createGanttBetaViewRegistration } from '../src/views/gantt-beta';
-import { localTodayOffsetPx } from '../src/views/gantt-beta/BasesGanttBetaView';
-import type { ChartRender } from '../src/views/gantt-beta/chartHost';
+import { BasesGanttView, BASES_GANTT_VIEW_ID, createGanttViewRegistration } from '../src/views/gantt';
+import { localTodayOffsetPx } from '../src/views/gantt/BasesGanttView';
+import type { ChartRender } from '../src/views/gantt/chartHost';
 import type { GrantedMutations } from '../src/platform/mutations/grants';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 interface Harness {
-	view: BasesGanttBetaView;
+	view: BasesGanttView;
 	host: HTMLElement;
 	renders: ComponentChild[];
 	configWrites: Array<[string, unknown]>;
@@ -63,7 +63,7 @@ function mount(
 		getDisplayName: (id: string) => id === 'note.owner' ? 'Owner' : id,
 	}, data: { groupedData: [{ entries: [entry], hasKey: () => false }] } };
 	const plugin = { app, settings: { valueStyles: {} } };
-	const view = new BasesGanttBetaView(controller as never, host, plugin as never, renderChart, mutations);
+	const view = new BasesGanttView(controller as never, host, plugin as never, renderChart, mutations);
 	view.onDataUpdated();
 	return {
 		view, host, renders, configWrites, handle, openLinkText,
@@ -81,9 +81,9 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-describe('Gantt Beta skeleton (GBETA-004)', () => {
+describe('Gantt skeleton (GBETA-004)', () => {
 	it('registers the permanent id and display name', () => {
-		const registration = createGanttBetaViewRegistration({} as never);
+		const registration = createGanttViewRegistration({} as never);
 		expect(BASES_GANTT_VIEW_ID).toBe('wise-view-gantt');
 		expect(registration.name).toBe('Gantt');
 		expect(registration.factory).toBeTypeOf('function');
@@ -135,7 +135,7 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 
 		expect(harness.renders.at(-1)).toBeNull();
 		expect(harness.host.childElementCount).toBe(0);
-		expect(harness.host.classList.contains('bases-gantt-beta-view')).toBe(false);
+		expect(harness.host.classList.contains('wise-view-gantt')).toBe(false);
 
 		document.body.classList.add('theme-dark');
 		await flush();
@@ -255,8 +255,8 @@ describe('Gantt Beta skeleton (GBETA-004)', () => {
 		});
 		const detailHost = document.createElement('div');
 		renderPreact(detail, detailHost);
-		expect(detailHost.querySelector('.gantt-beta-detail__property-value')?.textContent).toBe('Parkis');
-		(detailHost.querySelector('.gantt-beta-detail__title') as HTMLButtonElement).click();
+		expect(detailHost.querySelector('.wise-view-gantt-detail__property-value')?.textContent).toBe('Parkis');
+		(detailHost.querySelector('.wise-view-gantt-detail__title') as HTMLButtonElement).click();
 		expect(harness.openLinkText).toHaveBeenCalledWith('A.md', '', false);
 		const rendersBeforePropertyChange = harness.renders.length;
 		harness.setConfig('__order', []);

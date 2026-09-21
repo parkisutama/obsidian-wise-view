@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EchoGate } from '../src/views/gantt-beta/echoGate';
+import { EchoGate } from '../src/views/gantt/echoGate';
 
 function makeGate(settleMs = 350, maxHoldMs = 3000) {
 	const flush = vi.fn();

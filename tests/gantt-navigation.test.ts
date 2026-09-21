@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ViewRuntime } from '../src/platform/dom/ViewRuntime';
-import { installGanttBetaNavigation, PREVIEWING_CLASS } from '../src/views/gantt-beta/navigation';
+import { installGanttNavigation, PREVIEWING_CLASS } from '../src/views/gantt/navigation';
 import { Menu } from './fixtures/obsidian';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -20,7 +20,7 @@ function setup() {
 	const app = { workspace: { trigger, openLinkText } };
 	const hoverParent = {};
 	const runtime = new ViewRuntime(root);
-	installGanttBetaNavigation({
+	installGanttNavigation({
 		app: app as never, root, runtime, hoverParent: hoverParent as never,
 		sourceId: 'wise-view-gantt', isNote: path => !path.startsWith('wise-view-synthetic://'),
 	});
@@ -29,7 +29,7 @@ function setup() {
 
 afterEach(() => document.body.replaceChildren());
 
-describe('Gantt Beta navigation (GBETA-015)', () => {
+describe('Gantt navigation (GBETA-015)', () => {
 	it('shows Page Preview for a bar, attributed to the registered hover source', () => {
 		const h = setup();
 		const bar = h.root.querySelector<HTMLElement>('.gantt-task-bar')!;

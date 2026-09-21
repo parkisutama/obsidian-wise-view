@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { GanttDependencyChange, GanttTaskMoveChange, Task } from '@jaeungkim/gantt-chart';
-import { GanttBetaWriteBack } from '../src/views/gantt-beta/writeBack';
+import { GanttWriteBack } from '../src/views/gantt/writeBack';
 
 const task = (id: string, overrides: Partial<Task> = {}): Task => ({
 	id, name: id, startDate: '2026-10-01', endDate: '2026-10-03', parentId: null, sequence: '1', ...overrides,
@@ -15,7 +15,7 @@ function harness(overrides: Record<string, unknown> = {}) {
 	const notice = vi.fn();
 	const gate = { begin: vi.fn(), end: vi.fn() };
 	const before = [task('Tasks/A.md', { progress: 20 }), task('Tasks/B.md', { sequence: '2' })];
-	const writer = new GanttBetaWriteBack(before, {
+	const writer = new GanttWriteBack(before, {
 		mutations: { date, property, dependency },
 		properties: {
 			start: { id: 'note.start', type: 'date' }, end: { id: 'note.end', type: 'date' },
@@ -28,7 +28,7 @@ function harness(overrides: Record<string, unknown> = {}) {
 	return { writer, before, date, property, dependency, revertTasks, renderTasks, notice, gate };
 }
 
-describe('Gantt Beta write-back (GBETA-010)', () => {
+describe('Gantt write-back (GBETA-010)', () => {
 	it('routes date and progress changes to the exact scoped capabilities', async () => {
 		const h = harness();
 		await h.writer.onTasksChange([
@@ -538,7 +538,7 @@ describe('Gantt Beta write-back (GBETA-010)', () => {
 	});
 });
 
-describe('Gantt Beta schedule write-back (GBETA-011)', () => {
+describe('Gantt schedule write-back (GBETA-011)', () => {
 	it('adds the minimum overlap repair to the same write batch', async () => {
 		const h = harness({ dependencyPolicy: 'overlap' });
 		const before = [

@@ -165,14 +165,14 @@ copied.
 - **Reuse mode:** Copied — bundled npm dependency, unmodified. Its JavaScript runs on Preact
   through build aliases (`scripts/ui-runtime-aliases.mjs`); its stylesheet is merged into
   `styles.css` untouched and themed only through `--gantt-*` tokens in first-party CSS.
-- **Adopted for:** the Gantt Beta view ([gantt-beta.md](../specs/gantt-beta.md)); approved after
+- **Adopted for:** the Gantt view ([gantt.md](../specs/gantt.md)); approved after
   the GBETA-001 spike passed Gate 1 on 2026-09-19.
 - **Excluded:** no source file is copied or patched into `src/`. React itself is never installed
   or bundled (`FORBIDDEN_DEPENDENCIES`).
 - **Upgrade rule:** single maintainer with a fast release cadence (six minor releases between
-  2026-09-04 and 2026-09-09). Upgrade only through a dedicated task that reruns the Gantt Beta
+  2026-09-04 and 2026-09-09). Upgrade only through a dedicated task that reruns the Gantt
   write-back round-trip tests, then updates this row and `THIRD_PARTY_NOTICES.md`.
-- **Known limitations (v1.5.1):** see [gantt-beta.md §5](../specs/gantt-beta.md) — UTC-only
+- **Known limitations (v1.5.1):** see [gantt.md §5](../specs/gantt.md) — UTC-only
   layout, exclusive end dates, global `document` listeners (popout windows), fixed bar height.
 - **Attribution required:** `THIRD_PARTY_NOTICES.md` entries for the library, Day.js, and
   Zustand; `scripts/license-banner.mjs` components for the `main.js`/`styles.css` banners.
@@ -191,7 +191,7 @@ general fix (if one is ever found) gets applied everywhere it applies instead of
 
 None currently open. The Frappe Gantt entry (a leaked `document`-level `mouseup` listener) was removed
 with the library on 2026-09-20 (docs/specs/gantt-frappe-removal.md). `@jaeungkim/gantt-chart`'s own
-limitations are recorded in its ledger entry above and in docs/specs/gantt-beta.md §5.
+limitations are recorded in its ledger entry above and in docs/specs/gantt.md §5.
 
 ## How an implementation task records file-level provenance
 

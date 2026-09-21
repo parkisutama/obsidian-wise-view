@@ -10,14 +10,14 @@ import { compareSequence } from '../../core/gantt/sequence';
 import { buildPhaseTree, type PhaseGroup, type PhaseInput } from '../../core/gantt/phases';
 import { parseGanttProgress } from '../../core/gantt/progress';
 import type { EntrySnapshotGroup } from '../../platform/bases/entrySnapshotAdapter';
-import type { GanttBetaOptions, GanttBetaScale } from './options';
+import type { GanttOptions, GanttScale } from './options';
 
-export interface GanttBetaMappingServices {
+export interface GanttMappingServices {
 	resolveLink(target: string, sourcePath: string): { path: string; name: string } | null;
 	resolveColor(entry: EntrySnapshot, category: string | null): string | null;
 }
 export interface GanttUnresolvedLink { path: string; target: string }
-export interface GanttBetaMappingResult {
+export interface GanttMappingResult {
 	tasks: Task[]; unscheduled: EntrySnapshot[]; cycles: string[];
 	/** Depends on links that name no note in the vault (links to notes filtered out of the Base are not listed). */
 	unresolved: GanttUnresolvedLink[];
@@ -43,7 +43,7 @@ function groupLabel(value: NormalizedValue): string {
 	return text(value) ?? 'No value';
 }
 
-function addScaleStep(value: string, scale: GanttBetaScale): string {
+function addScaleStep(value: string, scale: GanttScale): string {
 	const date = new Date(`${value}:00Z`);
 	if (scale === 'year') date.setUTCFullYear(date.getUTCFullYear() + 1);
 	else if (scale === 'quarter') date.setUTCMonth(date.getUTCMonth() + 3);
@@ -69,8 +69,8 @@ function spanForChildren(id: string, tasks: ReadonlyMap<string, Task>, children:
 }
 
 export function mapSnapshotsToGanttTasks(
-	groups: readonly EntrySnapshotGroup[], options: GanttBetaOptions, services: GanttBetaMappingServices, grouped = false,
-): GanttBetaMappingResult {
+	groups: readonly EntrySnapshotGroup[], options: GanttOptions, services: GanttMappingServices, grouped = false,
+): GanttMappingResult {
 	const entries = groups.flatMap(group => group.entries);
 	const groupByPath = new Map<string, PhaseGroup | null>();
 	for (const [index, group] of groups.entries()) for (const entry of group.entries) {

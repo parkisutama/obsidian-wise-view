@@ -28,8 +28,8 @@ the same `dev` branch, instead of one large document that has to move together.
 |---|---|---|---|---|
 | Swimlane | [docs/specs/swimlane.md](docs/specs/swimlane.md) | [tasks/swimlane/plan.md](tasks/swimlane/plan.md) | [tasks/swimlane/todo.md](tasks/swimlane/todo.md) | Done (native-accepted 2026-09-19) — [record](tasks/swimlane/native-acceptance.md) |
 | Calendar | [docs/specs/calendar.md](docs/specs/calendar.md) | [tasks/calendar/plan.md](tasks/calendar/plan.md) | [tasks/calendar/todo.md](tasks/calendar/todo.md) | Not started |
-| Gantt (Frappe) | [docs/specs/gantt.md](docs/specs/gantt.md) | [tasks/gantt/plan.md](tasks/gantt/plan.md) | [tasks/gantt/todo.md](tasks/gantt/todo.md) | Superseded 2026-09-20 — view removed by Gantt Frappe removal |
-| Gantt (was Gantt Beta) | [docs/specs/gantt-beta.md](docs/specs/gantt-beta.md) | [tasks/gantt-beta/plan.md](tasks/gantt-beta/plan.md) | [tasks/gantt-beta/todo.md](tasks/gantt-beta/todo.md) | Accepted 2026-09-20 with waivers (mobile, popout, keyboard unverified) — [record](tasks/gantt-beta/native-acceptance.md) |
+| Gantt (Frappe) | [docs/specs/gantt-frappe.md](docs/specs/gantt-frappe.md) | [tasks/gantt-frappe/plan.md](tasks/gantt-frappe/plan.md) | [tasks/gantt-frappe/todo.md](tasks/gantt-frappe/todo.md) | Superseded 2026-09-20 — view removed by Gantt Frappe removal |
+| Gantt | [docs/specs/gantt.md](docs/specs/gantt.md) | [tasks/gantt/plan.md](tasks/gantt/plan.md) | [tasks/gantt/todo.md](tasks/gantt/todo.md) | Accepted 2026-09-20 with waivers (mobile, popout, keyboard unverified) — [record](tasks/gantt/native-acceptance.md) |
 | Gantt Frappe removal | [docs/specs/gantt-frappe-removal.md](docs/specs/gantt-frappe-removal.md) | [tasks/gantt-frappe-removal/plan.md](tasks/gantt-frappe-removal/plan.md) | [tasks/gantt-frappe-removal/todo.md](tasks/gantt-frappe-removal/todo.md) | Done 2026-09-20; permanent id and keys set to `wise-view-gantt` / `gantt*` 2026-09-21 (GFR-006). The obsidian-bases-gantt attribution (kept) awaits maintainer confirmation |
 | Timeline | [docs/specs/timeline.md](docs/specs/timeline.md) | [tasks/timeline/plan.md](tasks/timeline/plan.md) | [tasks/timeline/todo.md](tasks/timeline/todo.md) | Implemented; native acceptance pending |
 | Performance | [docs/specs/performance.md](docs/specs/performance.md) | [tasks/performance/plan.md](tasks/performance/plan.md) | [tasks/performance/todo.md](tasks/performance/todo.md) | Blocked — waits for the four view workstreams |
@@ -58,9 +58,9 @@ Note Template (general, cross-view; deliberately last — see below)
 - The four view workstreams (Swimlane, Calendar, Gantt, Timeline) have no dependency on each
   other and may be worked in any order, including in parallel across sessions, since each is
   scoped to its own view's files.
-- **Gantt Beta** (added 2026-09-19) is a new view, independent of the four workstreams above;
+- **Gantt** (added 2026-09-19) is a new view, independent of the four workstreams above;
   Performance does not wait for it. It calls `NoteTemplateService` as-is, so the Note Template
-  redesign must also cover Gantt Beta's creation path.
+  redesign must also cover Gantt's creation path.
 - **Performance** is cross-cutting by nature (a shared render-scheduling/virtualization pattern
   applied consistently across views) and is sequenced after the four view workstreams so it is
   built against each view's settled internal structure, not against files that are about to move.

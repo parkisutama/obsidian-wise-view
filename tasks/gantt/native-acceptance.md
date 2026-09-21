@@ -1,4 +1,4 @@
-# Gantt Beta native acceptance
+# Gantt native acceptance
 
 Catatan ini memisahkan bukti runtime Obsidian dari hasil tes otomatis.
 

@@ -1,92 +1,131 @@
-# Implementation plan: Gantt code quality, dependency editing, and the listener leak
+# Implementation plan: Gantt (`@jaeungkim/gantt-chart`)
 
-Status: Superseded 2026-09-20 — the Frappe Gantt view was removed (see [gantt-frappe-removal](../gantt-frappe-removal/plan.md)); kept as history
+Formerly named "Gantt Beta"; the task ids below keep the `GBETA-` prefix from that time, because commits and reviews refer to them.
+
+Status: Approved 2026-09-19 — Gate 1 passed (desktop spike)
 Specification: [../../docs/specs/gantt.md](../../docs/specs/gantt.md)
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
 Baseline: branch `dev`
 
 ## Overview
 
-Three independent concerns share one file today: extract it into `src/views/gantt/` first, then
-land the dependency-line editor and the listener-leak fix into the resulting, smaller modules
-rather than into the monolith.
+Gantt is a new view in `src/views/gantt/` with its pure logic in `src/core/gantt/`.
+The riskiest unknown — whether the library runs on `preact/compat` inside Obsidian — is proven
+first. Then the order is: build and guard plumbing, read-only rendering, write-back, full UI,
+hardening, native acceptance. Each phase leaves a working (if partial) view behind a registered
+ID, so progress can be checked in a real vault at every checkpoint.
 
-## Phase 1: Characterize current behavior
+## Phase 0: Spike — preact/compat compatibility (gate)
 
-- Add or extend tests covering: task data mapping (including the keyword-detection fallback),
-  dependency mutation via the context menu, the WBS sidebar, and the Frappe Gantt lifecycle
-  wrapper (construction/config mapping/teardown).
+- Throwaway branch: install `@jaeungkim/gantt-chart@1.5.1` (exact) and `preact` (direct
+  dependency), alias `react`, `react-dom`, `react/jsx-runtime` to Preact in esbuild, and mount
+  the chart with hard-coded tasks in a minimal Bases view.
+- Check in a real vault: render, move, resize, progress drag, link drawing and deletion,
+  hierarchy collapse, row reorder, draw-to-create, detail panel, keyboard navigation, theme
+  switch, a popout window, and mobile.
+- Record bundle size delta, console warnings, and the popout result.
+
+### Checkpoint 0 (Gate 1)
+
+- Written spike report in `tasks/gantt/spike-report.md`: every checked interaction marked
+  works / broken / workaround, and the bundle delta.
+- Maintainer decides: proceed on preact/compat, or open a separate decision for React.
+
+## Phase 1: Foundations
+
+- Dependencies and build: exact pin, esbuild alias, pnpm `peerDependencyRules`, library CSS
+  merged via `createCssMergePlugin`, `THIRD_PARTY_NOTICES.md` and provenance entries.
+- Architecture: capability grant per the decision record, guard updates (§7 of the spec),
+  bundle check that no `react-dom` code ships.
+- View skeleton: descriptor `wise-view-gantt-beta`, a `ViewRuntime`-based view that mounts and
+  unmounts the chart through Preact `render`, theme wiring, `--gantt-*` → Obsidian token CSS.
 
 ### Checkpoint A
 
-- `pnpm run check` passes with the new/extended characterization tests, before any extraction.
+- `pnpm run check`, `pnpm run build`, `pnpm run verify:artifacts` pass.
+- Gantt appears in Bases' view picker and renders a static chart that follows the theme.
 
-Completed 2026-09-19: focused Gantt tests (18), typecheck, and the full 305-test project check
-pass before extraction begins.
+## Phase 2: Read path (pure core + mapping)
 
-## Phase 2: Extract modules
-
-- Extract task data mapping, the Frappe Gantt lifecycle wrapper, the WBS sidebar, and the options
-  schema into their own modules under `src/views/gantt/`.
-- Leave the note-from-template creation seam extracted but behaviorally untouched (owned by
-  `docs/specs/note-template.md`).
+- `src/core/gantt/`: floating date conversion (date/datetime, inclusive↔exclusive end),
+  progress parsing, Depends on link parsing (FS adapter), phase tree (parent notes, out-of-results
+  parents, Bases groups), sequence builder (Order property or Bases sort), cycle reporting.
+- View mapping: Bases entries → library `Task[]` with the §3.2 rules; option schema (§3.6) with
+  all keys; unscheduled/empty state.
 
 ### Checkpoint B
 
-- `src/views/BasesGanttView.ts` is reduced to a slim view class delegating to the extracted
-  modules.
-- Phase 1 characterization tests still pass unchanged.
+- Unit tests cover every §3.2 row and §3.3 case.
+- In a real vault, a Base with parent notes and `Group by` renders phases with roll-up and
+  collapse, read-only (editing off).
 
-## Phase 3: Frappe Gantt listener leak (spec §2.3)
+## Phase 3: Write path
 
-- Investigate, in order: a newer Frappe Gantt version; a supported teardown/suppress option;
-  vendoring a minimal patch; or a quantified, documented accepted bound. Stop at the first that
-  resolves it.
+- Diff engine (`src/core/gantt/diff.ts`): previous vs. next `Task[]` → a list of field changes.
+- Change → mutation plan: date formatting per property type, progress, order renumbering,
+  parent writes, Depends on append/remove preserving the property's shape.
+- Wiring: `onTasksChange`, `onDependencyCreate`/`onDependencyDelete`, `onTaskMove`,
+  `onTaskCreate` → mutation capabilities; batching, failure revert, echo suppression.
+- Dependency schedule policies (§3.5)—no shift, overlap repair, or maintain gap—and
+  "Write phase dates".
 
-### Checkpoint C
+### Checkpoint C (Gate 2)
 
-- The chosen resolution is implemented (or documented, for the accepted-bound outcome) with a
-  test proving the leak is gone, or the bound is real and quantified.
-- `docs/architecture/upstream-provenance.md` and `THIRD_PARTY_NOTICES.md` are updated to match
-  whichever direction was taken.
+- Round-trip tests: every gesture in the spec §3.4 table writes exactly the expected properties
+  and nothing else; a failed write reverts the chart.
+- Real-vault check of every §3.4 row, including a summary drag with cascade on.
+- Maintainer approves the write behavior before UI polish starts.
 
-## Phase 4: Interactive dependency-line editor (spec §2.2)
+## Phase 4: Full UI
 
-- Decide the interaction approach (custom SVG overlay vs. a Frappe Gantt version/library change)
-  — informed by whatever Phase 3 already learned about Frappe Gantt's internals and version
-  options.
-- Implement drag-to-create, drag-to-repoint, and drag-to-remove, all writing to the existing
-  "Dependencies" property.
+- Toolbar (scale picker, Today, Zoom to fit, Add task, collapse/expand all).
+- Detail panel renderer (§3.7), click-to-open and hover preview, persisted scale and collapse
+  state, locale, working calendar options, row height CSS-only option, mobile toolbar.
 
 ### Checkpoint D
 
-- The editor's writes produce the same property shape as the existing context-menu actions (no
-  format drift).
-- Regression tests cover create/repoint/remove via drag.
+- Every §3.6 option has a visible effect and persists across reopening the `.base` file.
+- View tests cover toolbar actions, detail panel edits, click/hover navigation.
 
-## Phase 5: Native acceptance
+## Phase 5: Hardening
 
-- Native desktop/mobile smoke test of bar drag/resize, WBS sidebar, view-mode switching, progress
-  display, and the new dependency-line editor.
+- Large-Base check (hundreds of entries): virtualization works, a single gesture's write burst
+  does not freeze the UI.
+- Today-marker investigation (UTC vs. local); popout limitation documented and upstream issue/PR
+  opened; unresolved links, formula properties, and missing-template paths handled with Notices.
+- Frappe follow-ups recorded if any shared module changed Frappe-visible behavior.
 
-### Checkpoint E: Gantt workstream complete
+### Checkpoint E
 
-- `pnpm run check` passes.
-- Native acceptance recorded, including the dependency editor and confirmation the listener leak
-  fix does not regress Gantt's rebuild/config-change behavior.
-- `ROADMAP.md`'s Gantt row updated to Done.
+- `pnpm run check`, build, and artifact verification pass; the known-limitations list in the
+  spec §5 matches reality.
+
+## Phase 6: Native acceptance and stability gate
+
+- Desktop and mobile native acceptance, recorded.
+- Stability gate evaluation (spec §11).
+
+### Checkpoint F: Gantt workstream complete (Gate 3)
+
+- Native acceptance recorded; `ROADMAP.md` updated.
+- Maintainer decides whether the stability gate is met. If yes, create the "Gantt Frappe
+  removal" workstream (spec/plan/tasks) — not part of this plan.
 
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Frappe Gantt version upgrade breaks existing bar-rendering behavior | High | characterization tests from Phase 1 must pass before and after any version bump; pin the exact version investigated in the provenance ledger |
-| Vendoring a patched Frappe Gantt build drifts from upstream over time | Medium | keep the patch minimal (the single offending binding) and documented, matching the existing vendored-CSS-scoping precedent (`esbuild.config.mjs`'s `scopeFrappeGanttCss`) |
-| Dependency-drag interaction conflicts with existing bar drag/resize gestures | High | prototype against the characterization tests from Phase 1 before committing to the interaction design; test both gestures together, not in isolation |
+| Library breaks under preact/compat (hooks, event timing, `useSyncExternalStore`) | High | Phase 0 gate before any other work; fallback is a separate React decision, not a silent guard change |
+| Upstream API churn (6 minor releases in 5 days; single maintainer) | High | Exact pin; adapter isolates the library to `src/views/gantt/chart*`; upgrade only via a task that reruns the Phase 3 round-trip tests |
+| Date drift from UTC/exclusive-end conversions | High (data) | Pure conversion module with exhaustive round-trip tests (date, datetime, DST dates, month/year ends) before any write is wired |
+| Write bursts conflict with other plugins or sync | Medium | Changed-fields-only writes, batching, decision record's compatibility notes |
+| Bases re-render after our own write resets UI state | Medium | Echo suppression and controlled `collapsedIds`/`detailTaskId` |
+| Popout windows: drag listeners on the main `document` | Medium | Documented limitation for Beta; upstream PR; recorded in native acceptance |
+| Synthetic phases confuse users (read-only rows) | Low | Distinct styling and tooltip; reorder into them rejected with a clear Notice |
+| Shared helper changes alter Frappe behavior | Low | Spec §6 policy: keep backward compatible or record a Frappe follow-up |
 
 ## Human gates
 
-- Gate 1: approve the Frappe Gantt listener-leak resolution direction (Phase 3) before
-  implementing it — this may involve a version upgrade or vendoring, both worth a sign-off.
-- Gate 2: approve the dependency-editor interaction design (Phase 4) before implementing it.
-- Gate 3: accept native testing (Phase 5) before marking the workstream Done.
+- Gate 1: approve the spike result and runtime (Phase 0).
+- Gate 2: approve write-back behavior on a real vault (Phase 3).
+- Gate 3: accept native testing and decide on the stability gate (Phase 6).

@@ -9,7 +9,7 @@ Specification: [../../docs/specs/gantt-frappe-removal.md](../../docs/specs/gantt
 
 **Status:** Complete 2026-09-20. The new view is registered as Gantt (ID unchanged); the Frappe registration, hover source, commands, settings, and saved ganttDefaults are gone. The Gantt settings tab keeps only the colour note, which still applies.
 
-**Description:** Change the display name, hover source, and user-facing strings from "Gantt Beta" to
+**Description:** Change the display name, hover source, and user-facing strings from "Gantt" to
 "Gantt". Remove the Frappe registration, hover source, commands, settings (`GanttDefaults`, defaults,
 settings tab section, load-time merge), and the `legacyMutation` grant for it.
 
@@ -24,7 +24,7 @@ settings tab section, load-time merge), and the `legacyMutation` grant for it.
 
 **Dependencies:** none.
 
-**Likely files:** `src/main.ts`, `src/views/gantt-beta/index.ts`, `src/types/settings.ts`,
+**Likely files:** `src/main.ts`, `src/views/gantt/index.ts`, `src/types/settings.ts`,
 `src/settings/SettingsTab.ts`, `tests/view-registry.test.ts`, `tests/architecture.test.ts`
 
 **Estimated scope:** M
@@ -84,7 +84,7 @@ notice entries, and the provenance ledger's Frappe rows and known-limitation sec
 
 **Status:** Complete 2026-09-21. The view id is `wise-view-gantt` and every option key is `gantt*`.
 Settings saved by the released Frappe view and by development builds are imported once
-(`legacyOptions.ts`, gantt-beta.md §3.8). `wise-view-gantt-beta` was never released and is not registered.
+(`legacyOptions.ts`, gantt.md §3.8). `wise-view-gantt-beta` was never released and is not registered.
 
 **Description:** Reuse the released id, rename the stored option keys, and import older settings so a
 base saved by the Frappe release keeps its schedule instead of opening empty.
@@ -94,7 +94,7 @@ base saved by the Frappe release keeps its schedule instead of opening empty.
 - [x] `BASES_GANTT_VIEW_ID` is `wise-view-gantt`; the scoped-write approval and hover source use it.
 - [x] No stored key contains "beta"; a test checks the key list against the option schema.
 - [x] A Frappe-era base and a development-build base are imported once, with the precedence, marker, and
-  no-op rules in gantt-beta.md §3.8, each covered by a test.
+  no-op rules in gantt.md §3.8, each covered by a test.
 - [x] Read only stays the default, so an imported legacy base cannot write until the user opts in.
 - [x] The user is told what was imported, and whether the chart is read-only.
 
@@ -102,8 +102,30 @@ base saved by the Frappe release keeps its schedule instead of opening empty.
 
 **Dependencies:** GFR-003.
 
-**Likely files:** `src/views/gantt-beta/legacyOptions.ts`, `src/views/gantt-beta/options.ts`,
-`src/viewRegistry.ts`, `tests/gantt-beta-legacy-options.test.ts`
+**Likely files:** `src/views/gantt/legacyOptions.ts`, `src/views/gantt/options.ts`,
+`src/viewRegistry.ts`, `tests/gantt-legacy-options.test.ts`
+
+**Estimated scope:** M
+
+### GFR-007: One name everywhere
+
+**Status:** Complete 2026-09-21. Folder, files, classes, identifiers, tests, specification, and tasks all say
+"Gantt" (docs/specs/gantt-frappe-removal.md R7). Checked: typecheck, lint, 490 tests, production build, and a
+script that compares every `wise-view-gantt-*` class used in code with the stylesheet (no gaps, no unused
+rules) and with the library's own classes (no collisions). A first pass renamed `gantt-beta-detail` to
+`gantt-detail`, which the library already defines; it was caught by that comparison and namespaced instead.
+
+**Acceptance criteria:**
+
+- [x] No source folder, file, class, identifier, or test name contains "beta", except the legacy import.
+- [x] No class we define is also defined by the library.
+- [x] Links between specifications, plans, tasks, README, roadmap, and the guide resolve.
+
+**Verification:** `pnpm run check && pnpm run build && pnpm run verify:artifacts`
+
+**Dependencies:** GFR-006.
+
+**Likely files:** as renamed.
 
 **Estimated scope:** M
 
@@ -120,14 +142,14 @@ remove `docs/gantt-view-improvement-prompt.md`.
 **Acceptance criteria:**
 
 - [x] README carries the migration note and the list of removed commands and settings.
-- [x] `docs/specs/gantt.md`, `tasks/gantt/plan.md`, and `tasks/gantt/todo.md` say "Superseded".
+- [x] The Frappe spec, plan, and tasks (now `docs/specs/gantt-frappe.md` and `tasks/gantt-frappe/`) say "Superseded".
 - [x] `ROADMAP.md` shows Gantt as Done and the row for this removal.
 
 **Verification:** Documentation review.
 
 **Dependencies:** GFR-003.
 
-**Likely files:** `README.md`, `ROADMAP.md`, `docs/specs/gantt.md`, `tasks/gantt/*`
+**Likely files:** `README.md`, `ROADMAP.md`, `docs/specs/gantt-frappe.md`, `tasks/gantt-frappe/*`
 
 **Estimated scope:** S
 

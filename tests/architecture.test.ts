@@ -40,7 +40,7 @@ const ALLOWED_MUTATION_PATHS = [
 const GUARDED_MUTATION_DIRS = [
 	"src/views/timeline/",
 	"src/views/swimlane/",
-	"src/views/gantt-beta/",
+	"src/views/gantt/",
 	"src/views/grid/",
 	"src/views/masonry/",
 	"src/views/feed/",
@@ -55,7 +55,7 @@ const GUARDED_MUTATION_DIRS = [
  * Views that write only through scoped grants (docs/architecture/view-write-access.md). They must
  * not construct the full gateway themselves; they receive capabilities via ViewRegistry.mutationsFor.
  */
-const SCOPED_GRANT_DIRS = ["src/views/gantt-beta/"];
+const SCOPED_GRANT_DIRS = ["src/views/gantt/"];
 
 const GATEWAY_IMPORT_PATTERN = /LegacyMutationGateway/;
 
@@ -143,7 +143,7 @@ describe("architecture guard: scoped mutation grants", () => {
 
 	it("treats a direct mutation call in a scoped-grant view as a violation", () => {
 		const content = readFileSync(path.join(fixturesDir, "forbidden.ts"), "utf8");
-		const violations = findMutationViolations([{ relativePath: "src/views/gantt-beta/forbidden.ts", content }]);
+		const violations = findMutationViolations([{ relativePath: "src/views/gantt/forbidden.ts", content }]);
 		expect(violations.map((v) => v.name)).toEqual(
 			expect.arrayContaining(["processFrontMatter", "vault.modify", "trashFile", "editor.setValue"]),
 		);

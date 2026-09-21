@@ -7,26 +7,26 @@ import { render } from 'preact/compat';
 import type { ViewRuntime } from '../../platform/dom/ViewRuntime';
 import { TooltipGuard } from './tooltipGuard';
 
-export type GanttBetaTheme = 'light' | 'dark';
+export type GanttTheme = 'light' | 'dark';
 export type ChartRender = (node: ComponentChild, container: Element) => void;
 
-export interface GanttBetaChartModel {
+export interface GanttChartModel {
 	tasks: Task[];
 	unscheduledCount: number;
 	rowHeight: number;
 	props: GanttProps;
 }
 
-function bodyTheme(body: HTMLElement): GanttBetaTheme {
+function bodyTheme(body: HTMLElement): GanttTheme {
 	return body.classList.contains('theme-dark') ? 'dark' : 'light';
 }
 
 /** Owns the Preact tree and the owning-window theme observer for one Gantt view. */
-export class GanttBetaChartHost {
-	private theme: GanttBetaTheme;
+export class GanttChartHost {
+	private theme: GanttTheme;
 	private readonly observer: MutationObserver;
 	private disposed = false;
-	private model: GanttBetaChartModel | null = null;
+	private model: GanttChartModel | null = null;
 	private remountKey = 0;
 	private handle: GanttHandle | null = null;
 	private readonly tooltipGuard: TooltipGuard;
@@ -43,7 +43,7 @@ export class GanttBetaChartHost {
 		this.tooltipGuard = new TooltipGuard(containerEl, runtime.win);
 	}
 
-	get currentTheme(): GanttBetaTheme {
+	get currentTheme(): GanttTheme {
 		return this.theme;
 	}
 
@@ -57,7 +57,7 @@ export class GanttBetaChartHost {
 	private paint(): void {
 		if (!this.model) return;
 		if (this.model.tasks.length === 0) {
-			this.renderChart(h('div', { class: 'gantt-beta-empty' },
+			this.renderChart(h('div', { class: 'wise-view-gantt-empty' },
 				this.model.unscheduledCount > 0 ? `${this.model.unscheduledCount} note(s) need a configured start date.` : 'No scheduled notes.'), this.containerEl);
 			return;
 		}
@@ -90,7 +90,7 @@ export class GanttBetaChartHost {
 	}
 
 	/** Row height is a CSS-only update; unchanged task/prop references do not repaint Preact. */
-	update(model: GanttBetaChartModel): void {
+	update(model: GanttChartModel): void {
 		this.containerEl.style.setProperty('--gantt-row-height', `${model.rowHeight}px`);
 		const repaint = !this.model || this.model.tasks !== model.tasks || this.model.props !== model.props
 			|| this.model.unscheduledCount !== model.unscheduledCount;

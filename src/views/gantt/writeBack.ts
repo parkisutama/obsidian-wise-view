@@ -17,7 +17,7 @@ import {
 import { SYNTHETIC_PHASE_PREFIX } from '../../core/gantt/phases';
 import type { GrantedMutations } from '../../platform/mutations/grants';
 import type { MutationResult } from '../../platform/mutations/types';
-import type { GanttBetaScale } from './options';
+import type { GanttScale } from './options';
 import { rollUpPhaseDates } from './phaseRollup';
 
 interface BaselineValues {
@@ -25,7 +25,7 @@ interface BaselineValues {
 	currentDependsOn?: ReadonlyMap<string, unknown>;
 }
 
-export interface GanttBetaWriteBackOptions {
+export interface GanttWriteBackOptions {
 	mutations: GrantedMutations;
 	properties: GanttMutationPlanOptions;
 	/**
@@ -37,7 +37,7 @@ export interface GanttBetaWriteBackOptions {
 	createTask?(draft: GanttTaskDraft): Promise<void>;
 	dependencyPolicy?: GanttDependencyPolicy;
 	writePhaseDates?: boolean;
-	scale?: GanttBetaScale;
+	scale?: GanttScale;
 	/** Applies cascade results without remounting the chart. */
 	renderTasks?(tasks: Task[]): void;
 	/** Holds Bases re-renders while writes are in flight (see EchoGate). */
@@ -87,7 +87,7 @@ function snappedBoundary(
 	baseline: string,
 	proposed: string,
 	type: 'date' | 'datetime',
-	scale: GanttBetaScale,
+	scale: GanttScale,
 ): string {
 	const from = chartTime(baseline);
 	const to = chartTime(proposed);
@@ -109,7 +109,7 @@ function snapTask(
 	task: Task,
 	baseline: Task | undefined,
 	types: { start: 'date' | 'datetime'; end: 'date' | 'datetime' },
-	scale: GanttBetaScale,
+	scale: GanttScale,
 ): Task {
 	if (!baseline) return task;
 	const startChanged = task.startDate !== baseline.startDate;
@@ -133,7 +133,7 @@ function snapTask(
  * Converts controlled chart gestures into the smallest scoped mutation calls. It owns only an
  * immutable task baseline and plain frontmatter values; no live Bases object crosses an update.
  */
-export class GanttBetaWriteBack {
+export class GanttWriteBack {
 	private baseline: Task[];
 	private indexed: { source: Task[]; byId: Map<string, Task> } | null = null;
 	private properties: GanttMutationPlanOptions;
@@ -141,11 +141,11 @@ export class GanttBetaWriteBack {
 	private epoch = 0;
 	private dependencyPolicy: GanttDependencyPolicy;
 	private writePhaseDates: boolean;
-	private scale: GanttBetaScale;
+	private scale: GanttScale;
 	private pendingDependencyChange = false;
 	private readonly pendingExactDateTypes = new Map<string, Partial<Record<'start' | 'end', 'date' | 'datetime'>>>();
 
-	constructor(tasks: Task[], private readonly options: GanttBetaWriteBackOptions) {
+	constructor(tasks: Task[], private readonly options: GanttWriteBackOptions) {
 		this.baseline = tasks;
 		this.properties = options.properties;
 		this.dependencyPolicy = options.dependencyPolicy ?? 'none';
@@ -169,7 +169,7 @@ export class GanttBetaWriteBack {
 		this.properties = properties;
 	}
 
-	replaceScheduleOptions(dependencyPolicy: GanttDependencyPolicy, writePhaseDates: boolean, scale: GanttBetaScale = this.scale): void {
+	replaceScheduleOptions(dependencyPolicy: GanttDependencyPolicy, writePhaseDates: boolean, scale: GanttScale = this.scale): void {
 		this.dependencyPolicy = dependencyPolicy;
 		this.writePhaseDates = writePhaseDates;
 		this.scale = scale;

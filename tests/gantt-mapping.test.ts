@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { EntrySnapshot } from '../src/core/entries/EntrySnapshot';
 import type { NormalizedValue } from '../src/core/entries/NormalizedValue';
 import type { EntrySnapshotGroup } from '../src/platform/bases/entrySnapshotAdapter';
-import { getGanttBetaViewOptions, readGanttBetaOptions } from '../src/views/gantt-beta/options';
-import { mapSnapshotsToGanttTasks } from '../src/views/gantt-beta/taskMapping';
+import { getGanttViewOptions, readGanttOptions } from '../src/views/gantt/options';
+import { mapSnapshotsToGanttTasks } from '../src/views/gantt/taskMapping';
 
 const snapshot = (path: string, values: Record<string, NormalizedValue>): EntrySnapshot => ({
 	path, basename: path.replace(/\.md$/, '').split('/').at(-1)!, extension: 'md', folder: '', ctime: 1, mtime: 2,
@@ -21,16 +21,16 @@ function options(values: Record<string, unknown> = {}) {
 		getAsPropertyId: (key: string) => typeof values[key] === 'string' && String(values[key]).includes('.') ? values[key] : null,
 		getOrder: () => [], getDisplayName: (id: string) => id,
 	};
-	return readGanttBetaOptions(config as never);
+	return readGanttOptions(config as never);
 }
 const services = {
 	resolveLink: (target: string) => ({ path: target.endsWith('.md') ? target : `${target}.md`, name: target.split('/').at(-1)! }),
 	resolveColor: (_entry: EntrySnapshot, category: string | null) => category === 'Urgent' ? '#ff0000' : null,
 };
 
-describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
+describe('Bases to Gantt task mapping (GBETA-008)', () => {
 	it('defines every spec §3.6 option under Gantt-Beta-specific keys', () => {
-		const serialized = JSON.stringify(getGanttBetaViewOptions({} as never));
+		const serialized = JSON.stringify(getGanttViewOptions({} as never));
 		for (const key of [
 			'Start', 'End', 'Label', 'Parent', 'Order', 'Progress', 'ColorBy', 'DependencyFS',
 			'Scale', 'ShowNonWorkingDays', 'WorkingWeekdays', 'Holidays', 'SnapToWorkingDays', 'FirstDayOfWeek', 'ZoomOnWheel', 'InfiniteScroll',
@@ -97,7 +97,7 @@ describe('Bases to Gantt Beta task mapping (GBETA-008)', () => {
 		const value = options({ ganttDependencyFS: 'note.fs' });
 		expect(value.dependsOn).toBe('note.fs');
 		expect(value.dependencyShift).toBe('none');
-		const schema = JSON.stringify(getGanttBetaViewOptions({} as never));
+		const schema = JSON.stringify(getGanttViewOptions({} as never));
 		expect(schema).toContain('"key":"ganttDependencyFS","displayName":"Depends on"');
 	});
 

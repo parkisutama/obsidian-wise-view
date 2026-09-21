@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { TooltipGuard } from '../src/views/gantt-beta/tooltipGuard';
+import { TooltipGuard } from '../src/views/gantt/tooltipGuard';
 
 function chart(): HTMLElement {
 	const root = document.createElement('div');
@@ -16,7 +16,7 @@ function chart(): HTMLElement {
 
 afterEach(() => document.body.replaceChildren());
 
-describe('Gantt Beta tooltip guard', () => {
+describe('Gantt tooltip guard', () => {
 	it('moves the treegrid name off aria-label so Obsidian shows no "Gantt chart" bubble', () => {
 		const root = chart();
 		const guard = new TooltipGuard(root, window);

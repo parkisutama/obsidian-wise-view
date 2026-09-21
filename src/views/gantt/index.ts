@@ -4,12 +4,12 @@
 import type { BasesViewRegistration, QueryController } from 'obsidian';
 import type WiseViewPlugin from '../../main';
 import type { GrantedMutations } from '../../platform/mutations/grants';
-import { BASES_GANTT_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
-import { getGanttBetaViewOptions } from './options';
+import { BASES_GANTT_VIEW_ID, BasesGanttView } from './BasesGanttView';
+import { getGanttViewOptions } from './options';
 
-export { BASES_GANTT_VIEW_ID, BasesGanttBetaView } from './BasesGanttBetaView';
+export { BASES_GANTT_VIEW_ID, BasesGanttView } from './BasesGanttView';
 
-export function createGanttBetaViewRegistration(
+export function createGanttViewRegistration(
 	plugin: WiseViewPlugin,
 	mutationsFor: () => GrantedMutations = () => ({}),
 ): BasesViewRegistration {
@@ -17,7 +17,7 @@ export function createGanttBetaViewRegistration(
 		name: 'Gantt',
 		icon: 'gantt-chart-square',
 		factory: (controller: QueryController, containerEl: HTMLElement) =>
-			new BasesGanttBetaView(controller, containerEl, plugin, undefined, mutationsFor()),
-		options: config => getGanttBetaViewOptions(config),
+			new BasesGanttView(controller, containerEl, plugin, undefined, mutationsFor()),
+		options: config => getGanttViewOptions(config),
 	};
 }

@@ -23,8 +23,8 @@ export interface DependencyStatusOptions {
 	trackCompletion: boolean;
 }
 
-export const BLOCKED_CLASS = 'gantt-beta-blocked';
-export const CONFLICT_CLASS = 'gantt-beta-conflict';
+export const BLOCKED_CLASS = 'wise-view-gantt-blocked';
+export const CONFLICT_CLASS = 'wise-view-gantt-conflict';
 
 function chartTime(value: string): number {
 	return Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`);

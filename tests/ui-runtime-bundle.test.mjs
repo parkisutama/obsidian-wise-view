@@ -4,8 +4,8 @@ import esbuild from "esbuild";
 import { describe, expect, it } from "vitest";
 import { UI_RUNTIME_ALIASES } from "../scripts/ui-runtime-aliases.mjs";
 
-// GBETA-002: Gantt Beta's chart library imports React; the build must resolve every React import
-// to Preact so no React code ships (spec docs/specs/gantt-beta.md D1, architecture guard).
+// GBETA-002: Gantt's chart library imports React; the build must resolve every React import
+// to Preact so no React code ships (spec docs/specs/gantt.md D1, architecture guard).
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 async function bundleGanttChart() {

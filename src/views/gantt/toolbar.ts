@@ -3,10 +3,10 @@
 
 import { setIcon } from 'obsidian';
 import type { ViewRuntime } from '../../platform/dom/ViewRuntime';
-import { GANTT_BETA_SCALES, type GanttBetaScale } from './options';
+import { GANTT_SCALES, type GanttScale } from './options';
 
-export interface GanttBetaToolbarActions {
-	onScale(scale: GanttBetaScale): void;
+export interface GanttToolbarActions {
+	onScale(scale: GanttScale): void;
 	onToday(): void;
 	onZoomToFit(): void;
 	onAddTask(): void;
@@ -14,27 +14,27 @@ export interface GanttBetaToolbarActions {
 	onExpandAll(): void;
 }
 
-const SCALE_LABELS: Record<GanttBetaScale, string> = {
+const SCALE_LABELS: Record<GanttScale, string> = {
 	day: 'Hours', week: 'Days', month: 'Weeks', quarter: 'Months', year: 'Quarters',
 };
 
 /** Obsidian-native controls around the headless chart toolbar API. */
-export class GanttBetaToolbar {
+export class GanttToolbar {
 	private readonly scaleSelect: HTMLSelectElement;
 	private readonly addButton: HTMLButtonElement;
 
-	constructor(container: HTMLElement, runtime: ViewRuntime, actions: GanttBetaToolbarActions) {
-		container.addClass('gantt-beta-toolbar');
+	constructor(container: HTMLElement, runtime: ViewRuntime, actions: GanttToolbarActions) {
+		container.addClass('wise-view-gantt-toolbar');
 		container.setAttribute('role', 'toolbar');
 		container.setAttribute('aria-label', 'Gantt controls');
 
-		this.scaleSelect = container.createEl('select', { cls: 'dropdown gantt-beta-toolbar__scale' });
+		this.scaleSelect = container.createEl('select', { cls: 'dropdown wise-view-gantt-toolbar__scale' });
 		this.scaleSelect.setAttribute('aria-label', 'Time resolution');
-		for (const scale of GANTT_BETA_SCALES) {
+		for (const scale of GANTT_SCALES) {
 			const option = this.scaleSelect.createEl('option', { text: SCALE_LABELS[scale] });
 			option.value = scale;
 		}
-		runtime.addEventListener(this.scaleSelect, 'change', () => actions.onScale(this.scaleSelect.value as GanttBetaScale));
+		runtime.addEventListener(this.scaleSelect, 'change', () => actions.onScale(this.scaleSelect.value as GanttScale));
 
 		this.button(container, runtime, 'calendar-days', 'Today', actions.onToday);
 		this.button(container, runtime, 'scan', 'Zoom to fit', actions.onZoomToFit);
@@ -43,7 +43,7 @@ export class GanttBetaToolbar {
 		this.button(container, runtime, 'chevrons-up-down', 'Expand all', actions.onExpandAll);
 	}
 
-	update(scale: GanttBetaScale, canAddTask: boolean): void {
+	update(scale: GanttScale, canAddTask: boolean): void {
 		this.scaleSelect.value = scale;
 		this.addButton.disabled = !canAddTask;
 	}
@@ -55,12 +55,12 @@ export class GanttBetaToolbar {
 		label: string,
 		action: () => void,
 	): HTMLButtonElement {
-		const button = container.createEl('button', { cls: 'clickable-icon gantt-beta-toolbar__button' });
+		const button = container.createEl('button', { cls: 'clickable-icon wise-view-gantt-toolbar__button' });
 		button.type = 'button';
 		button.setAttribute('aria-label', label);
 		button.title = label;
 		setIcon(button, icon);
-		button.createSpan({ cls: 'gantt-beta-toolbar__label', text: label });
+		button.createSpan({ cls: 'wise-view-gantt-toolbar__label', text: label });
 		runtime.addEventListener(button, 'click', action);
 		return button;
 	}

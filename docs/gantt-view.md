@@ -207,4 +207,4 @@ sumber kebenarannya.
 Expected progress, scale Hour/Quarter day/Half day, dan menu klik kanan khusus (tambah/hapus
 dependensi) tidak ada. Dependensi selain finish-to-start belum didukung.
 
-Untuk kontrak teknis lengkap, lihat [spesifikasi Gantt](specs/gantt-beta.md).
+Untuk kontrak teknis lengkap, lihat [spesifikasi Gantt](specs/gantt.md).

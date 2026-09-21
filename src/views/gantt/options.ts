@@ -4,10 +4,10 @@
 import type { BasesAllOptions, BasesPropertyId, BasesViewConfig, TFile } from 'obsidian';
 import { ViewConfigReader } from '../../platform/bases/ViewConfigReader';
 
-export const GANTT_BETA_SCALES = ['day', 'week', 'month', 'quarter', 'year'] as const;
-export type GanttBetaScale = typeof GANTT_BETA_SCALES[number];
-export const GANTT_BETA_DEPENDENCY_SHIFTS = ['none', 'overlap', 'maintain-gap'] as const;
-export type GanttBetaDependencyShift = typeof GANTT_BETA_DEPENDENCY_SHIFTS[number];
+export const GANTT_SCALES = ['day', 'week', 'month', 'quarter', 'year'] as const;
+export type GanttScale = typeof GANTT_SCALES[number];
+export const GANTT_DEPENDENCY_SHIFTS = ['none', 'overlap', 'maintain-gap'] as const;
+export type GanttDependencyShift = typeof GANTT_DEPENDENCY_SHIFTS[number];
 
 export function readCollapsedIds(value: unknown): string[] {
 	if (typeof value !== 'string' || value.length === 0) return [];
@@ -19,27 +19,27 @@ export function readCollapsedIds(value: unknown): string[] {
 	}
 }
 
-export interface GanttBetaOptions {
+export interface GanttOptions {
 	start: BasesPropertyId | null; end: BasesPropertyId | null; label: BasesPropertyId | null;
 	parent: BasesPropertyId | null; order: BasesPropertyId | null; progress: BasesPropertyId | null;
 	colorBy: BasesPropertyId | null; dependsOn: BasesPropertyId | null;
-	scale: GanttBetaScale; showNonWorkingDays: boolean; workingWeekdays: string; holidays: string;
+	scale: GanttScale; showNonWorkingDays: boolean; workingWeekdays: string; holidays: string;
 	snapToWorkingDays: boolean; firstDayOfWeek: number; zoomOnWheel: boolean; infiniteScroll: boolean;
 	scrollToToday: boolean; phases: boolean; showTaskList: boolean; showRowNumbers: boolean;
 	showDetail: boolean; showProgress: boolean; showTooltip: boolean; rowHeight: number;
 	readOnly: boolean; allowMove: boolean; allowResize: boolean; allowProgress: boolean;
 	allowLinkCreate: boolean; allowLinkDelete: boolean; allowReorder: boolean; allowTaskCreate: boolean;
-	dependencyShift: GanttBetaDependencyShift; writePhaseDates: boolean; templatePath: string; targetFolder: string; titleFormat: string;
+	dependencyShift: GanttDependencyShift; writePhaseDates: boolean; templatePath: string; targetFolder: string; titleFormat: string;
 	collapsedIds: string[];
 }
 
-export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions {
+export function readGanttOptions(config: BasesViewConfig): GanttOptions {
 	const r = new ViewConfigReader(config);
 	return {
 		start: r.getPropertyId('ganttStart'), end: r.getPropertyId('ganttEnd'), label: r.getPropertyId('ganttLabel'),
 		parent: r.getPropertyId('ganttParent'), order: r.getPropertyId('ganttOrder'), progress: r.getPropertyId('ganttProgress'),
 		colorBy: r.getPropertyId('ganttColorBy'), dependsOn: r.getPropertyId('ganttDependencyFS'),
-		scale: r.getEnum('ganttScale', GANTT_BETA_SCALES, 'month'), showNonWorkingDays: r.getBoolean('ganttShowNonWorkingDays', true),
+		scale: r.getEnum('ganttScale', GANTT_SCALES, 'month'), showNonWorkingDays: r.getBoolean('ganttShowNonWorkingDays', true),
 		workingWeekdays: r.getString('ganttWorkingWeekdays', '1,2,3,4,5'), holidays: r.getOptionalString('ganttHolidays') ?? '',
 		snapToWorkingDays: r.getBoolean('ganttSnapToWorkingDays', false), firstDayOfWeek: r.getNumber('ganttFirstDayOfWeek', 1),
 		zoomOnWheel: r.getBoolean('ganttZoomOnWheel', false), infiniteScroll: r.getBoolean('ganttInfiniteScroll', false),
@@ -51,7 +51,7 @@ export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions 
 		allowResize: r.getBoolean('ganttAllowResize', true), allowProgress: r.getBoolean('ganttAllowProgress', true),
 		allowLinkCreate: r.getBoolean('ganttAllowLinkCreate', true), allowLinkDelete: r.getBoolean('ganttAllowLinkDelete', true),
 		allowReorder: r.getBoolean('ganttAllowReorder', true), allowTaskCreate: r.getBoolean('ganttAllowTaskCreate', true),
-		dependencyShift: r.getEnum('ganttDependencyShift', GANTT_BETA_DEPENDENCY_SHIFTS,
+		dependencyShift: r.getEnum('ganttDependencyShift', GANTT_DEPENDENCY_SHIFTS,
 			'none'),
 		writePhaseDates: r.getBoolean('ganttWritePhaseDates', false),
 		templatePath: r.getOptionalString('ganttTemplatePath') ?? '', targetFolder: r.getOptionalString('ganttTargetFolder') ?? '',
@@ -63,7 +63,7 @@ export function readGanttBetaOptions(config: BasesViewConfig): GanttBetaOptions 
 const property = (key: string, displayName: string) => ({ type: 'property' as const, key, displayName, placeholder: 'Select property...' });
 const toggle = (key: string, displayName: string, value: boolean) => ({ type: 'toggle' as const, key, displayName, default: value });
 
-export function getGanttBetaViewOptions(_config: BasesViewConfig): BasesAllOptions[] {
+export function getGanttViewOptions(_config: BasesViewConfig): BasesAllOptions[] {
 	return [
 		{ type: 'group', displayName: 'Properties', items: [
 			property('ganttStart', 'Start date'), property('ganttEnd', 'End date'), property('ganttLabel', 'Label'),
@@ -103,7 +103,7 @@ export function getGanttBetaViewOptions(_config: BasesViewConfig): BasesAllOptio
 	];
 }
 
-export function ganttBetaRequestedProperties(options: GanttBetaOptions, visibleProperties: readonly BasesPropertyId[] = []): BasesPropertyId[] {
+export function ganttRequestedProperties(options: GanttOptions, visibleProperties: readonly BasesPropertyId[] = []): BasesPropertyId[] {
 	return [...new Set([options.start, options.end, options.label, options.parent, options.order, options.progress, options.colorBy,
 		options.dependsOn, ...visibleProperties].filter((id): id is BasesPropertyId => id !== null))];
 }

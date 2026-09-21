@@ -3,9 +3,9 @@ import type { EntrySnapshot } from '../src/core/entries/EntrySnapshot';
 import type { NormalizedValue } from '../src/core/entries/NormalizedValue';
 import { annotateDependencyStatus, computeDependencyStatus } from '../src/core/gantt/dependencyStatus';
 import { compareSequence } from '../src/core/gantt/sequence';
-import { readGanttBetaOptions } from '../src/views/gantt-beta/options';
-import { mapSnapshotsToGanttTasks } from '../src/views/gantt-beta/taskMapping';
-import { GanttBetaWriteBack } from '../src/views/gantt-beta/writeBack';
+import { readGanttOptions } from '../src/views/gantt/options';
+import { mapSnapshotsToGanttTasks } from '../src/views/gantt/taskMapping';
+import { GanttWriteBack } from '../src/views/gantt/writeBack';
 
 // GBETA-016: a large Base must not freeze the UI on a refresh or a single gesture. The budgets are
 // loose (roughly 10x what a laptop needs) so slow CI does not flake, but a return of the quadratic
@@ -36,8 +36,8 @@ function timed<T>(run: () => T): { value: T; ms: number } {
 	return { value, ms: performance.now() - start };
 }
 
-describe('Gantt Beta on a large Base (GBETA-016)', () => {
-	const options = readGanttBetaOptions({
+describe('Gantt on a large Base (GBETA-016)', () => {
+	const options = readGanttOptions({
 		get: (key: string) => ({ ganttPhases: true, ganttReadOnly: false } as Record<string, unknown>)[key],
 		getAsPropertyId: (key: string) => ({
 			ganttStart: 'note.start', ganttEnd: 'note.end', ganttProgress: 'note.progress',
@@ -61,7 +61,7 @@ describe('Gantt Beta on a large Base (GBETA-016)', () => {
 
 	function writerFor(tasks: typeof mapped.value.tasks) {
 		const ok = { ok: true as const };
-		return new GanttBetaWriteBack(tasks, {
+		return new GanttWriteBack(tasks, {
 			mutations: {
 				date: { updateRange: vi.fn().mockResolvedValue(ok) },
 				property: { setProperty: vi.fn().mockResolvedValue(ok), setProperties: vi.fn().mockResolvedValue(ok) },
