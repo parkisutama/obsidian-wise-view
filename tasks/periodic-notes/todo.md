@@ -4,7 +4,8 @@ Plan: [plan.md](plan.md)
 Specification: [../../docs/specs/periodic-notes.md](../../docs/specs/periodic-notes.md)
 Sequencing: does not start until `docs/specs/note-template.md` is Done (see `../../ROADMAP.md`).
 
-Status: Draft. No task below is authorized yet.
+Status: In progress. PN-001 accepted with two verification notes (week-number link styling; Notebook
+Navigator `GGGG` support); PN-002 done 2026-09-21.
 
 ## Phase 1: Design decisions
 
@@ -34,10 +35,10 @@ unsafe patterns, and the Notebook Navigator conventions to match (read from its 
 
 **Acceptance criteria:**
 
-- [ ] No `obsidian` import.
-- [ ] Every token and period covered, including year/week boundaries, leap day, and a non-Monday
+- [x] No `obsidian` import.
+- [x] Every token and period covered, including year/week boundaries, leap day, and a non-Monday
   week start.
-- [ ] `..` and absolute paths are rejected.
+- [x] `..` and absolute paths are rejected.
 
 **Verification:** `pnpm run test -- periodic && pnpm run typecheck`
 
@@ -87,6 +88,29 @@ creation goes through the general mechanism from `note-template`.
 `src/views/BasesCalendarView.ts`
 
 **Estimated scope:** L
+
+### PN-004b: Period links in the calendar chrome and hiding periodic notes from events
+
+**Description:** Hide entries that are the period note for their own start date from the event
+list; add a week-number link column (month/week grids) and month/year/quarter underlined links in
+the toolbar title, each with an existence dot, that open or create the note.
+
+**Acceptance criteria:**
+
+- [ ] A week/month/quarter/year/day note is not rendered as an event bar.
+- [ ] Week numbers and the title's month / year / quarter parts reflect the visible date, show
+  whether the note exists, and open or create it.
+- [ ] Ordinary events whose path does not match any period path are unaffected.
+- [ ] The week-number column uses `weekNumbers` / `navLinkWeekClick`; if it cannot be styled to
+  match, the reason is recorded.
+
+**Verification:** `pnpm run test -- calendar && pnpm run typecheck`
+
+**Dependencies:** PN-004.
+
+**Likely files:** `src/views/BasesCalendarView.ts`, `src/views/calendar/periodic/`, `styles`
+
+**Estimated scope:** M
 
 ### PN-005: Retire the old lookups
 

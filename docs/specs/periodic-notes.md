@@ -31,6 +31,111 @@ already organized by it works without moving files.
 5. **Templater-compatible.** Note content goes through the general mechanism from
    `docs/specs/note-template.md`; this spec adds no substitution engine of its own.
 
+## 2b. Scope decisions added 2026-09-21 (maintainer)
+
+6. **The daily-note flow belongs to Calendar, not to Note Template.** `note-template` covers only
+   integration with Templater / core Templates for notes a view creates. Anything involving the
+   *date of the note* (which folder, what name, what the date tokens in the template mean) is a
+   Calendar concern, because Calendar is where the date exists. The daily-note flow has evolved
+   into the periodic-notes flow and is owned here.
+7. **(Withdrawn by decision 11.)** ~~Date tokens for a period template are applied by Calendar.~~ This was not a reversal of Note
+   Template decision 3: `note-template.md` §3.2 already says Wise View's own tokens apply to
+   values the view itself computed. The clicked date is such a value. Scope stays narrow: only
+   date tokens of the period being created (`{{date:FORMAT}}`, `{{title}}`, weekday tokens for
+   weekly notes, matching Notebook Navigator's), evaluated on the **start of the period**, and
+   never touching Templater / core Templates syntax. Whether this runs before or after the engine
+   is decided in PN-001.
+8. **One `.base` is one journal.** A `.base` file's Calendar view carries its own periodic-notes
+   configuration, including which template each period uses. Several journals are simply several
+   `.base` files, each configured independently (modular). This replaces obsidian-journal's
+   multi-journal support natively, with no journal list, slots, or switcher inside one view.
+   Unlike Notebook Navigator, which fixes one pattern per note type for the whole vault, each
+   Base sets its own.
+9. **The clicked date is the note's date, always.** The path, the name, and the date tokens in the
+   template are all resolved from the clicked (target) date, including dates in the future that
+   have no note yet. With Templater this removes the "today" problem, because the file name
+   carries the date and the template reads it (decision 11).
+
+10. **ISO 8601 is the default and the preset.** Week: `GGGG`/`WW` (Monday start, week one holds
+    4 January). Preset patterns, root supplied by the user: day `YYYY/YYYY-MM/YYYY-MM-DD`, week
+    `GGGG/GGGG-[W]WW`, month `YYYY/YYYY-MM`, quarter `YYYY/YYYY-[Q]Q` (ISO 8601 has no quarter
+    form; this is the common convention), year `YYYY`. Locale week tokens (`gggg`/`ww`) stay
+    supported as a second option with a configurable first weekday. The preset is a set of example
+    patterns filled in on request, not a reader of Notebook Navigator.
+11. **Templater is the preferred engine.** It is already first in `detectTemplateEngine`. Decision
+    7 is withdrawn: Wise View does not resolve date tokens in period templates; templates read the
+    date from the file name (`tp.file.title`), as the maintainer's do. Core Templates users get the
+    engine's own behavior (documented limitation: its `{{date}}` is today).
+12. **Periodic notes are not drawn as events; they are linked.** A note that is the period note for
+    its own start date is excluded from the event list (checked by resolving the path for that
+    date, so no reverse pattern parsing is needed). Their links live in the calendar chrome:
+    - **Week:** a week-number column at the left of the month grid (Google Calendar's layout,
+      Obsidian styling), each number a link with a small existence dot below, as in the Obsidian
+      Calendar plugin. FullCalendar 7 exposes `weekNumbers` and `navLinkWeekClick`.
+    - **Month, year, quarter:** the toolbar title becomes `September 2026 (Q3)` with each part
+      underlined as a link hint (the underline is the affordance, matching the maintainer's
+      reference), opening or creating that period's note; an existence dot marks notes that exist.
+    - **Day:** unchanged (day number link plus dot).
+13. **24-hour clock.** Event times and time-grid slot labels use 24-hour format, never AM/PM.
+    Done 2026-09-21 as a fixed default (no new option key); list view already read well.
+
+## 2a. Findings after Note Template landed (2026-09-21)
+
+- `processTemplateVariables` is already retired by `note-template`; `formatDate` remains but only
+  knows `YYYY YY MMMM MMM MM M DDDD DDD DD D dddd ddd`. The resolver needs its own formatter for
+  `gggg`, `ww`, `Q`, and `[...]` literals.
+- Reuse, do not rewrite: `services/templateEngine.ts` (`detectTemplateEngine`, `ensureFolder`,
+  `availablePath`, `createNoteFromTemplate`, the every-time notice when no engine is enabled).
+- Notebook Navigator (checked against its README): five types with per-type folder pattern,
+  filename pattern, and template; template tokens include `{{date:FORMAT}}` and `{{monday}}..
+  {{sunday}}`, evaluated on the **start of the note's period**. Week numbering follows the
+  configured locale (see the real settings below).
+- **Design tension (partly resolved below):** Templater and core Templates evaluate `{{date}}` /
+  `tp.date.now` against *today*, not the clicked date. Note Template decision 3 removed Wise
+  View's own substitution, so a template using `{{date}}` would produce today's date in a note for
+  another day. The maintainer's own templates avoid this by reading the file name; core-Templates
+  users would still be affected. PN-001 decides whether decision 7 is still needed.
+
+**Notebook Navigator's real settings** (read from the maintainer's `wisetime` vault, 2026-09-21;
+calendar keys only, plus the files they point at):
+
+| Type | Pattern | Template |
+|---|---|---|
+| Day | `YYYY/YYYY-MM/YYYY-MM-DD` | `templates/timeline/daily.md` |
+| Week | `gggg/gggg-[W]ww` | `templates/timeline/weekly.md` |
+| Month | `YYYY/YYYY-MM/YYYY-MM` | `templates/timeline/monthly.md` |
+| Quarter | `YYYY/[Q]Q` | `templates/timeline/quarterly.md` |
+| Year | `YYYY/YYYY` | `templates/timeline/yearly.md` |
+
+Also: `calendarLocale: en-gb`, `calendarPeriodicNotesLocaleSource: calendar`. Real notes live at
+`timeline/2025/2025-10/2025-10-05.md`. The patterns carry no `timeline/` root; that root appears
+in the core `daily-notes.json` (`folder: "timeline"`), and where Notebook Navigator itself takes it
+from is unverified.
+
+Consequences for this spec:
+
+- **One combined path pattern per period**, folder and file name in one string split by `/`
+  (last segment is the file name), root included: `timeline/YYYY/YYYY-MM/YYYY-MM-DD`. Keeps
+  Notebook Navigator's patterns copyable. Supersedes the "folder pattern + file-name pattern"
+  wording in §3.1.
+- **Weeks are locale-based** (`gggg`/`ww`, not ISO `GGGG`/`WW`). With `en-gb` (Monday start, week
+  one contains 4 January) the two coincide, which is why the maintainer's weekly template can use
+  `GGGG-[W]WW` against a `gggg-[W]ww` file name. The resolver takes a week-start day and a
+  week-one rule as inputs.
+- **The templates are Templater templates that derive their date from the file name**
+  (`moment(tp.file.title, "YYYY-MM-DD")`), never from today. So for this workflow the "today"
+  problem does not exist as long as Calendar names the file from the clicked date. Decision 7 (Wise
+  View resolving date tokens) is therefore only needed for the core-Templates path and can be
+  scoped down or deferred (PN-001).
+- **Existing defect confirmed by this vault:** `daily-notes.json` points its template at
+  `templates/daily.md`, which does not exist (the real one is `templates/timeline/daily.md`). The
+  current daily-note flow reads that setting (when the core Daily Notes plugin is enabled, which
+  was not checked), finds no template, and would create an empty note. The
+  per-Base template setting removes the dependency on that stale file.
+- Periodic notes in this vault carry `timeline_start` / `timeline_end` frontmatter and match the
+  Base filter `file.folder.contains("timeline")`, so they also show up as events in the same
+  Calendar. That is the maintainer's data model, not something this spec changes.
+
 ## 3. Scope
 
 1. **Per-period configuration** on the Calendar view, for each of day, week, month, quarter, year:
@@ -74,6 +179,11 @@ already organized by it works without moving files.
   new affordances, which is scope to confirm before building.
 - What happens when a folder pattern resolves outside the vault or contains a path-traversal
   segment (`..`)? Proposed: reject and show a notice; PN-001 to confirm.
+- Does the period-template date-token step (decision 7) run before Templater/core Templates or
+  after? Before means the engine sees resolved dates; after would let the engine's own output be
+  rewritten, which risks touching its syntax. Recommended: before, on the template text passed
+  to a temporary copy, or as engine input if Templater exposes it. Verify against the engine
+  APIs in `services/templateEngine.ts`.
 - The exact Notebook Navigator defaults to match, and whether an example-only "preset" button is
   worth having.
 
