@@ -244,8 +244,9 @@ are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 | Dependency | License | Copyright | Notes |
 | --- | --- | --- | --- |
 | [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt) | MIT | Lars Tray | Adapted plugin code (attribution under review) |
+| [Gantt Chart](https://github.com/jaeungkim/gantt-chart) | MIT | jaeungkim | Gantt view (`@jaeungkim/gantt-chart`; JavaScript and stylesheet, unmodified), including its inlined [Day.js](https://github.com/iamkun/dayjs) and [Zustand](https://github.com/pmndrs/zustand) |
 | [FullCalendar](https://fullcalendar.io/) | MIT | Adam Shaw | Calendar view (`fullcalendar`, `@full-ui/headless-calendar`, `temporal-polyfill`, `temporal-utils`; JavaScript and stylesheets) |
-| [Preact](https://preactjs.com/) | MIT | Jason Miller | Rendering library used by FullCalendar |
+| [Preact](https://preactjs.com/) | MIT | Jason Miller | Rendering library used by FullCalendar, and the runtime the Gantt view's React-targeting library runs on |
 
 The [Obsidian API](https://obsidian.md/) is provided by the Obsidian app at runtime and is not
 bundled.
@@ -261,6 +262,9 @@ bundled.
 - **[lhassa8](https://github.com/lhassa8)** — author of
   [obsidian-bases-gantt](https://github.com/lhassa8/obsidian-bases-gantt), which demonstrated a
   clean pattern for putting a Gantt chart into Obsidian Bases.
+- **[jaeungkim](https://github.com/jaeungkim)** — author of the MIT-licensed
+  [Gantt Chart](https://github.com/jaeungkim/gantt-chart) library that renders the current Gantt
+  view, with phases, dependency drawing, and a working calendar built in.
 - **[mmattia09](https://github.com/mmattia09)** — whose MIT-licensed
   [obsidian-project-manager](https://github.com/mmattia09/obsidian-project-manager) provided
   the attributed Timeline controls, temporal grid, navigation, zoom, quick scheduling behavior,
