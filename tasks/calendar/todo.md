@@ -96,8 +96,8 @@ the extraction.
 
 **Acceptance criteria:**
 
-- [ ] No regression found versus pre-extraction behavior.
-- [ ] Findings recorded (a short native-acceptance note).
+- [x] No regression found versus pre-extraction behavior.
+- [x] Findings recorded (a short native-acceptance note).
 
 **Verification:** Native testing; `pnpm run check`.
 

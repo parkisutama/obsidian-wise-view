@@ -27,7 +27,7 @@ the same `dev` branch, instead of one large document that has to move together.
 | Workstream | Spec | Plan | Tasks | Status |
 |---|---|---|---|---|
 | Swimlane | [docs/specs/swimlane.md](docs/specs/swimlane.md) | [tasks/swimlane/plan.md](tasks/swimlane/plan.md) | [tasks/swimlane/todo.md](tasks/swimlane/todo.md) | Done (native-accepted 2026-09-19) — [record](tasks/swimlane/native-acceptance.md) |
-| Calendar | [docs/specs/calendar.md](docs/specs/calendar.md) | [tasks/calendar/plan.md](tasks/calendar/plan.md) | [tasks/calendar/todo.md](tasks/calendar/todo.md) | Not started |
+| Calendar | [docs/specs/calendar.md](docs/specs/calendar.md) | [tasks/calendar/plan.md](tasks/calendar/plan.md) | [tasks/calendar/todo.md](tasks/calendar/todo.md) | Done (native-accepted 2026-09-22) — [record](tasks/calendar/native-acceptance.md) |
 | Gantt (Frappe) | [docs/specs/gantt-frappe.md](docs/specs/gantt-frappe.md) | [tasks/gantt-frappe/plan.md](tasks/gantt-frappe/plan.md) | [tasks/gantt-frappe/todo.md](tasks/gantt-frappe/todo.md) | Superseded 2026-09-20 — view removed by Gantt Frappe removal |
 | Gantt | [docs/specs/gantt.md](docs/specs/gantt.md) | [tasks/gantt/plan.md](tasks/gantt/plan.md) | [tasks/gantt/todo.md](tasks/gantt/todo.md) | Accepted 2026-09-20 with waivers (mobile, popout, keyboard unverified) — [record](tasks/gantt/native-acceptance.md) |
 | Gantt Frappe removal | [docs/specs/gantt-frappe-removal.md](docs/specs/gantt-frappe-removal.md) | [tasks/gantt-frappe-removal/plan.md](tasks/gantt-frappe-removal/plan.md) | [tasks/gantt-frappe-removal/todo.md](tasks/gantt-frappe-removal/todo.md) | Done 2026-09-20; permanent id and keys set to `wise-view-gantt` / `gantt*` 2026-09-21 (GFR-006). The obsidian-bases-gantt attribution (kept) awaits maintainer confirmation |
@@ -75,10 +75,14 @@ Note Template (general, cross-view; deliberately last — see below)
 
 ## Follow-ups (not blocking any workstream)
 
-- **Mobile-friendly sizing per view.** Swimlane, Calendar, Gantt, and Timeline are functional on
-  mobile but sized for desktop. Each needs its own mobile CSS configuration, so plan it per view
-  after the current workstreams rather than as one shared change. Raised 2026-09-19 during
-  Swimlane native acceptance.
+- **Mobile-friendly UX, deferred by design.** Every view (Swimlane, Calendar, Gantt, Timeline) and
+  the Note Template / Periodic Notes mechanisms are functional on mobile but built and tuned for
+  desktop; several native-acceptance records list mobile as an explicit waiver. Confirmed with the
+  maintainer 2026-09-22: this is intentional — desktop experience is the current focus, and mobile
+  is deliberately deferred, not a gap to close incidentally. When picked up, plan it as its own
+  workstream (its own spec/plan/tasks) covering all views, rather than a per-view CSS patch, so
+  layout, touch targets, and interactions are addressed consistently rather than one at a time.
+  Raised 2026-09-19 during Swimlane native acceptance; scope confirmed 2026-09-22.
 
 ## How to update this file
 
