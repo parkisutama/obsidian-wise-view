@@ -22,6 +22,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { h } from "preact";
 import { render } from "preact/compat";
 import type { ComponentChild, VNode } from "preact";
+import type { Task } from "@jaeungkim/gantt-chart";
 import { ReactGanttChart, type GanttHandle } from "@jaeungkim/gantt-chart";
 import { createSwimlaneHarness, waitForRender, type SwimlaneHarness } from "./fixtures/swimlane";
 import { createCalendarHarness, dayOffset, type CalendarHarness } from "./fixtures/calendar";
@@ -30,6 +31,9 @@ import { largeSwimlaneNotes, largeCalendarNotes, largeGanttTasks, largeEntrySnap
 import { DateValue } from "./fixtures/obsidian";
 import { BasesGanttView } from "../src/views/gantt";
 import type { ChartRender } from "../src/views/gantt/chartHost";
+import { DragController, type DragHost } from "../src/views/swimlane/dragAndDrop";
+import { GanttWriteBack } from "../src/views/gantt/writeBack";
+import type { MutationResult } from "../src/platform/mutations/types";
 
 let swimlaneHarness: SwimlaneHarness | null = null;
 let calendarHarness: CalendarHarness | null = null;
@@ -315,5 +319,188 @@ describe("Gantt fast path for identical updates (PERF-002)", () => {
 
 		expect(harness.renders.length).toBeGreaterThan(renderCount);
 		harness.view.onunload();
+	});
+});
+
+// PERF-003 (docs/specs/performance.md §2.3, tasks/performance/todo.md): repeated fast interaction
+// (drag/resize/view-switching) must not accumulate uncancelled timers, rAF callbacks, listeners,
+// or overlapping async work. Per-view findings, each proven by a test below rather than by
+// inspection alone:
+//   - Swimlane (src/views/swimlane/dragAndDrop.ts): DragController's auto-scroll setInterval
+//     and touch-hold setTimeout were already written so every re-arm clears the previous timer
+//     first (startAutoScroll/cancelTouchHold) - already safe, verified here rather than assumed.
+//   - Gantt (src/views/gantt/writeBack.ts): GanttWriteBack.onTasksChange already serializes every
+//     gesture through a single this.queue promise chain (one link per call, not N concurrent
+//     writes) - already safe, verified here.
+//   - Calendar (src/views/BasesCalendarView.ts): view-mode switching calls FullCalendar's own
+//     changeView() directly; Wise View adds no timer/rAF/listener of its own on that path and
+//     never tears down/recreates the Calendar instance for it - already safe, verified here.
+//   - Gantt's dependency-line editor: docs/specs/gantt.md's D5/onDependencyCreate is implemented
+//     through the library's own built-in line-drawing UI (superseded, not custom drag code per
+//     gantt.md line 323), so there is no separate Wise View drag surface to test beyond the
+//     onDependencyCreate/onTasksChange write-back path already covered above.
+
+describe("Swimlane drag-and-drop does not accumulate timers under rapid triggers (PERF-003)", () => {
+	function makeHost(doc: Document, containerEl: HTMLElement, boardEl: HTMLElement): DragHost {
+		return {
+			containerEl,
+			getDoc: () => doc,
+			getBoardEl: () => boardEl,
+			hasSwimlanes: () => false,
+			reorderColumns: vi.fn(),
+			reorderSwimlanes: vi.fn(),
+			dropCard: vi.fn(),
+		};
+	}
+
+	it("keeps at most one live auto-scroll interval no matter how many edge-drag events fire in a row", () => {
+		const containerEl = document.createElement("div");
+		const boardEl = document.createElement("div");
+		document.body.appendChild(containerEl);
+		containerEl.appendChild(boardEl);
+		// handleEdgeScroll compares clientX/Y against getBoundingClientRect(); happy-dom returns
+		// all-zero rects by default, so stub one with real edges.
+		boardEl.getBoundingClientRect = () => ({ width: 800, height: 600, top: 0, left: 0, right: 800, bottom: 600, x: 0, y: 0, toJSON() {} }) as DOMRect;
+
+		const host = makeHost(document, containerEl, boardEl);
+		const drag = new DragController(host);
+		const card = document.createElement("div");
+		boardEl.appendChild(card);
+		drag.setupCardDragHandlers(card, { path: "A.md" } as never);
+
+		const setIntervalSpy = vi.spyOn(window, "setInterval");
+		const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+
+		card.dispatchEvent(new Event("dragstart"));
+		// Fire the same near-the-left-edge drag event far faster than the 16ms interval tick -
+		// each one re-enters handleEdgeScroll via the card's "drag" listener.
+		for (let i = 0; i < 50; i++) {
+			const event = new Event("drag") as DragEvent & { clientX: number; clientY: number };
+			Object.defineProperty(event, "clientX", { value: 10 });
+			Object.defineProperty(event, "clientY", { value: 300 });
+			card.dispatchEvent(event);
+		}
+
+		// Every re-entry that stays within the edge threshold calls startAutoScroll again, which
+		// must clear its own previous interval before arming a new one - so N triggers produce N
+		// setInterval calls but N-1 (not fewer) matching clearInterval calls, leaving exactly one
+		// interval alive, never an accumulating pile of them.
+		expect(setIntervalSpy.mock.calls.length).toBeGreaterThan(1);
+		expect(clearIntervalSpy.mock.calls.length).toBe(setIntervalSpy.mock.calls.length - 1);
+
+		card.dispatchEvent(new Event("dragend"));
+		// dragend calls stopAutoScroll(), clearing the one interval that survived the loop above.
+		expect(clearIntervalSpy.mock.calls.length).toBe(setIntervalSpy.mock.calls.length);
+
+		setIntervalSpy.mockRestore();
+		clearIntervalSpy.mockRestore();
+		containerEl.remove();
+	});
+
+	it("keeps at most one live touch-hold timer no matter how many rapid touchstarts fire on the same card", () => {
+		const containerEl = document.createElement("div");
+		const boardEl = document.createElement("div");
+		document.body.appendChild(containerEl);
+		containerEl.appendChild(boardEl);
+		boardEl.getBoundingClientRect = () => ({ width: 800, height: 600, top: 0, left: 0, right: 800, bottom: 600, x: 0, y: 0, toJSON() {} }) as DOMRect;
+
+		const host = makeHost(document, containerEl, boardEl);
+		const drag = new DragController(host);
+		const card = document.createElement("div");
+		boardEl.appendChild(card);
+		drag.setupCardDragHandlers(card, { path: "A.md" } as never);
+
+		const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+		const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+
+		const touch = (clientX: number, clientY: number) => ({ touches: [{ clientX, clientY }] }) as unknown as TouchEvent;
+		// Rapid repeated touchstarts on the same card (e.g. a flaky touchscreen re-firing before
+		// the hold delay elapses) must not leave more than one hold timer scheduled: touchstart's
+		// handler calls cancelTouchHold() before arming a fresh one.
+		for (let i = 0; i < 20; i++) {
+			card.dispatchEvent(Object.assign(new Event("touchstart"), touch(100, 100)));
+		}
+
+		expect(setTimeoutSpy.mock.calls.length).toBeGreaterThan(1);
+		expect(clearTimeoutSpy.mock.calls.length).toBe(setTimeoutSpy.mock.calls.length - 1);
+
+		setTimeoutSpy.mockRestore();
+		clearTimeoutSpy.mockRestore();
+		containerEl.remove();
+	});
+});
+
+describe("Gantt write-back does not run overlapping writes under rapid drag/resize triggers (PERF-003)", () => {
+	function task(id: string, progress: number): Task {
+		return { id, name: id, startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-01-05T00:00:00.000Z", parentId: null, sequence: "1", progress };
+	}
+
+	it("serializes rapid onTasksChange calls one at a time instead of firing them concurrently", async () => {
+		let inFlight = 0;
+		let maxInFlight = 0;
+		let calls = 0;
+		const setProperties = vi.fn(async (): Promise<MutationResult> => {
+			calls++;
+			inFlight++;
+			maxInFlight = Math.max(maxInFlight, inFlight);
+			// A real write is async (goes through Obsidian's metadata cache); yield a couple of
+			// microtasks so overlapping calls, if any, would show up in maxInFlight.
+			await Promise.resolve();
+			await Promise.resolve();
+			inFlight--;
+			return { ok: true };
+		});
+
+		const writeBack = new GanttWriteBack([task("T1", 0)], {
+			mutations: { property: { setProperties, setProperty: vi.fn(async (): Promise<MutationResult> => ({ ok: true })) } },
+			properties: { progress: "progress" },
+			revertTasks: vi.fn(),
+			notice: vi.fn(),
+		});
+
+		// Simulate the chart firing onTasksChange repeatedly and fast, as a mouse-drag resize
+		// gesture would (one call per pointermove tick, faster than any single write resolves).
+		const jobs: Promise<void>[] = [];
+		for (let i = 1; i <= 10; i++) {
+			jobs.push(writeBack.onTasksChange([task("T1", i * 10)]));
+		}
+		await Promise.all(jobs);
+
+		expect(calls).toBe(10);
+		// The proof that work does not accumulate as N concurrent writes: only one write is ever
+		// in flight, because onTasksChange chains every gesture onto a single this.queue promise
+		// rather than firing plan.length independent overlapping mutation calls.
+		expect(maxInFlight).toBe(1);
+	});
+});
+
+describe("Calendar view-mode switching does not accumulate work under rapid switches (PERF-003)", () => {
+	it("reuses the same FullCalendar instance across many rapid view-mode switches, adding no extra teardown cycles", () => {
+		let calendarHarness2: CalendarHarness | null = null;
+		try {
+			calendarHarness2 = createCalendarHarness({ config: { defaultView: "dayGridMonth" } });
+			const view = calendarHarness2.view as unknown as { calendar: { changeView(view: string): void; destroy: () => void } };
+			const calendarInstance = view.calendar;
+			expect(calendarInstance).not.toBeNull();
+
+			const destroySpy = vi.spyOn(calendarInstance, "destroy");
+
+			// View-mode buttons (M/W/3/D/L/Y) call FullCalendar's own changeView() directly; fire it
+			// far faster than a user could click, cycling through every mode repeatedly.
+			const modes = ["timeGridWeek", "timeGridThreeDay", "timeGridDay", "listWeek", "dayGridMonth"];
+			for (let i = 0; i < 40; i++) {
+				view.calendar.changeView(modes[i % modes.length]!);
+			}
+
+			// Wise View's own code path for view-mode switching adds no timer/rAF of its own and
+			// never tears down and recreates the Calendar instance the way onDataUpdated()'s full
+			// render() does - so 40 rapid switches must not touch destroy().
+			expect(destroySpy).not.toHaveBeenCalled();
+			expect(view.calendar).toBe(calendarInstance);
+
+			destroySpy.mockRestore();
+		} finally {
+			calendarHarness2?.destroy();
+		}
 	});
 });

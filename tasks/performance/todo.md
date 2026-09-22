@@ -60,7 +60,7 @@ no accumulation of uncancelled work (timers, animation frames, listeners).
 
 **Acceptance criteria:**
 
-- [ ] Each interactive view has a passing test asserting bounded/cancelled work under rapid
+- [x] Each interactive view has a passing test asserting bounded/cancelled work under rapid
   repeated triggers.
 
 **Verification:** `pnpm run test -- performance && pnpm run typecheck`
