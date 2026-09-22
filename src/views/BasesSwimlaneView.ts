@@ -26,6 +26,8 @@ import { createSwimlaneOptions } from './swimlane/options';
 import { COLUMN_ORDER_KEY, SWIMLANE_ORDER_KEY, orderKeys, parseCustomOrder, reorderKeys } from './swimlane/ordering';
 import { showOpenFileMenu } from '../utils/openFile';
 import { ViewRuntime } from '../platform/dom/ViewRuntime';
+import { RenderScheduler } from '../platform/dom/RenderScheduler';
+import { computeRenderSignature, type RenderSignatureInput } from '../platform/bases/changeDetection';
 import type { EntrySnapshot } from '../core/entries/EntrySnapshot';
 import type { NormalizedValue } from '../core/entries/NormalizedValue';
 import { createEntrySnapshot } from '../platform/bases/entrySnapshotAdapter';
@@ -56,6 +58,8 @@ export class BasesSwimlaneView extends BasesView {
   private readonly boardRenderer: BoardRenderer;
   private boardEl: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  /** PERF-002: skips rebuilding the board when an `onDataUpdated()` call is identical to the last. */
+  private readonly renderScheduler = new RenderScheduler();
 
 
   // Render debouncing
@@ -294,6 +298,17 @@ export class BasesSwimlaneView extends BasesView {
   }
 
   onDataUpdated(): void {
+    // PERF-002: an identical update (same entries/order/groups/config as last time) skips
+    // rebuilding the board entirely, the same way Timeline's RenderScheduler does.
+    const decision = this.renderScheduler.decide(computeRenderSignature(this.buildRenderSignatureInput()));
+    if (decision === 'skip') {
+      if (this.renderDebounceTimer !== null) {
+        window.clearTimeout(this.renderDebounceTimer);
+        this.renderDebounceTimer = null;
+      }
+      return;
+    }
+
     // Debounce rapid data updates to prevent performance issues
     if (this.renderDebounceTimer !== null) {
       window.clearTimeout(this.renderDebounceTimer);
@@ -302,6 +317,41 @@ export class BasesSwimlaneView extends BasesView {
       this.renderDebounceTimer = null;
       this.render();
     }, BasesSwimlaneView.RENDER_DEBOUNCE_MS);
+  }
+
+  /** Only the primitives that affect the board's rendered output (spec §2.2). */
+  private buildRenderSignatureInput(): RenderSignatureInput {
+    const entries = this.data.groupedData.flatMap(group =>
+      group.entries.map(entry => ({ path: entry.file.path, mtime: entry.file.stat?.mtime ?? 0 }))
+    );
+    const groupKeys = this.data.groupedData.map(group => (group.hasKey() ? String(group.key) : ''));
+    return {
+      entries,
+      order: this.getVisibleProperties(),
+      groupKeys,
+      config: {
+        groupBy: this.getGroupBy(),
+        swimlaneBy: this.getSwimlaneBy(),
+        colorBy: this.getColorBy(),
+        titleBy: this.getTitleBy(),
+        borderStyle: this.getBorderStyle(),
+        coverField: this.getCoverField(),
+        coverDisplay: this.getCoverDisplay(),
+        coverHeight: this.getCoverHeight(),
+        summaryField: this.getSummaryField(),
+        dateStartField: this.getDateStartField(),
+        dateEndField: this.getDateEndField(),
+        dateFormat: this.getDateFormat(),
+        badgePlacement: this.getBadgePlacement(),
+        columnWidth: this.getColumnWidth(),
+        hideEmptyColumns: this.getHideEmptyColumns(),
+        freezeHeaders: this.getFreezeHeaders(),
+        swimHeaderDisplay: this.getSwimHeaderDisplay(),
+        showPropertyLabels: this.getShowPropertyLabels(),
+        customColumnOrder: this.getCustomColumnOrder(),
+        customSwimlaneOrder: this.getCustomSwimlaneOrder(),
+      },
+    };
   }
 
   onunload(): void {

@@ -26,6 +26,8 @@ import 'fullcalendar/skeleton.css';
 import 'fullcalendar/themes/classic/theme.css';
 import 'fullcalendar/themes/classic/palette.css';
 import { ViewRuntime } from '../platform/dom/ViewRuntime';
+import { RenderScheduler } from '../platform/dom/RenderScheduler';
+import { computeRenderSignature, type RenderSignatureInput } from '../platform/bases/changeDetection';
 
 /**
  * Type interface for BasesView grouped data entries
@@ -84,6 +86,8 @@ export class BasesCalendarView extends BasesView {
   private yearViewSplit: boolean = true; // true = multiMonthYear (split), false = dayGridYear (continuous)
   // Captured from each button's didMount hook; FullCalendar 7 renders buttons with hashed classes.
   private buttonEls: Partial<Record<ManagedButton, HTMLElement>> = {};
+  /** PERF-002: skips rebuilding FullCalendar when an `onDataUpdated()` call is identical to the last. */
+  private readonly renderScheduler = new RenderScheduler();
 
   // Now accepts any property ID for custom properties
   private getColorByField(): string {
@@ -202,7 +206,40 @@ export class BasesCalendarView extends BasesView {
    * Called when data changes - re-render the calendar
    */
   onDataUpdated(): void {
+    // PERF-002: an identical update (same entries/order/groups/config as last time) skips
+    // tearing down and rebuilding the whole FullCalendar instance, the same way Timeline's
+    // RenderScheduler does.
+    const decision = this.renderScheduler.decide(computeRenderSignature(this.buildRenderSignatureInput()));
+    if (decision === 'skip') return;
     this.render();
+  }
+
+  /** Only the primitives that affect the calendar's rendered output (spec §2.2). */
+  private buildRenderSignatureInput(): RenderSignatureInput {
+    const entries = this.data.groupedData.flatMap((group: { entries: BasesEntry[] }) =>
+      group.entries.map(entry => ({ path: entry.file.path, mtime: entry.file.stat?.mtime ?? 0 }))
+    );
+    const groupedData = this.data.groupedData as { hasKey(): boolean; key?: unknown }[];
+    const groupKeys = groupedData.map(group => (group.hasKey() ? String(group.key) : ''));
+    return {
+      entries,
+      order: [],
+      groupKeys,
+      config: {
+        colorBy: this.getColorByField(),
+        defaultView: this.getDefaultView(),
+        titleField: this.getTitleField(),
+        allDayField: this.getAllDayField(),
+        dateStartField: this.getDateStartField(),
+        dateEndField: this.getDateEndField(),
+        yearContinuousRowHeight: this.getYearContinuousRowHeight(),
+        yearSplitRowHeight: this.getYearSplitRowHeight(),
+        weekStartsOn: this.getWeekStart(),
+        fontSize: this.getFontSize(),
+        periodic: this.getPeriodicConfig(),
+        templateDefaults: this.getTemplateDefaults(),
+      },
+    };
   }
 
   onunload(): void {

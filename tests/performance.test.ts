@@ -18,14 +18,18 @@
 //     package description.
 //   - Timeline: VirtualLinearCollection-based row virtualization still holds against a large Base.
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { h } from "preact";
 import { render } from "preact/compat";
-import { ReactGanttChart } from "@jaeungkim/gantt-chart";
+import type { ComponentChild, VNode } from "preact";
+import { ReactGanttChart, type GanttHandle } from "@jaeungkim/gantt-chart";
 import { createSwimlaneHarness, waitForRender, type SwimlaneHarness } from "./fixtures/swimlane";
 import { createCalendarHarness, dayOffset, type CalendarHarness } from "./fixtures/calendar";
 import { createTimelineHarness, type TimelineHarness } from "./fixtures/timeline";
 import { largeSwimlaneNotes, largeCalendarNotes, largeGanttTasks, largeEntrySnapshots, LARGE_BASE_SIZE } from "./fixtures/large-base";
+import { DateValue } from "./fixtures/obsidian";
+import { BasesGanttView } from "../src/views/gantt";
+import type { ChartRender } from "../src/views/gantt/chartHost";
 
 let swimlaneHarness: SwimlaneHarness | null = null;
 let calendarHarness: CalendarHarness | null = null;
@@ -176,5 +180,140 @@ describe("Timeline bounded initial render (PERF-001)", () => {
 		expect(mountedSidebarRows).toBeLessThan(100);
 		expect(mountedTimelineRows).toBeGreaterThan(0);
 		expect(mountedTimelineRows).toBeLessThan(100);
+	});
+});
+
+// PERF-002 (docs/specs/performance.md §2.2, tasks/performance/todo.md): repeated identical
+// onDataUpdated() calls must skip rebuilding unchanged DOM, for Swimlane, Calendar, and Gantt —
+// the same way Timeline's RenderScheduler (src/platform/dom/RenderScheduler.ts) already does for
+// Timeline. Each view now builds a RenderSignature via computeRenderSignature
+// (src/platform/bases/changeDetection.ts) and decides through the same RenderScheduler class;
+// no view invents a second render-scheduling mechanism (verified separately by grepping for
+// RenderScheduler/computeRenderSignature imports in each view file).
+
+function ganttHarness(configOverrides: Record<string, unknown> = {}) {
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	const renders: ComponentChild[] = [];
+	const handle = {
+		scrollToDate: vi.fn(), scrollToToday: vi.fn(), scrollToTask: vi.fn(), setScale: vi.fn(), zoomToFit: vi.fn(),
+		getScrollElement: vi.fn().mockReturnValue(null), openDetail: vi.fn(), closeDetail: vi.fn(), addTask: vi.fn(),
+	};
+	const renderChart: ChartRender = (node, container) => {
+		renders.push(node);
+		container.replaceChildren();
+		if (node !== null && node !== undefined && node !== false) {
+			const ref = (node as VNode & { ref?: (value: GanttHandle | null) => void }).ref;
+			ref?.(handle);
+			const marker = document.createElement("div");
+			marker.dataset.preactTree = "mounted";
+			container.appendChild(marker);
+		}
+	};
+	const values: Record<string, unknown> = { ganttStart: "note.start", ...configOverrides };
+	const entry = {
+		file: { path: "A.md", basename: "A", extension: "md", parent: null, stat: { ctime: 1, mtime: 2 } },
+		getValue: (id: string) => (id === "note.start" ? new DateValue("2026-01-01") : null),
+	};
+	const app = { metadataCache: { getFirstLinkpathDest: () => null }, vault: { getAbstractFileByPath: () => null }, workspace: { openLinkText: vi.fn() } };
+	const controller = {
+		app,
+		config: {
+			get: (key: string) => values[key],
+			set: (key: string, value: unknown) => { values[key] = value; },
+			getAsPropertyId: (key: string) => values[key] ?? null,
+			getOrder: () => [],
+			getDisplayName: (id: string) => id,
+		},
+		data: { groupedData: [{ entries: [entry], hasKey: () => false }] },
+	};
+	const plugin = { app, settings: { valueStyles: {} } };
+	const view = new BasesGanttView(controller as never, host, plugin as never, renderChart, {});
+	view.onDataUpdated();
+	return { view, host, renders };
+}
+
+describe("Swimlane fast path for identical updates (PERF-002)", () => {
+	it("does not rebuild card DOM when onDataUpdated() repeats with no change", async () => {
+		const harness = await createSwimlaneHarness({ config: { plannerGroupBy: "note.status" } });
+		await waitForRender();
+		const cardBefore = harness.host.querySelector(".planner-kanban-card");
+		expect(cardBefore).not.toBeNull();
+
+		// render() empties and rebuilds boardEl's DOM subtree from scratch; if the fast path
+		// (RenderScheduler + computeRenderSignature, wired into BasesSwimlaneView.onDataUpdated())
+		// took effect, the exact same card element survives an identical update untouched.
+		harness.view.onDataUpdated();
+		await waitForRender();
+		const cardAfter = harness.host.querySelector(".planner-kanban-card");
+		expect(cardAfter).toBe(cardBefore);
+	});
+
+	it("does rebuild when a note's mtime actually changes", async () => {
+		const harness = await createSwimlaneHarness({ config: { plannerGroupBy: "note.status" } });
+		await waitForRender();
+		const cardBefore = harness.host.querySelector(".planner-kanban-card");
+
+		const data = (harness.view as unknown as { data: { groupedData: Array<{ entries: Array<{ file: { stat: { mtime: number } } }> }> } }).data;
+		const file = data.groupedData[0]?.entries[0]?.file;
+		if (file) file.stat.mtime += 1;
+		harness.view.onDataUpdated();
+		await waitForRender();
+
+		const cardAfter = harness.host.querySelector(".planner-kanban-card");
+		expect(cardAfter).not.toBe(cardBefore);
+	});
+});
+
+describe("Calendar fast path for identical updates (PERF-002)", () => {
+	it("does not rebuild the FullCalendar instance when onDataUpdated() repeats with no change", () => {
+		const harness = createCalendarHarness({ config: { defaultView: "dayGridMonth" } });
+		const calendarBefore = (harness.view as unknown as { calendar: unknown }).calendar;
+		expect(calendarBefore).not.toBeNull();
+
+		// render() destroys and recreates the whole FullCalendar instance; if the fast path
+		// (RenderScheduler + computeRenderSignature, wired into BasesCalendarView.onDataUpdated())
+		// took effect, the exact same Calendar instance survives an identical update untouched.
+		harness.view.onDataUpdated();
+		const calendarAfter = (harness.view as unknown as { calendar: unknown }).calendar;
+		expect(calendarAfter).toBe(calendarBefore);
+	});
+
+	it("does rebuild when the underlying data actually changes", () => {
+		const harness = createCalendarHarness({ config: { defaultView: "dayGridMonth" } });
+		const calendarBefore = (harness.view as unknown as { calendar: unknown }).calendar;
+
+		const data = (harness.view as unknown as { data: { groupedData: Array<{ entries: Array<{ file: { stat?: { mtime: number } } }> }> } }).data;
+		const file = data.groupedData[0]?.entries[0]?.file;
+		if (file) file.stat = { mtime: (file.stat?.mtime ?? 0) + 1 };
+		harness.view.onDataUpdated();
+
+		const calendarAfter = (harness.view as unknown as { calendar: unknown }).calendar;
+		expect(calendarAfter).not.toBe(calendarBefore);
+	});
+});
+
+describe("Gantt fast path for identical updates (PERF-002)", () => {
+	it("does not repaint the chart when onDataUpdated() repeats with no change", () => {
+		const harness = ganttHarness();
+		const renderCount = harness.renders.length;
+
+		harness.view.onDataUpdated();
+
+		expect(harness.renders).toHaveLength(renderCount);
+		harness.view.onunload();
+	});
+
+	it("does repaint when a note's mtime actually changes", () => {
+		const harness = ganttHarness();
+		const renderCount = harness.renders.length;
+
+		const data = (harness.view as unknown as { data: { groupedData: Array<{ entries: Array<{ file: { stat: { mtime: number } } }> }> } }).data;
+		const file = data.groupedData[0]?.entries[0]?.file;
+		if (file) file.stat.mtime += 1;
+		harness.view.onDataUpdated();
+
+		expect(harness.renders.length).toBeGreaterThan(renderCount);
+		harness.view.onunload();
 	});
 });

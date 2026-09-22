@@ -37,9 +37,9 @@ Swimlane, Calendar, Gantt, and Timeline. Fix any view found unbounded.
 
 **Acceptance criteria:**
 
-- [ ] Each of Swimlane, Calendar, and Gantt has a passing test proving a no-op update takes the
+- [x] Each of Swimlane, Calendar, and Gantt has a passing test proving a no-op update takes the
   fast path.
-- [ ] No new render-scheduling mechanism is introduced; all three reuse the existing
+- [x] No new render-scheduling mechanism is introduced; all three reuse the existing
   `RenderScheduler`.
 
 **Verification:** `pnpm run test -- performance && pnpm run typecheck`

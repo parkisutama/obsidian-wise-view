@@ -117,6 +117,14 @@ describe("Swimlane view lifecycle", () => {
 		const firstRenderObservers = [...observers.values()];
 		const disconnectSpies = firstRenderObservers.map((observer) => vi.spyOn(observer, "disconnect"));
 
+		// PERF-002: onDataUpdated() now takes a fast path and skips rebuilding entirely when the
+		// update is identical to the last one, so this must simulate a genuine data change (a
+		// bumped mtime, exactly as a real edited note would report) to still exercise a real
+		// re-render here.
+		const data = (h.view as unknown as { data: { groupedData: Array<{ entries: Array<{ file: { stat: { mtime: number } } }> }> } }).data;
+		const firstEntryFile = data.groupedData[0]?.entries[0]?.file;
+		if (firstEntryFile) firstEntryFile.stat.mtime += 1;
+
 		h.view.onDataUpdated();
 		await waitForRender();
 

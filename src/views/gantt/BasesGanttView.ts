@@ -13,6 +13,9 @@ import type { EntrySnapshotGroup } from '../../platform/bases/entrySnapshotAdapt
 import { resolveColor } from '../../platform/colors/ColorResolver';
 import { resolvePrettyPropertiesColor } from '../../integrations/PrettyPropertiesAdapter';
 import { ViewRuntime } from '../../platform/dom/ViewRuntime';
+import { RenderScheduler } from '../../platform/dom/RenderScheduler';
+import { computeRenderSignature, type RenderSignatureInput } from '../../platform/bases/changeDetection';
+import { createViewOptionSchema } from '../../platform/bases/viewOptionTypes';
 import type { GrantedMutations } from '../../platform/mutations/grants';
 import { NoteTemplateService } from '../../services/NoteTemplateService';
 import { openPath } from '../../platform/navigation/NavigationService';
@@ -42,6 +45,9 @@ export function localTodayOffsetPx(scale: GanttOptions['scale'], timezoneOffsetM
 	return -timezoneOffsetMinutes * PIXELS_PER_MINUTE[scale];
 }
 
+/** rowHeight is a pure CSS variable (see onDataUpdated's `--gantt-row-height`); every other option affects the data model. */
+const GANTT_OPTION_SCHEMA = createViewOptionSchema(['rowHeight']);
+
 export class BasesGanttView extends BasesView {
 	type = BASES_GANTT_VIEW_ID;
 	private readonly runtime: ViewRuntime;
@@ -50,8 +56,16 @@ export class BasesGanttView extends BasesView {
 	private reportedCycles = new Set<string>();
 	private reportedUnresolved = new Set<string>();
 	private legacyOptionsChecked = false;
-	private lastGroups: unknown = null;
-	private lastNonCssConfig = '';
+	/** PERF-002: decides skip/css-only/full for repeated `onDataUpdated()` calls, reusing the same infrastructure Timeline's tests exercise. */
+	private readonly renderScheduler = new RenderScheduler();
+	/**
+	 * The `groupedData` reference from the last `onDataUpdated()` that actually reached this
+	 * decision (i.e. was not held by `echoGate`). Bases hands out a new array/group object every
+	 * time it re-runs its query, even when the resulting values are unchanged, so this is a cheap
+	 * "did Bases actually re-query" signal distinct from whether the *content* changed — needed
+	 * because our own echoed write can otherwise look content-identical to the pre-write state.
+	 */
+	private lastGroupedData: unknown = null;
 	private lastModel: GanttChartModel | null = null;
 	private writer: GanttWriteBack | null = null;
 	private currentOptions: GanttOptions | null = null;
@@ -99,13 +113,29 @@ export class BasesGanttView extends BasesView {
 		// Bases echoes our own writes file by file; render once they have settled, from the latest data.
 		if (this.echoGate.hold()) return;
 		this.importLegacyOptions();
+		const previousOptions = this.currentOptions;
 		const options = readGanttOptions(this.config);
 		this.currentOptions = options;
 		this.containerEl.style.setProperty('--gantt-row-height', `${options.rowHeight}px`);
 		this.setTodayOffset(options.scale);
 		const visibleProperties = this.config.getOrder();
-		const nonCssConfig = JSON.stringify({ ...options, rowHeight: undefined, visibleProperties });
-		if (this.lastGroups === this.data.groupedData && this.lastNonCssConfig === nonCssConfig && this.lastModel) {
+
+		// PERF-002: an identical update (same entries/order/groups/config as last time) skips
+		// rebuilding entirely; one where only rowHeight (a CSS-only option) changed takes a
+		// cheap fast path instead of remapping every entry, the same way Timeline's
+		// RenderScheduler decides between 'skip'/'css-only'/'full'.
+		const signature = computeRenderSignature(this.buildRenderSignatureInput(options, visibleProperties));
+		const changedConfigKeys = previousOptions
+			? (Object.keys(options) as Array<keyof GanttOptions>).filter(
+				key => JSON.stringify(options[key]) !== JSON.stringify(previousOptions[key]),
+			)
+			: (Object.keys(options) as Array<keyof GanttOptions>);
+		const identicalGroupedData = this.lastGroupedData === this.data.groupedData;
+		this.lastGroupedData = this.data.groupedData;
+		let decision = this.renderScheduler.decide(signature, GANTT_OPTION_SCHEMA, changedConfigKeys);
+		if (decision !== 'full' && !identicalGroupedData) decision = 'full';
+		if (decision === 'skip') return;
+		if (decision === 'css-only' && this.lastModel) {
 			this.lastModel = { ...this.lastModel, rowHeight: options.rowHeight };
 			this.chart.update(this.lastModel);
 			return;
@@ -239,8 +269,6 @@ export class BasesGanttView extends BasesView {
 				onTaskCreate: draft => void writer.onTaskCreate(draft),
 			},
 		};
-		this.lastGroups = this.data.groupedData;
-		this.lastNonCssConfig = nonCssConfig;
 		this.lastModel = model;
 		this.chart.update(model);
 		if (this.activeScale === null) this.activeScale = options.scale;
@@ -308,6 +336,21 @@ export class BasesGanttView extends BasesView {
 		if (!this.lastModel) return;
 		this.lastModel = { ...this.lastModel, tasks };
 		this.chart.update(this.lastModel);
+	}
+
+	/** Only the primitives that affect the chart's rendered output (spec §2.2). */
+	private buildRenderSignatureInput(options: GanttOptions, visibleProperties: readonly string[]): RenderSignatureInput {
+		const entries = this.data.groupedData.flatMap((group: { entries: { file: { path: string; stat?: { mtime: number } } }[] }) =>
+			group.entries.map(entry => ({ path: entry.file.path, mtime: entry.file.stat?.mtime ?? 0 }))
+		);
+		const groupedData = this.data.groupedData as { hasKey(): boolean; key?: unknown }[];
+		const groupKeys = groupedData.map(group => (group.hasKey() ? String(group.key) : ''));
+		return {
+			entries,
+			order: visibleProperties,
+			groupKeys,
+			config: { ...options },
+		};
 	}
 
 	private mutationProperties(groups: readonly EntrySnapshotGroup[], options: GanttOptions) {
