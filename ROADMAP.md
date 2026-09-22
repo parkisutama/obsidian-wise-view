@@ -1,7 +1,7 @@
 # Wise View roadmap
 
 Status: Active
-Last updated: 2026-09-19
+Last updated: 2026-09-22
 
 This is the navigation hub for Wise View's current work: which workstream is being worked on,
 what depends on what, and where each workstream's own specification, plan, and task list live.
@@ -32,7 +32,7 @@ the same `dev` branch, instead of one large document that has to move together.
 | Gantt | [docs/specs/gantt.md](docs/specs/gantt.md) | [tasks/gantt/plan.md](tasks/gantt/plan.md) | [tasks/gantt/todo.md](tasks/gantt/todo.md) | Done (native-accepted 2026-09-20 with waivers: mobile, popout, keyboard unverified) — [record](tasks/gantt/native-acceptance.md) |
 | Gantt Frappe removal | [docs/specs/gantt-frappe-removal.md](docs/specs/gantt-frappe-removal.md) | [tasks/gantt-frappe-removal/plan.md](tasks/gantt-frappe-removal/plan.md) | [tasks/gantt-frappe-removal/todo.md](tasks/gantt-frappe-removal/todo.md) | Done 2026-09-20; permanent id and keys set to `wise-view-gantt` / `gantt*` 2026-09-21 (GFR-006). The obsidian-bases-gantt attribution (kept) awaits maintainer confirmation |
 | Timeline | [docs/specs/timeline.md](docs/specs/timeline.md) | [tasks/timeline/plan.md](tasks/timeline/plan.md) | [tasks/timeline/todo.md](tasks/timeline/todo.md) | Done (native-accepted 2026-09-22 with waiver: mobile UX deferred, see Follow-ups) — [record](tasks/timeline/native-acceptance.md) |
-| Performance | [docs/specs/performance.md](docs/specs/performance.md) | [tasks/performance/plan.md](tasks/performance/plan.md) | [tasks/performance/todo.md](tasks/performance/todo.md) | Blocked — waits for the four view workstreams |
+| Performance | [docs/specs/performance.md](docs/specs/performance.md) | [tasks/performance/plan.md](tasks/performance/plan.md) | [tasks/performance/todo.md](tasks/performance/todo.md) | In progress — Phases 1-3 complete (PERF-001–003); Phase 4 native acceptance (PERF-004) pending |
 | Note Template | [docs/specs/note-template.md](docs/specs/note-template.md) | [tasks/note-template/plan.md](tasks/note-template/plan.md) | [tasks/note-template/todo.md](tasks/note-template/todo.md) | Done 2026-09-21 (native-accepted with waivers: core Templates and no-engine paths unverified) — [record](tasks/note-template/native-acceptance.md) |
 | Periodic Notes | [docs/specs/periodic-notes.md](docs/specs/periodic-notes.md) | [tasks/periodic-notes/plan.md](tasks/periodic-notes/plan.md) | [tasks/periodic-notes/todo.md](tasks/periodic-notes/todo.md) | Done 2026-09-21 (native-accepted with waivers: Templater folder templates, core Templates, no-engine, mobile unverified) — [record](tasks/periodic-notes/native-acceptance.md). Calendar-only, native (no plugin dependencies) |
 

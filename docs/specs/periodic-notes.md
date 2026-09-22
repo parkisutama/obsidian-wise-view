@@ -210,7 +210,8 @@ types. Layout and styling were not visible there, so placement is confirmed nati
   asks for them.
 - No global (plugin-level) periodic settings; per-view only (decision 2).
 
-## 5. Open questions (resolve in PN-001)
+## 5. Open questions (resolved in PN-001 — see §2/§2b's decisions; kept below as the record of
+what was asked)
 
 - Week numbering: ISO weeks (`gggg-[W]ww`, Monday start) versus following the view's
   `weekStartsOn`. Notebook Navigator's own convention decides, and it must be read from its

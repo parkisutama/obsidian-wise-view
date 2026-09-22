@@ -171,7 +171,9 @@ decide whether the `obsidian-bases-gantt` attribution can go.
 
 - [x] The search finds no `frappe`, `BasesGanttView`, `ganttUtils`, `GanttDefaults`, or
   `bases-gantt-view` outside history, provenance notes, and the removal spec.
-- [ ] The attribution decision is recorded in the spec (keep or remove, with the reason).
+- [x] The attribution decision is recorded in the spec (keep or remove, with the reason) — see
+  "Attribution decision (GFR-005, 2026-09-20)" in `docs/specs/gantt-frappe-removal.md`: keep,
+  pending a maintainer code-level review before it can be dropped.
 
 **Verification:** Search output recorded in this file.
 

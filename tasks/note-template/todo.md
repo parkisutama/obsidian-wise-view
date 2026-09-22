@@ -110,7 +110,7 @@ Phases 2-4. Delete the old duplicated substitution logic.
 must already exist.
 
 **Likely files:** `src/views/calendar/dailyNote.ts`, `src/views/BasesCalendarView.ts`,
-`src/views/BasesGanttView.ts` (or their extracted equivalents)
+`src/views/gantt/BasesGanttView.ts` (or their extracted equivalents)
 
 **Estimated scope:** M
 

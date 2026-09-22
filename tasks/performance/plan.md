@@ -1,6 +1,6 @@
 # Implementation plan: Cross-view performance verification
 
-Status: Draft; implementation requires approval
+Status: Phases 1-3 complete; native acceptance pending
 Specification: [../../docs/specs/performance.md](../../docs/specs/performance.md)
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)
 Baseline: branch `dev`

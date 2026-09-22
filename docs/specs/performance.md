@@ -1,6 +1,6 @@
 # Spec: Cross-view performance verification
 
-Status: Draft — awaiting maintainer review
+Status: Phases 1-3 implemented (PERF-001–003) — Phase 4 native acceptance pending
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)

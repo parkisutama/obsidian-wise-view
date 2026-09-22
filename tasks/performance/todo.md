@@ -5,6 +5,8 @@ Specification: [../../docs/specs/performance.md](../../docs/specs/performance.md
 Sequencing: does not start until Swimlane, Calendar, Gantt, and Timeline's workstreams are Done
 (see `../../ROADMAP.md`).
 
+Status: PERF-001 through PERF-003 complete; PERF-004 awaits maintainer native testing.
+
 ## Phase 1: Bounded initial render
 
 ### PERF-001: Verify (and fix if needed) bounded initial render for all four views

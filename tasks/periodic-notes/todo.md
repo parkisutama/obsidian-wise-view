@@ -15,8 +15,11 @@ unsafe patterns, and the Notebook Navigator conventions to match (read from its 
 
 **Acceptance criteria:**
 
-- [ ] Each decision is recorded in `docs/specs/periodic-notes.md`.
-- [ ] The token table is fixed.
+- [x] Each decision is recorded in `docs/specs/periodic-notes.md` — see "Decisions already made"
+  (§2) and "Scope decisions added 2026-09-21" (§2b); §5's list is kept as the historical record of
+  the questions those decisions answer.
+- [x] The token table is fixed — decision 10 (ISO 8601 default and presets) and decision 11
+  (Templater reads the date from the file name; no Wise View date-token pass on period templates).
 
 **Verification:** Documentation review.
 
