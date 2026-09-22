@@ -15,8 +15,8 @@ Swimlane, Calendar, Gantt, and Timeline. Fix any view found unbounded.
 
 **Acceptance criteria:**
 
-- [ ] Each of the four views has a passing test demonstrating bounded initial render.
-- [ ] Calendar's and Gantt's tests specifically confirm FullCalendar's/the Gantt library's own
+- [x] Each of the four views has a passing test demonstrating bounded initial render.
+- [x] Calendar's and Gantt's tests specifically confirm FullCalendar's/the Gantt library's own
   virtualization is actually engaged, not assumed from documentation.
 
 **Verification:** `pnpm run test -- performance && pnpm run typecheck`

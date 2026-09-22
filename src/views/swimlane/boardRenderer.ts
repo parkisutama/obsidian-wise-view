@@ -304,10 +304,13 @@ export class BoardRenderer {
     // Setup drop handlers
     this.host.drag.setupDropHandlers(cell, groupKey, swimlaneKey);
 
-    // Render cards
-    for (const entry of entries) {
-      const card = this.host.createCard(entry);
-      cell.appendChild(card);
+    // Render cards — same virtual-scroll threshold as the plain-column layout (PERF-001):
+    // a swimlane x column grid otherwise builds one full card DOM subtree per entry in every
+    // cell synchronously, which is unbounded against a large Base's entry count.
+    if (entries.length >= VIRTUAL_SCROLL_THRESHOLD) {
+      this.host.renderVirtualCards(cell, entries);
+    } else {
+      this.host.renderCards(cell, entries);
     }
 
     return cell;

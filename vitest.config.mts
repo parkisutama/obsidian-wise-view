@@ -18,6 +18,10 @@ export default defineConfig({
 	test: {
 		include: ["tests/**/*.test.{ts,mjs}"],
 		setupFiles: ["tests/setup.ts"],
+		// The Gantt library is externalized by default for SSR, which lets Node resolve its
+		// internal `react` import directly (bypassing the alias above and pulling in real React
+		// instead of Preact). Inlining it routes that import through Vite's resolver instead.
+		server: { deps: { inline: ["@jaeungkim/gantt-chart"] } },
 		// Fail instead of passing silently when a filter or glob matches nothing.
 		passWithNoTests: false,
 		coverage: {
