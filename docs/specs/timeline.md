@@ -1,6 +1,6 @@
 # Spec: Timeline native sort/group adoption
 
-Status: Implemented — native acceptance pending
+Status: Done 2026-09-22 (native-accepted with waiver: mobile UX deferred) — [record](../../tasks/timeline/native-acceptance.md)
 Baseline branch: `dev`
 Prepared: 2026-09-19
 Roadmap: [../../ROADMAP.md](../../ROADMAP.md)

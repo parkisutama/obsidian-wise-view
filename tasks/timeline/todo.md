@@ -78,9 +78,9 @@ TL-001 and TL-003's changes.
 
 **Acceptance criteria:**
 
-- [ ] No regression found versus the already-accepted Timeline behavior
+- [x] No regression found versus the already-accepted Timeline behavior
   (`tasks/timeline-native-acceptance.md`).
-- [ ] Findings recorded (append to `tasks/timeline-native-acceptance.md` or a new dated note).
+- [x] Findings recorded (append to `tasks/timeline-native-acceptance.md` or a new dated note).
 
 **Verification:** Native testing; `pnpm run check`.
 
