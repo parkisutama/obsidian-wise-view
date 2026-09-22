@@ -3,6 +3,7 @@
 // Copyright (c) 2026 mmattia09. MIT License, see THIRD_PARTY_NOTICES.md
 // Modifications Copyright (C) 2026 Parkis Utama
 
+import { setIcon } from 'obsidian';
 import { calculateTimeDomain, rangeToDayBounds, todayPosition, type TimeDomain } from '../../core/temporal/TimeDomain';
 import { dateToPixel, TIMELINE_ZOOM_SPECS, type TimelineZoom } from '../../core/temporal/TimelineScale';
 import { dateOnlyFromDayIndex, type DateOnlyValue } from '../../core/temporal/TemporalValue';
@@ -11,6 +12,8 @@ import { resolveColor, toCssVariables } from '../../platform/colors/ColorResolve
 import { flattenTimelineRows, type TimelineItem, type TimelineModel, type TimelineVirtualRow } from './TimelineModel';
 
 const ZOOM_ORDER: readonly TimelineZoom[] = ['fiveyear', 'year', 'quarter', 'month', 'biweek', 'week', 'day'];
+/** Tall enough that a two-line wrapped title still gets breathing room above/below its text. */
+const ROW_HEIGHT = 44;
 const DEFAULT_SPAN: Readonly<Record<TimelineZoom, number>> = {
 	day: 1,
 	week: 3,
@@ -98,7 +101,6 @@ export function createTimelineLayout(
 export class TimelineRenderer {
 	private readonly toolbarEl: HTMLElement;
 	private readonly sidebarPanel: HTMLElement;
-	private readonly expandControls: HTMLElement;
 	private readonly emptyEl: HTMLElement;
 	private readonly sidebarViewport: HTMLElement;
 	private readonly timelineViewport: HTMLElement;
@@ -182,9 +184,15 @@ export class TimelineRenderer {
 
 	constructor(private readonly containerEl: HTMLElement, private readonly actions: TimelineRendererActions = {}) {
 		containerEl.classList.add('wise-view-timeline');
+		this.toolbarEl = containerEl.createDiv({ cls: 'wise-view-timeline__toolbar' });
+		this.toolbarEl.setAttribute('role', 'toolbar');
+		this.toolbarEl.setAttribute('aria-label', 'Timeline controls');
 		const main = containerEl.createDiv({ cls: 'wise-view-timeline__main' });
 		this.sidebarPanel = main.createDiv({ cls: 'wise-view-timeline__sidebar-panel' });
-		this.toolbarEl = this.sidebarPanel.createDiv({ cls: 'wise-view-timeline__toolbar' });
+		// Mirrors the chart header's height so sidebar rows line up with their timeline bars —
+		// without it, the sidebar column starts a header's-height too high once the toolbar
+		// (which used to fill that gap) moved out to sit above both columns.
+		this.sidebarPanel.createDiv({ cls: 'wise-view-timeline__sidebar-corner' });
 		this.sidebarViewport = this.sidebarPanel.createDiv({ cls: 'wise-view-timeline__sidebar' });
 		const chart = main.createDiv({ cls: 'wise-view-timeline__chart' });
 		this.headerEl = chart.createDiv({ cls: 'wise-view-timeline__header' });
@@ -192,13 +200,13 @@ export class TimelineRenderer {
 		this.timelineViewport = chart.createDiv({ cls: 'wise-view-timeline__scroller' });
 		this.gridEl = this.timelineViewport.createDiv({ cls: 'wise-view-timeline__grid' });
 		this.sidebarRows = new VirtualLinearCollection(this.sidebarViewport, {
-			rowHeight: 36,
+			rowHeight: ROW_HEIGHT,
 			overscan: 5,
 			renderRow: row => this.renderSidebarRow(row),
 			updateRow: (handle, row) => this.updateSidebarRow(handle, row),
 		});
 		this.timelineRows = new VirtualLinearCollection(this.timelineViewport, {
-			rowHeight: 36,
+			rowHeight: ROW_HEIGHT,
 			overscan: 5,
 			renderRow: row => this.renderTimelineRow(row),
 			updateRow: (handle, row) => this.updateTimelineRow(handle, row),
@@ -215,7 +223,6 @@ export class TimelineRenderer {
 		this.timelineViewport.addEventListener('touchstart', this.handleTouchStart, { passive: true });
 		this.timelineViewport.addEventListener('touchmove', this.handleTouchMove, { passive: false });
 		this.timelineViewport.addEventListener('touchend', this.handleTouchEnd, { passive: true });
-		this.expandControls = containerEl.createDiv({ cls: 'wise-view-timeline__expand-controls' });
 		this.emptyEl = containerEl.createDiv({ cls: 'wise-view-timeline__empty' });
 	}
 
@@ -281,6 +288,38 @@ export class TimelineRenderer {
 		if (!this.currentLayout) return;
 		this.timelineViewport.scrollLeft = Math.max(0, this.currentLayout.todayLeft - this.timelineViewport.clientWidth / 2);
 		this.syncHorizontalHeader();
+	}
+
+	/** Picks the most zoomed-in level that still fits every scheduled item on screen at once. */
+	zoomToFit(): void {
+		if (!this.currentModel || !this.currentToday) return;
+		const bounds = [...this.currentModel.itemsByPath.values()]
+			.filter(item => item.range != null)
+			.map(item => rangeToDayBounds(item.range!));
+		if (bounds.length === 0) {
+			this.scrollToToday();
+			return;
+		}
+		const minStart = Math.min(...bounds.map(b => b.startDay));
+		const maxEnd = Math.max(...bounds.map(b => b.endDay));
+		const spanDays = Math.max(1, maxEnd - minStart);
+		const viewportWidth = this.timelineViewport.clientWidth || 500;
+		const fitOrder = [...ZOOM_ORDER].reverse();
+		let chosen: TimelineZoom = 'fiveyear';
+		for (const zoom of fitOrder) {
+			if (spanDays * TIMELINE_ZOOM_SPECS[zoom].pixelsPerDay <= viewportWidth) {
+				chosen = zoom;
+				break;
+			}
+		}
+		this.extraPaddingDays = 0;
+		this.activeZoom = chosen;
+		const layout = this.render(this.currentModel, this.currentToday, chosen);
+		const left = dateToPixel(minStart, layout.domain, chosen);
+		const right = dateToPixel(maxEnd, layout.domain, chosen);
+		this.timelineViewport.scrollLeft = Math.max(0, (left + right) / 2 - this.timelineViewport.clientWidth / 2);
+		this.syncHorizontalHeader();
+		this.actions.onZoomChange?.(chosen);
 	}
 
 	setNarrow(narrow: boolean): void {
@@ -507,21 +546,11 @@ export class TimelineRenderer {
 
 	private renderToolbar(): void {
 		this.toolbarEl.replaceChildren();
-		this.expandControls.replaceChildren();
-		this.renderControlSet(this.sidebarCollapsed ? this.expandControls : this.toolbarEl, this.sidebarCollapsed);
-	}
-
-	private renderControlSet(host: HTMLElement, expanding: boolean): void {
-		if (expanding) {
-			const expand = host.createEl('button', { text: '»' });
-			expand.type = 'button';
-			expand.dataset.action = 'toggle-sidebar';
-			expand.setAttribute('aria-label', 'Show timeline sidebar');
-		}
-		const today = host.createEl('button', { text: 'Today' });
-		today.type = 'button';
-		today.dataset.action = 'today';
-		const select = host.createEl('select', { cls: 'wise-view-timeline__zoom' });
+		this.iconButton(this.toolbarEl, this.sidebarCollapsed ? 'panel-left-open' : 'panel-left-close',
+			this.sidebarCollapsed ? 'Show timeline sidebar' : 'Hide timeline sidebar', 'toggle-sidebar');
+		this.iconButton(this.toolbarEl, 'calendar-days', 'Today', 'today');
+		this.iconButton(this.toolbarEl, 'scan', 'Zoom to fit', 'zoom-to-fit');
+		const select = this.toolbarEl.createEl('select', { cls: 'dropdown wise-view-timeline__zoom' });
 		select.dataset.action = 'zoom';
 		select.setAttribute('aria-label', 'Timeline zoom');
 		for (const zoom of Object.keys(TIMELINE_ZOOM_SPECS) as TimelineZoom[]) {
@@ -529,12 +558,17 @@ export class TimelineRenderer {
 			option.value = zoom;
 			option.selected = zoom === this.activeZoom;
 		}
-		if (!expanding) {
-			const collapse = host.createEl('button', { text: '«' });
-			collapse.type = 'button';
-			collapse.dataset.action = 'toggle-sidebar';
-			collapse.setAttribute('aria-label', 'Hide timeline sidebar');
-		}
+	}
+
+	private iconButton(host: HTMLElement, icon: string, label: string, action: string): HTMLButtonElement {
+		const button = host.createEl('button', { cls: 'clickable-icon wise-view-timeline__toolbar-button' });
+		button.type = 'button';
+		button.dataset.action = action;
+		button.setAttribute('aria-label', label);
+		button.title = label;
+		setIcon(button, icon);
+		button.createSpan({ cls: 'wise-view-timeline__toolbar-label', text: label });
+		return button;
 	}
 
 	private renderHeader(layout: TimelineLayout, zoom: TimelineZoom): void {

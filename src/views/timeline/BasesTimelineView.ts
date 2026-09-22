@@ -106,6 +106,10 @@ export class BasesTimelineView extends BasesView {
 			this.renderer.toggleSidebar();
 			return;
 		}
+		if (action?.dataset.action === 'zoom-to-fit') {
+			this.renderer.zoomToFit();
+			return;
+		}
 		if (action?.dataset.action === 'toggle-group' && action.dataset.groupKey) {
 			this.renderer.toggleGroup(action.dataset.groupKey);
 			return;

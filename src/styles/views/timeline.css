@@ -21,17 +21,15 @@
 
 .wise-view-timeline__toolbar {
 	display: flex;
+	flex: 0 0 auto;
 	align-items: center;
-	gap: var(--size-4-1);
-	padding: var(--size-4-2);
+	gap: var(--size-2-1);
+	padding: var(--size-2-1) var(--size-4-2);
 	border-bottom: 1px solid var(--background-modifier-border);
 	overflow-x: auto;
 }
 
-.wise-view-timeline__toolbar button,
 .wise-view-timeline__toolbar select,
-.wise-view-timeline__expand-controls button,
-.wise-view-timeline__expand-controls select,
 .wise-view-timeline__sidebar-row button {
 	border: 0;
 	border-radius: var(--radius-s);
@@ -39,6 +37,18 @@
 	background: transparent;
 	font: inherit;
 	cursor: pointer;
+}
+
+.wise-view-timeline__zoom {
+	min-width: 7rem;
+}
+
+.wise-view-timeline__toolbar-button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	width: auto;
+	padding-inline: var(--size-2-2);
 }
 
 .wise-view-timeline__row--unscheduled {
@@ -69,18 +79,15 @@
 /* No start property configured: hide the toolbar/sidebar/chart chrome entirely instead of
    showing a fully-formed-looking calendar around "today" that tracks no real property. Only
    the centered configuration hint (.wise-view-timeline__empty) remains visible. */
-.wise-view-timeline--unconfigured .wise-view-timeline__main,
-.wise-view-timeline--unconfigured .wise-view-timeline__expand-controls {
+.wise-view-timeline--unconfigured .wise-view-timeline__toolbar,
+.wise-view-timeline--unconfigured .wise-view-timeline__main {
 	display: none;
 }
 
-.wise-view-timeline__toolbar button:hover,
-.wise-view-timeline__toolbar button[aria-pressed="true"],
 .wise-view-timeline__sidebar-row button:hover {
 	background: var(--background-modifier-hover);
 }
 
-.wise-view-timeline__toolbar button:focus-visible,
 .wise-view-timeline__sidebar-row button:focus-visible,
 .wise-view-timeline__bar:focus-visible {
 	outline: 2px solid var(--interactive-accent);
@@ -97,12 +104,17 @@
 
 .wise-view-timeline__sidebar-panel {
 	display: grid;
-	grid-template-rows: auto minmax(0, 1fr);
+	grid-template-rows: 3rem minmax(0, 1fr);
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
 	border-right: 1px solid var(--background-modifier-border);
 	transition: width 0.25s ease;
+}
+
+.wise-view-timeline__sidebar-corner {
+	border-bottom: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
 }
 
 .wise-view-timeline__sidebar,
@@ -120,20 +132,6 @@
 	background: var(--background-secondary);
 }
 
-.wise-view-timeline__expand-controls {
-	display: none;
-	position: absolute;
-	z-index: 20;
-	top: var(--size-4-2);
-	left: var(--size-4-2);
-	align-items: center;
-	gap: var(--size-4-1);
-	padding: var(--size-4-1);
-	border-radius: var(--radius-s);
-	background: var(--background-primary);
-	box-shadow: var(--shadow-s);
-}
-
 .wise-view-timeline--sidebar-collapsed .wise-view-timeline__main {
 	grid-template-columns: 0 minmax(0, 1fr);
 }
@@ -141,10 +139,6 @@
 .wise-view-timeline--sidebar-collapsed .wise-view-timeline__sidebar-panel {
 	width: 0;
 	border-right-color: transparent;
-}
-
-.wise-view-timeline--sidebar-collapsed .wise-view-timeline__expand-controls {
-	display: flex;
 }
 
 .wise-view-timeline__chart {
@@ -272,10 +266,13 @@
 
 .wise-view-timeline--wrap-titles .wise-view-timeline__sidebar-row--item button {
 	display: -webkit-box;
+	padding-block: var(--size-2-2);
+	padding-inline: var(--size-4-3);
 	white-space: normal;
 	line-height: 1rem;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 2;
+	word-break: break-word;
 }
 
 .wise-view-timeline__sidebar-row--group,
@@ -296,7 +293,7 @@
 
 .wise-view-timeline__bar {
 	position: absolute;
-	top: 3px;
+	top: 7px;
 	left: var(--wise-view-timeline-left);
 	width: var(--wise-view-timeline-bar-width);
 	height: 30px;
@@ -448,6 +445,16 @@
 
 .wise-view-timeline--narrow .wise-view-timeline__toolbar {
 	padding: var(--size-4-1);
+}
+
+@media (max-width: 600px) {
+	.wise-view-timeline__toolbar-label {
+		display: none;
+	}
+
+	.wise-view-timeline__toolbar-button {
+		padding-inline: var(--size-2-1);
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
